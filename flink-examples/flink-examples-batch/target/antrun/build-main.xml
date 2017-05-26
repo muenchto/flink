@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="maven-antrun-" default="main"  >
+<target name="main">
+  <copy file="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/flink-examples-batch_2.10-1.3.0-KMeans.jar" tofile="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/KMeans.jar"/>
+  <copy file="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/flink-examples-batch_2.10-1.3.0-ConnectedComponents.jar" tofile="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/ConnectedComponents.jar"/>
+  <copy file="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/flink-examples-batch_2.10-1.3.0-EnumTriangles.jar" tofile="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/EnumTriangles.jar"/>
+  <copy file="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/flink-examples-batch_2.10-1.3.0-PageRank.jar" tofile="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/PageRank.jar"/>
+  <copy file="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/flink-examples-batch_2.10-1.3.0-TransitiveClosure.jar" tofile="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/TransitiveClosure.jar"/>
+  <copy file="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/flink-examples-batch_2.10-1.3.0-WebLogAnalysis.jar" tofile="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/WebLogAnalysis.jar"/>
+  <copy file="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/flink-examples-batch_2.10-1.3.0-WordCount.jar" tofile="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/WordCount.jar"/>
+  <copy file="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/flink-examples-batch_2.10-1.3.0-DistCp.jar" tofile="/home/adrian/Masterarbeit/flink/flink-examples/flink-examples-batch/target/DistCp.jar"/>
+</target>
+</project>
