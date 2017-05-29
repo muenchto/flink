@@ -866,6 +866,14 @@ class JobManager(
         }
       }(context.dispatcher)
 
+    case ModifyJob(jobId, command) =>
+      log.info(s"Received message from JobClient for $jobId")
+      if (command.equalsIgnoreCase("success")) {
+        sender() ! ModifyJobSuccess(jobId, "Successfully received request")
+      } else {
+        sender() ! ModifyJobFailure(jobId, new IllegalStateException("Failed to receive request"))
+      }
+
     case msg @ JobStatusChanged(jobID, newJobStatus, timeStamp, error) =>
       currentJobs.get(jobID) match {
         case Some((executionGraph, jobInfo)) => executionGraph.getJobName

@@ -528,6 +528,12 @@ object JobManagerMessages {
     */
   case class DisposeSavepointFailure(cause: Throwable)
 
+  case class ModifyJob(jobId: JobID, command: String) extends RequiresLeaderSessionID
+
+  case class ModifyJobSuccess(jobId: JobID, command: String)
+
+  case class ModifyJobFailure(jobId: JobID, cause: Throwable)
+
   // --------------------------------------------------------------------------
   // Utility methods to allow simpler case object access from Java
   // --------------------------------------------------------------------------

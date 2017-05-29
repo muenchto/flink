@@ -36,6 +36,7 @@ import org.apache.flink.client.cli.ProgramOptions;
 import org.apache.flink.client.cli.RunOptions;
 import org.apache.flink.client.cli.SavepointOptions;
 import org.apache.flink.client.cli.StopOptions;
+import org.apache.flink.client.cli.ModifyOptions;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.PackagedProgram;
 import org.apache.flink.client.program.ProgramInvocationException;
@@ -65,6 +66,10 @@ import org.apache.flink.runtime.messages.JobManagerMessages.CancelJob;
 import org.apache.flink.runtime.messages.JobManagerMessages.CancelJobWithSavepoint;
 import org.apache.flink.runtime.messages.JobManagerMessages.CancellationFailure;
 import org.apache.flink.runtime.messages.JobManagerMessages.CancellationSuccess;
+import org.apache.flink.runtime.messages.JobManagerMessages.DisposeSavepointFailure;
+import org.apache.flink.runtime.messages.JobManagerMessages.ModifyJob;
+import org.apache.flink.runtime.messages.JobManagerMessages.ModifyJobFailure;
+import org.apache.flink.runtime.messages.JobManagerMessages.ModifyJobSuccess;
 import org.apache.flink.runtime.messages.JobManagerMessages.RunningJobsStatus;
 import org.apache.flink.runtime.messages.JobManagerMessages.StopJob;
 import org.apache.flink.runtime.messages.JobManagerMessages.StoppingFailure;
@@ -101,7 +106,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.flink.runtime.messages.JobManagerMessages.DisposeSavepoint;
-import static org.apache.flink.runtime.messages.JobManagerMessages.DisposeSavepointFailure;
 import static org.apache.flink.runtime.messages.JobManagerMessages.TriggerSavepointFailure;
 
 /**
@@ -118,6 +122,7 @@ public class CliFrontend {
 	private static final String ACTION_CANCEL = "cancel";
 	private static final String ACTION_STOP = "stop";
 	private static final String ACTION_SAVEPOINT = "savepoint";
+	private static final String ACTION_MODIFICATION = "modification";
 
 	// config dir parameters
 	private static final String CONFIG_DIRECTORY_FALLBACK_1 = "../conf";
@@ -826,6 +831,82 @@ public class CliFrontend {
 		}
 	}
 
+	/**
+	 * Executes the {@link #ACTION_MODIFICATION} action
+	 * @param args Command line arguments for the runtime modification action.
+	 */
+	private int runtime_modification(String[] args) {
+		LOG.info("Running 'runtime modification' command.");
+
+		ModifyOptions options;
+		try {
+			options = CliFrontendParser.parseModifyCommand(args);
+		} catch (CliArgsException e) {
+			return handleArgException(e);
+		} catch (Throwable t) {
+			return handleError(t);
+		}
+
+		// TODO Add help flag
+//		if (options.isPrintHelp()) {
+//			CliFrontendParser.printHelpForSavepoint();
+//			return 0;
+//		}
+
+		// Trigger
+		String[] cleanedArgs = options.getArgs();
+		JobID jobId;
+
+		if (cleanedArgs.length >= 1) {
+			String jobIdString = cleanedArgs[0];
+			try {
+				jobId = new JobID(StringUtils.hexStringToByte(jobIdString));
+			} catch (Exception e) {
+				return handleArgException(new IllegalArgumentException(
+					"Error: The value for the Job ID is not a valid ID."));
+			}
+		} else {
+			return handleArgException(new IllegalArgumentException(
+				"Error: The value for the Job ID is not a valid ID. Specify a Job ID to trigger a savepoint."));
+		}
+
+		return triggerModify(options, jobId);
+	}
+
+	private int triggerModify(ModifyOptions options, JobID jobId) {
+		try {
+			ActorGateway jobManager = getJobManagerGateway(options);
+
+			logAndSysout("Modifying job " + jobId + ".");
+			Future<Object> response = jobManager.ask(new ModifyJob(jobId, "Success"),
+				new FiniteDuration(1, TimeUnit.HOURS));
+
+			Object result;
+			try {
+				logAndSysout("Waiting for response...");
+				result = Await.result(response, FiniteDuration.Inf());
+			}
+			catch (Exception e) {
+				throw new Exception("Triggering a savepoint for the job " + jobId + " failed.", e);
+			}
+
+			if (result instanceof ModifyJobSuccess) {
+				ModifyJobSuccess success = (ModifyJobSuccess) result;
+				logAndSysout("Modify completed. Reason: " + success.command());
+
+				return 0;
+			} else if (result instanceof ModifyJobFailure) {
+					ModifyJobFailure failure = (ModifyJobFailure) result;
+					throw failure.cause();
+			} else {
+				throw new IllegalStateException("Unknown JobManager response of type " + result.getClass());
+			}
+		}
+		catch (Throwable t) {
+			return handleError(t);
+		}
+	}
+
 	// --------------------------------------------------------------------------------------------
 	//  Interaction with programs and JobManager
 	// --------------------------------------------------------------------------------------------
@@ -1094,6 +1175,8 @@ public class CliFrontend {
 				return stop(params);
 			case ACTION_SAVEPOINT:
 				return savepoint(params);
+			case ACTION_MODIFICATION:
+				return runtime_modification(params);
 			case "-h":
 			case "--help":
 				CliFrontendParser.printHelp();
