@@ -142,6 +142,7 @@ public class CliFrontendParser {
 	private static final Options CANCEL_OPTIONS = getCancelOptions(buildGeneralOptions(new Options()));
 	private static final Options STOP_OPTIONS = getStopOptions(buildGeneralOptions(new Options()));
 	private static final Options SAVEPOINT_OPTIONS = getSavepointOptions(buildGeneralOptions(new Options()));
+	private static final Options MODIFY_OPTIONS = getModifyOptions(buildGeneralOptions(new Options()));
 
 	private static Options buildGeneralOptions(Options options) {
 		options.addOption(HELP_OPTION);
@@ -219,6 +220,11 @@ public class CliFrontendParser {
 		options = getJobManagerAddressOption(options);
 		options.addOption(SAVEPOINT_DISPOSE_OPTION);
 		options.addOption(JAR_OPTION);
+		return addCustomCliOptions(options, false);
+	}
+
+	private static Options getModifyOptions(Options options) {
+		options = getJobManagerAddressOption(options);
 		return addCustomCliOptions(options, false);
 	}
 
@@ -462,6 +468,17 @@ public class CliFrontendParser {
 			DefaultParser parser = new DefaultParser();
 			CommandLine line = parser.parse(SAVEPOINT_OPTIONS, args, false);
 			return new SavepointOptions(line);
+		}
+		catch (ParseException e) {
+			throw new CliArgsException(e.getMessage());
+		}
+	}
+
+	public static ModifyOptions parseModifyCommand(String[] args) throws CliArgsException {
+		try {
+			DefaultParser parser = new DefaultParser();
+			CommandLine line = parser.parse(MODIFY_OPTIONS, args, false);
+			return new ModifyOptions(line);
 		}
 		catch (ParseException e) {
 			throw new CliArgsException(e.getMessage());
