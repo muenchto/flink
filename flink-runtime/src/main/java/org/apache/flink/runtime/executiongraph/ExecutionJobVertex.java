@@ -383,7 +383,7 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 		return getAggregateJobVertexState(num, parallelism);
 	}
 
-	private String generateDebugString() {
+	public String generateDebugString() {
 
 		return "ExecutionJobVertex" +
 				"(" + jobVertex.getName() + " | " + jobVertex.getID() + ")" +

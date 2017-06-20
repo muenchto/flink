@@ -836,6 +836,17 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 		}
 	}
 
+	public String introduceNewOperator() throws JobException {
+
+		StringBuilder currentPlan = new StringBuilder();
+
+		for (ExecutionJobVertex ejv : verticesInCreationOrder) {
+			currentPlan.append(ejv.generateDebugString());
+		}
+
+		return currentPlan.toString();
+	}
+
 	/**
 	 * 
 	 * 

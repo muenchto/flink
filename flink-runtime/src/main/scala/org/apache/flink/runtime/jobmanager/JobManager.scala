@@ -867,7 +867,18 @@ class JobManager(
       }(context.dispatcher)
 
     case ModifyJob(jobId, command) =>
-      log.info(s"Received message from JobClient for $jobId")
+      log.info(s"Received command '$command' from JobClient for $jobId")
+
+      currentJobs.get(jobId) match {
+        case Some((executionGraph, jobInfo)) =>
+          val result = executionGraph.introduceNewOperator()
+
+          sender() ! ModifyJobSuccess(jobId, s"Introducing new operator: $result")
+        case None =>
+          // check the archive
+          sender() ! ModifyJobFailure(jobId, new IllegalStateException(s"Failed to find job for id $jobId"))
+      }
+
       if (command.equalsIgnoreCase("success")) {
         sender() ! ModifyJobSuccess(jobId, "Successfully received request")
       } else {
