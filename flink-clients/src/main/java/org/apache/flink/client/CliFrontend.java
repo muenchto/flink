@@ -835,7 +835,7 @@ public class CliFrontend {
 	 * Executes the {@link #ACTION_MODIFICATION} action
 	 * @param args Command line arguments for the runtime modification action.
 	 */
-	private int runtime_modification(String[] args) {
+	private int modification(String[] args) {
 		LOG.info("Running 'runtime modification' command.");
 
 		ModifyOptions options;
@@ -847,17 +847,32 @@ public class CliFrontend {
 			return handleError(t);
 		}
 
-		// TODO Add help flag
-//		if (options.isPrintHelp()) {
-//			CliFrontendParser.printHelpForSavepoint();
-//			return 0;
-//		}
+		if (options.isPrintHelp()) {
+			CliFrontendParser.printHelpForRuntimeModification();
+			return 0;
+		}
 
 		// Trigger
 		String[] cleanedArgs = options.getArgs();
 		JobID jobId;
 
-		if (cleanedArgs.length >= 1) {
+		ActorGateway jobManagerGateway;
+
+		try {
+			jobManagerGateway = getJobManagerGateway(options);
+		} catch (Exception e) {
+			return handleError(e);
+		}
+
+		if (cleanedArgs.length == 0) {
+			jobId = findSingleRunningJob(jobManagerGateway);
+
+			if (jobId == null) {
+				return handleArgException(new IllegalArgumentException(
+					"Error: Could not find single running job. Try specifying a JobID instead."));
+			}
+
+		} else if (cleanedArgs.length >= 1) {
 			String jobIdString = cleanedArgs[0];
 			try {
 				jobId = new JobID(StringUtils.hexStringToByte(jobIdString));
@@ -865,18 +880,87 @@ public class CliFrontend {
 				return handleArgException(new IllegalArgumentException(
 					"Error: The value for the Job ID is not a valid ID."));
 			}
+
 		} else {
 			return handleArgException(new IllegalArgumentException(
-				"Error: The value for the Job ID is not a valid ID. Specify a Job ID to trigger a savepoint."));
+				"Error: The value for the Job ID is not a valid ID. Either specify a Job ID or leave empty " +
+					"to trigger a runtime modification."));
 		}
 
-		return triggerModify(options, jobId);
+		return triggerModify(jobManagerGateway, jobId);
 	}
 
-	private int triggerModify(ModifyOptions options, JobID jobId) {
-		try {
-			ActorGateway jobManager = getJobManagerGateway(options);
+	private JobID findSingleRunningJob(ActorGateway jobManagerGateway) {
 
+		try {
+
+			LOG.info("Connecting to JobManager to retrieve list of jobs");
+			Future<Object> response = jobManagerGateway.ask(
+				JobManagerMessages.getRequestRunningJobsStatus(),
+				clientTimeout);
+
+			Object result;
+			try {
+				result = Await.result(response, clientTimeout);
+			} catch (Exception e) {
+				throw new Exception("Could not retrieve running jobs from the JobManager.", e);
+			}
+
+			if (result instanceof RunningJobsStatus) {
+				LOG.info("Successfully retrieved list of jobs");
+
+				List<JobStatusMessage> jobs = ((RunningJobsStatus) result).getStatusMessages();
+
+				ArrayList<JobStatusMessage> runningJobs =  new ArrayList<JobStatusMessage>();
+
+				for (JobStatusMessage jobStatusMessage : jobs) {
+					if ((jobStatusMessage.getJobState().equals(JobStatus.RUNNING)
+						|| jobStatusMessage.getJobState().equals(JobStatus.RESTARTING))) {
+						runningJobs.add(jobStatusMessage);
+					}
+				}
+
+				SimpleDateFormat df = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+				Comparator<JobStatusMessage> njec = new Comparator<JobStatusMessage>(){
+					@Override
+					public int compare(JobStatusMessage o1, JobStatusMessage o2) {
+						return (int)(o1.getStartTime()-o2.getStartTime());
+					}
+				};
+
+				if(runningJobs.size() == 1) {
+					JobID jobID = runningJobs.get(0).getJobId();
+					System.out.println("Found running job: " + jobID);
+					return jobID;
+				} else {
+
+					System.out.println("Could not find single running job. Currently running jobs: ");
+
+					Collections.sort(runningJobs, njec);
+
+					System.out.println("------------------ Running/Restarting Jobs -------------------");
+					for (JobStatusMessage rj : runningJobs) {
+						System.out.println(df.format(new Date(rj.getStartTime()))
+							+ " : " + rj.getJobId() + " : " + rj.getJobName() + " (" + rj.getJobState() + ")");
+					}
+					System.out.println("--------------------------------------------------------------");
+				}
+
+				return null;
+			}
+			else {
+				throw new Exception("ReqeustRunningJobs requires a response of type " +
+					"RunningJobs. Instead the response is of type " + result.getClass() + ".");
+			}
+		}
+		catch (Throwable t) {
+			handleError(t);
+			return null;
+		}
+	}
+
+	private int triggerModify(ActorGateway jobManager, JobID jobId) {
+		try {
 			logAndSysout("Modifying job " + jobId + ".");
 			Future<Object> response = jobManager.ask(new ModifyJob(jobId, "Success"),
 				new FiniteDuration(1, TimeUnit.HOURS));
@@ -1176,7 +1260,7 @@ public class CliFrontend {
 			case ACTION_SAVEPOINT:
 				return savepoint(params);
 			case ACTION_MODIFICATION:
-				return runtime_modification(params);
+				return modification(params);
 			case "-h":
 			case "--help":
 				CliFrontendParser.printHelp();
@@ -1191,7 +1275,8 @@ public class CliFrontend {
 			default:
 				System.out.printf("\"%s\" is not a valid action.\n", action);
 				System.out.println();
-				System.out.println("Valid actions are \"run\", \"list\", \"info\", \"savepoint\", \"stop\", or \"cancel\".");
+				System.out.println("Valid actions are \"run\", \"list\", \"info\", \"savepoint\", \"stop\", " +
+					"\"cancel\", \"modification\".");
 				System.out.println();
 				System.out.println("Specify the version option (-v or --version) to print Flink version.");
 				System.out.println();

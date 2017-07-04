@@ -271,6 +271,12 @@ public class CliFrontendParser {
 		return options;
 	}
 
+	private static Options getModificationOptionsWithoutDeprecatedOptions(Options options) {
+		options = getJobManagerAddressOption(options);
+		options.addOption(HELP_OPTION);
+		return options;
+	}
+
 	/**
 	 * Prints the help for the client.
 	 */
@@ -285,6 +291,7 @@ public class CliFrontendParser {
 		printHelpForStop();
 		printHelpForCancel();
 		printHelpForSavepoint();
+		printHelpForRuntimeModification();
 
 		System.out.println();
 	}
@@ -373,6 +380,23 @@ public class CliFrontendParser {
 		System.out.println("\n  Syntax: savepoint [OPTIONS] <Job ID> [<target directory>]");
 		formatter.setSyntaxPrefix("  \"savepoint\" action options:");
 		formatter.printHelp(" ", getSavepointOptionsWithoutDeprecatedOptions(new Options()));
+
+		printCustomCliOptions(formatter, false);
+
+		System.out.println();
+	}
+
+
+
+	public static void printHelpForRuntimeModification() {
+		HelpFormatter formatter = new HelpFormatter();
+		formatter.setLeftPadding(5);
+		formatter.setWidth(80);
+
+		System.out.println("\nAction \"modification\" triggers runtime modifications for a running job.");
+		System.out.println("\n  Syntax: modification [OPTIONS] [<Job ID>]");
+		formatter.setSyntaxPrefix("  \"modification\" action options:");
+		formatter.printHelp(" ", getModificationOptionsWithoutDeprecatedOptions(new Options()));
 
 		printCustomCliOptions(formatter, false);
 
@@ -495,5 +519,4 @@ public class CliFrontendParser {
 			throw new CliArgsException(e.getMessage());
 		}
 	}
-
 }
