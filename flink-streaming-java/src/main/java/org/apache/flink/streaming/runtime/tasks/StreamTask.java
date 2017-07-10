@@ -169,6 +169,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	/** Flag to mark this task as canceled. */
 	private volatile boolean canceled;
 
+	private volatile boolean resumeFromMigration;
+
 	/** Thread pool for async snapshot workers. */
 	private ExecutorService asyncOperationsThreadPool;
 
@@ -183,6 +185,16 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	protected abstract void cleanup() throws Exception;
 
 	protected abstract void cancelTask() throws Exception;
+
+	protected void pauseTask() throws Exception {
+		LOG.info("Pausing Task in StreamTask");
+		// Default implementation does nothing
+	}
+
+	protected void resumeTask() throws Exception {
+		// Default implementation does nothing
+		LOG.info("Resuming Task in StreamTask");
+	}
 
 	// ------------------------------------------------------------------------
 	//  Core work methods of the Stream Task
@@ -207,8 +219,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 		boolean disposed = false;
 		try {
+
 			// -------- Initialize ---------
-			LOG.debug("Initializing {}.", getName());
+			LOG.info("Initializing {} with migration {}.", getName(), resumeFromMigration);
+
+			if (!resumeFromMigration) {
 
 			asyncOperationsThreadPool = Executors.newCachedThreadPool();
 
@@ -238,7 +253,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			}
 
 			// -------- Invoke --------
-			LOG.debug("Invoking {}", getName());
+			LOG.info("Invoking {}", getName());
 
 			// we need to make sure that any triggers scheduled in open() cannot be
 			// executed before all operators are opened
@@ -255,6 +270,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			// final check to exit early before starting to run
 			if (canceled) {
 				throw new CancelTaskException();
+			}
+
+
 			}
 
 			// let the task do its work
@@ -338,6 +356,17 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				operatorChain.releaseOutputs();
 			}
 		}
+	}
+
+	@Override
+	public void pause() throws Exception {
+		isRunning = false;
+	}
+
+	@Override
+	public void resume() throws Exception {
+		isRunning = true;
+		resumeFromMigration = true;
 	}
 
 	@Override

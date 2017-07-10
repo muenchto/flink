@@ -59,6 +59,24 @@ object TaskMessages {
     extends TaskMessage with RequiresLeaderSessionID
 
   /**
+    * Pauses the task associated with [[attemptID]]. The result is sent back to the sender as a
+    * [[TaskOperationResult]] message.
+    *
+    * @param attemptID The task's execution attempt ID.
+    */
+  case class PauseTask(attemptID: ExecutionAttemptID)
+    extends TaskMessage with RequiresLeaderSessionID
+
+  /**
+    * Resumes the task associated with [[attemptID]]. The result is sent back to the sender as a
+    * [[TaskOperationResult]] message.
+    *
+    * @param attemptID The task's execution attempt ID.
+    */
+  case class ResumeTask(attemptID: ExecutionAttemptID)
+    extends TaskMessage with RequiresLeaderSessionID
+
+  /**
    * Stops the task associated with [[attemptID]]. The result is sent back to the sender as a
    * [[TaskOperationResult]] message.
    *

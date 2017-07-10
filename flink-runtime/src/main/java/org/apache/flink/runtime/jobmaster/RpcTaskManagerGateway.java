@@ -108,6 +108,16 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public Future<Acknowledge> pauseTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Future<Acknowledge> resumeTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public Future<Acknowledge> updatePartitions(ExecutionAttemptID executionAttemptID, Iterable<PartitionInfo> partitionInfos, Time timeout) {
 		return taskExecutorGateway.updatePartitions(executionAttemptID, partitionInfos, timeout);
 	}

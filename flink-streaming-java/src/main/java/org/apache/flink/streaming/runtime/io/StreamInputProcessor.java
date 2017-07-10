@@ -29,6 +29,7 @@ import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.runtime.event.AbstractEvent;
+import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.serialization.RecordDeserializer;
@@ -51,6 +52,8 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Input reader for {@link org.apache.flink.streaming.runtime.tasks.OneInputStreamTask}.
@@ -68,6 +71,8 @@ import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
  */
 @Internal
 public class StreamInputProcessor<IN> {
+
+	static final Logger LOG = LoggerFactory.getLogger(StreamInputProcessor.class);
 
 	private final RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDeserializers;
 
@@ -210,7 +215,15 @@ public class StreamInputProcessor<IN> {
 				}
 			}
 
-			final BufferOrEvent bufferOrEvent = barrierHandler.getNextNonBlocked();
+			final BufferOrEvent bufferOrEvent;
+
+			try {
+				bufferOrEvent = barrierHandler.getNextNonBlocked();
+			} catch (InterruptedException interruptedException) {
+				LOG.debug("Catched interruption in onProcess");
+				return false;
+			}
+
 			if (bufferOrEvent != null) {
 				if (bufferOrEvent.isBuffer()) {
 					currentChannel = bufferOrEvent.getChannelIndex();

@@ -24,12 +24,16 @@ import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.io.StreamInputProcessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link StreamTask} for executing a {@link OneInputStreamOperator}.
  */
 @Internal
 public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamOperator<IN, OUT>> {
+
+	private static final Logger LOG = LoggerFactory.getLogger(OneInputStreamTask.class);
 
 	private StreamInputProcessor<IN> inputProcessor;
 
@@ -66,6 +70,8 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 		// cache processor reference on the stack, to make the code more JIT friendly
 		final StreamInputProcessor<IN> inputProcessor = this.inputProcessor;
 
+		LOG.info("Starting run() in {}", getClass().getSimpleName());
+
 		while (running && inputProcessor.processInput()) {
 			// all the work happens in the "processInput" method
 		}
@@ -81,5 +87,15 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 	@Override
 	protected void cancelTask() {
 		running = false;
+	}
+
+	@Override
+	protected void pauseTask()  throws Exception {
+		running = false;
+	}
+
+	@Override
+	protected void resumeTask()  throws Exception {
+		running = true; // TODO Actually resuming the task
 	}
 }

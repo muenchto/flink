@@ -62,6 +62,14 @@ public abstract class AbstractInvokable {
 	public void cancel() throws Exception {
 		// The default implementation does nothing.
 	}
+
+	public void pause() throws Exception {
+		// the default implementation does nothing
+	}
+
+	public void resume() throws Exception {
+		// the default implementation does nothing
+	}
 	
 	/**
 	 * Sets the environment of this task.
