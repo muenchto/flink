@@ -95,6 +95,10 @@ public class CliFrontendParser {
 			"directory is optional. If no directory is specified, the configured default " +
 			"directory (" + ConfigConstants.SAVEPOINT_DIRECTORY_KEY + ") is used.");
 
+	static final Option MODIFY_COMMAND_OPTION = new Option(
+		"mo", "modify", true, "Passes the argument to the modify command. Currently " +
+		"supported are: `pause`, `resume` and `details`");
+
 	static {
 		HELP_OPTION.setRequired(false);
 
@@ -134,6 +138,9 @@ public class CliFrontendParser {
 		CANCEL_WITH_SAVEPOINT_OPTION.setRequired(false);
 		CANCEL_WITH_SAVEPOINT_OPTION.setArgName("targetDirectory");
 		CANCEL_WITH_SAVEPOINT_OPTION.setOptionalArg(true);
+
+		MODIFY_COMMAND_OPTION.setRequired(true);
+		MODIFY_COMMAND_OPTION.setArgName("command");
 	}
 
 	private static final Options RUN_OPTIONS = getRunOptions(buildGeneralOptions(new Options()));
@@ -225,6 +232,7 @@ public class CliFrontendParser {
 
 	private static Options getModifyOptions(Options options) {
 		options = getJobManagerAddressOption(options);
+		options.addOption(MODIFY_COMMAND_OPTION);
 		return addCustomCliOptions(options, false);
 	}
 
@@ -273,7 +281,7 @@ public class CliFrontendParser {
 
 	private static Options getModificationOptionsWithoutDeprecatedOptions(Options options) {
 		options = getJobManagerAddressOption(options);
-		options.addOption(HELP_OPTION);
+		options.addOption(MODIFY_COMMAND_OPTION);
 		return options;
 	}
 

@@ -871,18 +871,30 @@ class JobManager(
 
       currentJobs.get(jobId) match {
         case Some((executionGraph, jobInfo)) =>
-          val result = executionGraph.introduceNewOperator()
 
-          sender() ! ModifyJobSuccess(jobId, s"Introducing new operator: $result")
+          val result = command match {
+            case "pause" => executionGraph.pauseMapOperator()
+              (true, "pausing submitted")
+
+            case "resume" => executionGraph.resumeMapOperator()
+              (true, "pausing submitted")
+
+            case "details" => val details = executionGraph.getDetails()
+              (true, details)
+
+            case _ =>
+              (false, s"Unkown command $command")
+          }
+
+          if (result._1) {
+            sender() ! ModifyJobSuccess(jobId, s"Successfully executing command $command: ${result._2}")
+          } else {
+            sender() ! ModifyJobFailure(jobId, new IllegalStateException(s"Failure during " +
+              s"execution of command $command: ${result._2}"))
+          }
+
         case None =>
-          // check the archive
           sender() ! ModifyJobFailure(jobId, new IllegalStateException(s"Failed to find job for id $jobId"))
-      }
-
-      if (command.equalsIgnoreCase("success")) {
-        sender() ! ModifyJobSuccess(jobId, "Successfully received request")
-      } else {
-        sender() ! ModifyJobFailure(jobId, new IllegalStateException("Failed to receive request"))
       }
 
     case msg @ JobStatusChanged(jobID, newJobStatus, timeStamp, error) =>

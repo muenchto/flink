@@ -887,7 +887,7 @@ public class CliFrontend {
 					"to trigger a runtime modification."));
 		}
 
-		return triggerModify(jobManagerGateway, jobId);
+		return triggerModify(options, jobManagerGateway, jobId);
 	}
 
 	private JobID findSingleRunningJob(ActorGateway jobManagerGateway) {
@@ -959,11 +959,16 @@ public class CliFrontend {
 		}
 	}
 
-	private int triggerModify(ActorGateway jobManager, JobID jobId) {
+	private int triggerModify(ModifyOptions options, ActorGateway jobManager, JobID jobId) {
 		try {
-			logAndSysout("Modifying job " + jobId + ".");
-			Future<Object> response = jobManager.ask(new ModifyJob(jobId, "Success"),
-				new FiniteDuration(1, TimeUnit.HOURS));
+
+			if (options.getCommand() == null) {
+				throw new Exception("Failed to parse command line option.");
+			}
+
+			ModifyJob modifyMessage = new ModifyJob(jobId, options.getCommand());
+
+			Future<Object> response = jobManager.ask(modifyMessage,	new FiniteDuration(1, TimeUnit.HOURS));
 
 			Object result;
 			try {

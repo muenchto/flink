@@ -19,19 +19,27 @@ package org.apache.flink.client.cli;
 
 import org.apache.commons.cli.CommandLine;
 
+import static org.apache.flink.client.cli.CliFrontendParser.*;
+
 /**
  * Command line options for the MODIFY command
  */
 public class ModifyOptions extends CommandLineOptions {
 
 	private final String[] args;
+	private final String command;
 
 	public ModifyOptions(CommandLine line) {
 		super(line);
 		args = line.getArgs();
-	}
+		this.command = line.hasOption(MODIFY_COMMAND_OPTION.getOpt()) ?
+			line.getOptionValue(MODIFY_COMMAND_OPTION.getOpt()) : null;	}
 
 	public String[] getArgs() {
 		return args == null ? new String[0] : args;
+	}
+
+	public String getCommand() {
+		return command;
 	}
 }
