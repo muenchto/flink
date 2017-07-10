@@ -479,7 +479,7 @@ class TaskManager(
             log.debug(s"Cannot find task to stop for execution ${executionID})")
             sender ! decorateMessage(Acknowledge.get())
           }
- 
+
         // cancels a task
         case CancelTask(executionID) =>
           val task = runningTasks.get(executionID)
@@ -488,6 +488,30 @@ class TaskManager(
             sender ! decorateMessage(Acknowledge.get())
           } else {
             log.debug(s"Cannot find task to cancel for execution $executionID)")
+            sender ! decorateMessage(Acknowledge.get())
+          }
+
+        case PauseTask(executionID) =>
+          val task = runningTasks.get(executionID)
+
+          log.debug(s"Pausing $task")
+
+          if (task != null) {
+            task.pauseExecution()
+            sender ! decorateMessage(Acknowledge.get())
+          } else {
+            log.debug(s"Cannot find task to pause for execution $executionID)")
+            sender ! decorateMessage(Acknowledge.get())
+          }
+
+        case ResumeTask(executionID) =>
+          val task = runningTasks.get(executionID)
+          if (task != null) {
+            task.resumeExecution()
+
+            sender ! decorateMessage(Acknowledge.get())
+          } else {
+            log.debug(s"Cannot find task to resume for execution $executionID)")
             sender ! decorateMessage(Acknowledge.get())
           }
       }

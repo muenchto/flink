@@ -87,6 +87,16 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public Future<Acknowledge> pauseTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Future<Acknowledge> resumeTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public Future<Acknowledge> updatePartitions(ExecutionAttemptID executionAttemptID, Iterable<PartitionInfo> partitionInfos, Time timeout) {
 		return FlinkCompletableFuture.completed(Acknowledge.get());
 	}

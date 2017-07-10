@@ -121,6 +121,28 @@ public interface TaskManagerGateway {
 		Time timeout);
 
 	/**
+	 * Pauses the given task
+	 * @param executionAttemptID identifying the task
+	 * @param timeout of the submit operation
+	 * @return Future acknowledge if the task is successfully paused
+	 */
+	Future<Acknowledge> pauseTask(
+		ExecutionAttemptID executionAttemptID,
+		Time timeout
+	);
+
+	/**
+	 * Resumes the given task
+	 * @param executionAttemptID identifying the task
+	 * @param timeout of the submit operation
+	 * @return Future acknowledge if the task is successfully resumed
+	 */
+	Future<Acknowledge> resumeTask(
+		ExecutionAttemptID executionAttemptID,
+		Time timeout
+	);
+
+	/**
 	 * Update the task where the given partitions can be found.
 	 *
 	 * @param executionAttemptID identifying the task

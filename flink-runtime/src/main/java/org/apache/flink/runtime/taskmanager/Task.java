@@ -214,7 +214,7 @@ public class Task implements Runnable, TaskActions {
 	private final AccumulatorRegistry accumulatorRegistry;
 
 	/** The thread that executes the task */
-	private final Thread executingThread;
+	private volatile Thread executingThread;
 
 	/** Parent group for all metrics of this task */
 	private final TaskMetricGroup metrics;
@@ -398,6 +398,10 @@ public class Task implements Runnable, TaskActions {
 		executingThread = new Thread(TASK_THREADS_GROUP, this, taskNameWithSubtask);
 	}
 
+	public void resetTask() {
+		executingThread = new Thread(TASK_THREADS_GROUP, this, taskNameWithSubtask);
+	}
+
 	// ------------------------------------------------------------------------
 	//  Accessors
 	// ------------------------------------------------------------------------
@@ -507,11 +511,17 @@ public class Task implements Runnable, TaskActions {
 		executingThread.start();
 	}
 
+	private Map<String, Future<Path>> distributedCacheEntries = new HashMap<String, Future<Path>>();
+	private volatile ClassLoader userCodeClassLoader;
+
 	/**
 	 * The core work method that bootstraps the task and executes it code
 	 */
 	@Override
 	public void run() {
+
+		LOG.info("Started task run() method for {} {}", taskNameWithSubtask, executionId);
+
 
 		// ----------------------------
 		//  Initial State transition
@@ -541,8 +551,20 @@ public class Task implements Runnable, TaskActions {
 					}
 					return;
 				}
-			}
-			else {
+			} else if (current == ExecutionState.MIGRATING) {
+				if (transitionState(ExecutionState.MIGRATING, ExecutionState.RUNNING)) {
+					// success, we can start our work
+
+					// TODO Currently does not happen, has state is modified from different thread
+					LOG.info("Switched to running again");
+					break;
+				}
+			} else if (current == ExecutionState.RUNNING) {
+				// Simply continue
+				LOG.info("Switched to running again after migration");
+				break;
+
+			} else {
 				if (metrics != null) {
 					metrics.close();
 				}
@@ -552,15 +574,15 @@ public class Task implements Runnable, TaskActions {
 
 		// all resource acquisitions and registrations from here on
 		// need to be undone in the end
-		Map<String, Future<Path>> distributedCacheEntries = new HashMap<String, Future<Path>>();
 		AbstractInvokable invokable = null;
-
-		ClassLoader userCodeClassLoader;
 		try {
 			// ----------------------------
 			//  Task Bootstrap - We periodically
 			//  check for canceling as a shortcut
 			// ----------------------------
+
+		if (executionState != ExecutionState.RUNNING) {
+				LOG.debug("Already running, skipping initialization");
 
 			// activate safety net for task thread
 			LOG.info("Creating FileSystem stream leak safety net for task {}", this);
@@ -698,8 +720,19 @@ public class Task implements Runnable, TaskActions {
 			// make sure the user code classloader is accessible thread-locally
 			executingThread.setContextClassLoader(userCodeClassLoader);
 
+
+			}
+
+			LOG.info("Invoking user code");
+
 			// run the invokable
-			invokable.invoke();
+			this.invokable.invoke();
+
+			// TODO Does not happen, as we interrupt thread
+			if (executionState == ExecutionState.MIGRATING) {
+				LOG.debug("Returning from running state in task due to new status: " + ExecutionState.MIGRATING);
+				return;
+			}
 
 			// make sure, we enter the catch block if the task leaves the invoke() method due
 			// to the fact that it has been canceled
@@ -806,6 +839,12 @@ public class Task implements Runnable, TaskActions {
 		}
 		finally {
 			try {
+
+				if (executionState == ExecutionState.MIGRATING) {
+					LOG.info("Doing nothing for executionState: " + ExecutionState.MIGRATING);
+					return;
+				}
+
 				LOG.info("Freeing task resources for {} ({}).", taskNameWithSubtask, executionId);
 
 				// stop the async dispatcher.
@@ -939,7 +978,7 @@ public class Task implements Runnable, TaskActions {
 			if (cause == null) {
 				LOG.info("{} ({}) switched from {} to {}.", taskNameWithSubtask, executionId, currentState, newState);
 			} else {
-				LOG.info("{} ({}) switched from {} to {}.", taskNameWithSubtask, executionId, currentState, newState, cause);
+				LOG.info("{} ({}) switched from {} to {} with exception {}.", taskNameWithSubtask, executionId, currentState, newState, cause);
 			}
 
 			return true;
@@ -992,6 +1031,88 @@ public class Task implements Runnable, TaskActions {
 	public void cancelExecution() {
 		LOG.info("Attempting to cancel task {} ({}).", taskNameWithSubtask, executionId);
 		cancelOrFailAndCancelInvokable(ExecutionState.CANCELING, null);
+	}
+
+	public void pauseExecution() {
+		LOG.info("Attempting to pause task {} ({}).", taskNameWithSubtask, executionId);
+		changeRuntimeState(ExecutionState.MIGRATING);
+	}
+
+	public void resumeExecution() {
+		LOG.info("Attempting to resume task {} ({}).", taskNameWithSubtask, executionId);
+
+		ExecutionState current = executionState;
+
+		// if the task is not running, then we need not do anything
+		if (current != ExecutionState.MIGRATING) {
+			LOG.info("Task {} in different state {} than expected {}", taskNameWithSubtask, current, ExecutionState.MIGRATING);
+			return;
+		}
+
+		LOG.info("Triggering resuming of task code {} ({}).", taskNameWithSubtask, executionId);
+
+		if (transitionState(current, ExecutionState.RUNNING)) {
+
+			try {
+				invokable.resume();
+			} catch (Exception e) {
+				LOG.error("Failed to resume abstract invokable {} ({}) - {}.", taskNameWithSubtask, executionId, e);
+			}
+			notifyObservers(ExecutionState.RUNNING, null);
+
+			resetTask();
+			getExecutingThread().start();
+
+			// all good, we kick off the task, which performs its own initialization
+
+		} else {
+			LOG.error("Failed triggering resuming of task code {} ({}).", taskNameWithSubtask, executionId);
+		}
+	}
+
+	private void changeRuntimeState(ExecutionState targetState) {
+		ExecutionState current = executionState;
+
+		// if the task is not running, then we need not do anything
+		if (current != ExecutionState.RUNNING) {
+			LOG.info("Task {} in different state {} than expected {}", taskNameWithSubtask, current, ExecutionState.RUNNING);
+			return;
+		}
+
+		LOG.info("Triggering pausing of task code {} ({}).", taskNameWithSubtask, executionId);
+
+		if (transitionState(current, targetState)) {
+
+			notifyObservers(targetState, null);
+
+			try {
+				invokable.pause();
+			} catch (Exception e) {
+				LOG.error("Failed to pause invocable {} for {} ({}).", invokable, taskNameWithSubtask, executionId);
+			}
+
+			if (invokable != null) {
+
+				Runnable canceler = new TaskPauser(
+					LOG,
+					invokable,
+					executingThread,
+					taskNameWithSubtask,
+					taskCancellationInterval,
+					taskCancellationTimeout,
+					taskManagerActions,
+					producedPartitions,
+					inputGates);
+				Thread pauserThread = new Thread(executingThread.getThreadGroup(), canceler,
+					String.format("Pause for %s (%s).", taskNameWithSubtask, executionId));
+				pauserThread.setDaemon(true);
+				pauserThread.start();
+
+				// because the canceling may block on user code, we cancel from a separate thread
+				// we do not reuse the async call handler, because that one may be blocked, in which
+				// case the canceling could not continue
+			}
+		}
 	}
 
 	/**
@@ -1554,6 +1675,162 @@ public class Task implements Runnable, TaskActions {
 					} else {
 						logger.warn("Task '{}' did not react to cancelling signal, but is stuck in method:\n {}",
 								taskName, bld.toString());
+
+						executer.interrupt();
+						try {
+							long timeLeftNanos = Math.min(intervalNanos, deadline - now);
+							long timeLeftMillis = TimeUnit.MILLISECONDS.convert(timeLeftNanos, TimeUnit.NANOSECONDS);
+
+							if (timeLeftMillis > 0) {
+								executer.join(timeLeftMillis);
+							}
+						} catch (InterruptedException ignored) {
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * This runner calls cancel() on the invokable and periodically interrupts the
+	 * thread until it has terminated.
+	 */
+	private static class TaskPauser implements Runnable {
+
+		private final Logger logger;
+		private final AbstractInvokable invokable;
+		private final Thread executer;
+		private final String taskName;
+
+		/** Interrupt interval. */
+		private final long interruptInterval;
+
+		/** Timeout after which a fatal error notification happens. */
+		private final long interruptTimeout;
+
+		/** TaskManager to notify about a timeout */
+		private final TaskManagerActions taskManager;
+
+		/** Watch Dog thread */
+		@Nullable
+		private final Thread watchDogThread;
+
+		public TaskPauser(
+			Logger logger,
+			AbstractInvokable invokable,
+			Thread executer,
+			String taskName,
+			long cancellationInterval,
+			long cancellationTimeout,
+			TaskManagerActions taskManager,
+			ResultPartition[] producedPartitions,
+			SingleInputGate[] inputGates) {
+
+			this.logger = logger;
+			this.invokable = invokable;
+			this.executer = executer;
+			this.taskName = taskName;
+			this.interruptInterval = cancellationInterval;
+			this.interruptTimeout = cancellationTimeout;
+			this.taskManager = taskManager;
+
+			if (cancellationTimeout > 0) {
+				// The watch dog repeatedly interrupts the executor until
+				// the cancellation timeout kicks in (at which point the
+				// task manager is notified about a fatal error) or the
+				// executor has terminated.
+				this.watchDogThread = new Thread(
+					executer.getThreadGroup(),
+					new TaskPauserWatchDog(),
+					"WatchDog for " + taskName + " cancellation");
+				this.watchDogThread.setDaemon(true);
+			} else {
+				this.watchDogThread = null;
+			}
+		}
+
+		@Override
+		public void run() {
+			try {
+				if (watchDogThread != null) {
+					watchDogThread.start();
+				}
+
+				// the user-defined cancel method may throw errors.
+				// we need do continue despite that
+				try {
+					invokable.pause();
+				} catch (Throwable t) {
+					logger.error("Error while pausing the task {}.", taskName, t);
+				}
+
+				// interrupt the running thread initially
+				executer.interrupt();
+				try {
+					executer.join(interruptInterval);
+				}
+				catch (InterruptedException e) {
+					// we can ignore this
+				}
+
+				if (watchDogThread != null) {
+					watchDogThread.interrupt();
+					watchDogThread.join();
+				}
+			} catch (Throwable t) {
+				logger.error("Error in the task pauser for task {}.", taskName, t);
+			}
+		}
+
+		/**
+		 * Watchdog for the cancellation. If the task is stuck in cancellation,
+		 * we notify the task manager about a fatal error.
+		 */
+		private class TaskPauserWatchDog implements Runnable {
+
+			@Override
+			public void run() {
+				long intervalNanos = TimeUnit.NANOSECONDS.convert(interruptInterval, TimeUnit.MILLISECONDS);
+				long timeoutNanos = TimeUnit.NANOSECONDS.convert(interruptTimeout, TimeUnit.MILLISECONDS);
+				long deadline = System.nanoTime() + timeoutNanos;
+
+				try {
+					// Initial wait before interrupting periodically
+					Thread.sleep(interruptInterval);
+				} catch (InterruptedException ignored) {
+				}
+
+				// It is possible that the user code does not react to the task canceller.
+				// for that reason, we spawn this separate thread that repeatedly interrupts
+				// the user code until it exits. If the suer user code does not exit within
+				// the timeout, we notify the job manager about a fatal error.
+				while (executer.isAlive()) {
+					long now = System.nanoTime();
+
+					// build the stack trace of where the thread is stuck, for the log
+					StringBuilder bld = new StringBuilder();
+					StackTraceElement[] stack = executer.getStackTrace();
+					for (StackTraceElement e : stack) {
+						bld.append(e).append('\n');
+					}
+
+					if (now >= deadline) {
+						long duration = TimeUnit.SECONDS.convert(interruptInterval, TimeUnit.MILLISECONDS);
+						String msg = String.format("Task '%s' did not react to cancelling signal in " +
+								"the last %d seconds, but is stuck in method:\n %s",
+							taskName,
+							duration,
+							bld.toString());
+
+						logger.info("Notifying TaskManager about fatal error. {}.", msg);
+
+						taskManager.notifyFatalError(msg, null);
+
+						return; // done, don't forget to leave the loop
+					} else {
+						logger.warn("Task '{}' did not react to cancelling signal, but is stuck in method:\n {}",
+							taskName, bld.toString());
 
 						executer.interrupt();
 						try {

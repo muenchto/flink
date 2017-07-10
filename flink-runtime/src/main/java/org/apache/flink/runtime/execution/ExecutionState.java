@@ -58,6 +58,11 @@ public enum ExecutionState {
 	RUNNING,
 
 	/**
+	 * Represents, that the current execution is paused, due to changes to the execution graph.
+	 */
+	MIGRATING,
+
+	/**
 	 * This state marks "successfully completed". It can only be reached when a
 	 * program reaches the "end of its input". The "end of input" can be reached
 	 * when consuming a bounded input (fix set of files, bounded query, etc) or

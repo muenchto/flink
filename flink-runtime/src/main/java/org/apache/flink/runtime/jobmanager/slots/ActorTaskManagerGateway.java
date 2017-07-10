@@ -28,6 +28,7 @@ import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
+import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.instance.InstanceID;
@@ -41,6 +42,8 @@ import org.apache.flink.runtime.messages.TaskMessages;
 import org.apache.flink.runtime.messages.checkpoint.NotifyCheckpointComplete;
 import org.apache.flink.runtime.messages.checkpoint.TriggerCheckpoint;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.FiniteDuration;
 import scala.reflect.ClassTag$;
 
@@ -48,6 +51,9 @@ import scala.reflect.ClassTag$;
  * Implementation of the {@link TaskManagerGateway} for {@link ActorGateway}.
  */
 public class ActorTaskManagerGateway implements TaskManagerGateway {
+
+	static final Logger LOG = LoggerFactory.getLogger(ActorTaskManagerGateway.class);
+
 	private final ActorGateway actorGateway;
 
 	public ActorTaskManagerGateway(ActorGateway actorGateway) {
@@ -149,6 +155,34 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 
 		scala.concurrent.Future<Acknowledge> cancelResult = actorGateway.ask(
 			new TaskMessages.CancelTask(executionAttemptID),
+			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+
+		return new FlinkFuture<>(cancelResult);
+	}
+
+	@Override
+	public Future<Acknowledge> pauseTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+		Preconditions.checkNotNull(executionAttemptID);
+		Preconditions.checkNotNull(timeout);
+
+		LOG.debug("Pausing task with executionAttemptID {}", executionAttemptID);
+
+		scala.concurrent.Future<Acknowledge> cancelResult = actorGateway.ask(
+			new TaskMessages.PauseTask(executionAttemptID),
+			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+
+		return new FlinkFuture<>(cancelResult);
+	}
+
+	@Override
+	public Future<Acknowledge> resumeTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+		Preconditions.checkNotNull(executionAttemptID);
+		Preconditions.checkNotNull(timeout);
+
+		scala.concurrent.Future<Acknowledge> cancelResult = actorGateway.ask(
+			new TaskMessages.ResumeTask(executionAttemptID),
 			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
 			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
 
