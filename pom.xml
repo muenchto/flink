@@ -60,12 +60,9 @@ under the License.
 		<module>flink-scala</module>
 		<module>flink-runtime</module>
 		<module>flink-runtime-web</module>
-		<module>flink-optimizer</module>
-		<module>flink-streaming-java</module>
 		<module>flink-streaming-scala</module>
 		<module>flink-connectors</module>
 		<module>flink-examples</module>
-		<module>flink-clients</module>
 		<module>flink-tests</module>
 		<module>flink-test-utils-parent</module>
 		<module>flink-libraries</module>
