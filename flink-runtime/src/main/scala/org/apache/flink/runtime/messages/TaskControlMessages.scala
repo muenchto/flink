@@ -20,6 +20,7 @@ package org.apache.flink.runtime.messages
 
 import java.util
 
+import org.apache.flink.runtime.clusterframework.types.AllocationID
 import org.apache.flink.runtime.deployment.{InputChannelDeploymentDescriptor, TaskDeploymentDescriptor}
 import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, PartitionInfo}
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID
@@ -77,10 +78,18 @@ object TaskMessages {
     extends TaskMessage with RequiresLeaderSessionID
 
   /**
+  Introduce new filter operator the the job. The result is sent back to the sender as a
+    * [[TaskOperationResult]] message.
+    *
+    * */
+  case class IntroduceNewOperator(executionAttemptID: ExecutionAttemptID, taskDeploymentDescriptor: TaskDeploymentDescriptor)
+    extends TaskMessage with RequiresLeaderSessionID
+
+  /**
    * Stops the task associated with [[attemptID]]. The result is sent back to the sender as a
    * [[TaskOperationResult]] message.
-   *
-   * @param attemptID The task's execution attempt ID.
+    *
+   * @param attemptID The execution attempt ID of the source operator
    */
   case class StopTask(attemptID: ExecutionAttemptID)
     extends TaskMessage with RequiresLeaderSessionID

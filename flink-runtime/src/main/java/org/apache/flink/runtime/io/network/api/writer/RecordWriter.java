@@ -27,7 +27,10 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.serialization.RecordSerializer;
 import org.apache.flink.runtime.io.network.api.serialization.SpanningRecordSerializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
+import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.util.XORShiftRandom;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Random;
@@ -48,6 +51,8 @@ import static org.apache.flink.runtime.io.network.api.serialization.RecordSerial
  * @param <T> the type of the record that can be emitted with this record writer
  */
 public class RecordWriter<T extends IOReadableWritable> {
+
+	protected static final Logger LOG = LoggerFactory.getLogger(RecordWriter.class);
 
 	protected final ResultPartitionWriter targetPartition;
 
@@ -85,6 +90,7 @@ public class RecordWriter<T extends IOReadableWritable> {
 	}
 
 	public void emit(T record) throws IOException, InterruptedException {
+
 		for (int targetChannel : channelSelector.selectChannels(record, numChannels)) {
 			sendToTarget(record, targetChannel);
 		}
@@ -220,6 +226,9 @@ public class RecordWriter<T extends IOReadableWritable> {
 			RecordSerializer<T> serializer) throws IOException {
 
 		try {
+			LOG.info("Sending buffer {} via {} to {} with RecordSerializer.",
+				buffer, getClass().getName(), targetChannel, serializer);
+
 			targetPartition.writeBuffer(buffer, targetChannel);
 		}
 		finally {

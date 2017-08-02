@@ -22,6 +22,7 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
+import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -114,6 +115,11 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 
 	@Override
 	public Future<Acknowledge> resumeTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Future<Acknowledge> introduceNewOperator(ExecutionAttemptID executionAttemptID, TaskDeploymentDescriptor descriptor, Time timeout) {
 		throw new UnsupportedOperationException();
 	}
 

@@ -206,6 +206,7 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 
 	@Override
 	public void notifyBuffersAvailable(long numBuffers) {
+		LOG.info("Got notified, that buffer is available {}.", inputGate);
 		// if this request made the channel non-empty, notify the input gate
 		if (numBuffers > 0 && numBuffersAvailable.getAndAdd(numBuffers) == 0) {
 			notifyChannelNonEmpty();
@@ -271,6 +272,6 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 
 	@Override
 	public String toString() {
-		return "LocalInputChannel [" + partitionId + "]";
+		return "LocalInputChannel [" + partitionId + "]" + " Parent: " + inputGate;
 	}
 }
