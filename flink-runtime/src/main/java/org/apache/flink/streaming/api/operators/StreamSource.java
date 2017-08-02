@@ -55,6 +55,10 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
 		run(lockingObject, streamStatusMaintainer, output);
 	}
 
+	@Override
+	public String toString() {
+		return "StreamSource: " + getOperatorName();
+	}
 
 	public void run(final Object lockingObject,
 			final StreamStatusMaintainer streamStatusMaintainer,

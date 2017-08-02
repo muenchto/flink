@@ -52,6 +52,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
+import org.apache.flink.streaming.runtime.tasks.StreamTask;
 
 /**
  * Input reader for {@link org.apache.flink.streaming.runtime.tasks.TwoInputStreamTask}.
@@ -126,7 +127,7 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 			Collection<InputGate> inputGates2,
 			TypeSerializer<IN1> inputSerializer1,
 			TypeSerializer<IN2> inputSerializer2,
-			StatefulTask checkpointedTask,
+			StreamTask checkpointedTask,
 			CheckpointingMode checkpointMode,
 			Object lock,
 			IOManager ioManager,
@@ -146,7 +147,7 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 			this.barrierHandler = new BarrierBuffer(inputGate, ioManager, maxAlign);
 		}
 		else if (checkpointMode == CheckpointingMode.AT_LEAST_ONCE) {
-			this.barrierHandler = new BarrierTracker(inputGate);
+			this.barrierHandler = new BarrierTracker(inputGate, checkpointedTask.getName());
 		}
 		else {
 			throw new IllegalArgumentException("Unrecognized CheckpointingMode: " + checkpointMode);

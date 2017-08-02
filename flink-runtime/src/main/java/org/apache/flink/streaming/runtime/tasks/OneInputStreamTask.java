@@ -27,6 +27,8 @@ import org.apache.flink.streaming.runtime.io.StreamInputProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+
 /**
  * A {@link StreamTask} for executing a {@link OneInputStreamOperator}.
  */
@@ -46,8 +48,14 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 		TypeSerializer<IN> inSerializer = configuration.getTypeSerializerIn1(getUserCodeClassLoader());
 		int numberOfInputs = configuration.getNumberOfInputs();
 
+		LOG.info("InSerializer: " + (inSerializer != null
+			? inSerializer.getClass() + " - " + inSerializer.createInstance().getClass().getName()
+			: "null"));
+
 		if (numberOfInputs > 0) {
 			InputGate[] inputGates = getEnvironment().getAllInputGates();
+
+			LOG.info("Init from " + getName() + " - " + Arrays.toString(inputGates));
 
 			inputProcessor = new StreamInputProcessor<>(
 					inputGates,
@@ -70,7 +78,10 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 		// cache processor reference on the stack, to make the code more JIT friendly
 		final StreamInputProcessor<IN> inputProcessor = this.inputProcessor;
 
-		LOG.info("Starting run() in {}", getClass().getSimpleName());
+		LOG.info("{} - Starting run() with operator {}", getName(), inputProcessor);
+
+		InputGate[] inputGates = getEnvironment().getAllInputGates();
+		LOG.info("Init from " + getName() + " - " + Arrays.toString(inputGates));
 
 		while (running && inputProcessor.processInput()) {
 			// all the work happens in the "processInput" method

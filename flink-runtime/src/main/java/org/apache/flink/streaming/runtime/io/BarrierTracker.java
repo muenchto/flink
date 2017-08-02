@@ -71,6 +71,8 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 	 */
 	private final ArrayDeque<CheckpointBarrierCount> pendingCheckpoints;
 
+	private final String name;
+
 	/** The listener to be notified on complete checkpoints. */
 	private StatefulTask toNotifyOnCheckpoint;
 
@@ -83,13 +85,24 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 		this.inputGate = inputGate;
 		this.totalNumberOfInputChannels = inputGate.getNumberOfInputChannels();
 		this.pendingCheckpoints = new ArrayDeque<CheckpointBarrierCount>();
+		name = "NoName";
+	}
+
+	public BarrierTracker(InputGate inputGate, String name) {
+		this.inputGate = inputGate;
+		this.totalNumberOfInputChannels = inputGate.getNumberOfInputChannels();
+		this.pendingCheckpoints = new ArrayDeque<CheckpointBarrierCount>();
+		this.name = name;
 	}
 
 	@Override
 	public BufferOrEvent getNextNonBlocked() throws Exception {
 		while (true) {
 			BufferOrEvent next = inputGate.getNextBufferOrEvent();
+
 			if (next == null || next.isBuffer()) {
+				LOG.info("Received from task {} via Gate {}", name, inputGate);
+
 				// buffer or input exhausted
 				return next;
 			}
@@ -100,6 +113,7 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 				processCheckpointAbortBarrier((CancelCheckpointMarker) next.getEvent(), next.getChannelIndex());
 			}
 			else {
+				LOG.info("Received Event from task {} via Gate {}", name, inputGate);
 				// some other event
 				return next;
 			}

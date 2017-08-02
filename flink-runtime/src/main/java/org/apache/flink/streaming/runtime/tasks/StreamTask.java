@@ -170,7 +170,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	/** Flag to mark this task as canceled. */
 	private volatile boolean canceled;
 
-	private volatile boolean resumeFromMigration;
+	volatile boolean resumeFromMigration;
 
 	/** Thread pool for async snapshot workers. */
 	private ExecutorService asyncOperationsThreadPool;
@@ -224,23 +224,25 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			// -------- Initialize ---------
 			LOG.info("Initializing {} with migration {}.", getName(), resumeFromMigration);
 
-			if (!resumeFromMigration) {
-
-			asyncOperationsThreadPool = Executors.newCachedThreadPool();
-
 			configuration = new StreamConfig(getTaskConfiguration());
 
-			stateBackend = createStateBackend();
+			if (!resumeFromMigration) {
 
-			accumulatorMap = getEnvironment().getAccumulatorRegistry().getUserMap();
+				asyncOperationsThreadPool = Executors.newCachedThreadPool();
 
-			// if the clock is not already set, then assign a default TimeServiceProvider
-			if (timerService == null) {
-				ThreadFactory timerThreadFactory =
-					new DispatcherThreadFactory(TRIGGER_THREAD_GROUP, "Time Trigger for " + getName());
+				stateBackend = createStateBackend();
 
-				timerService = new SystemProcessingTimeService(this, getCheckpointLock(), timerThreadFactory);
+				accumulatorMap = getEnvironment().getAccumulatorRegistry().getUserMap();
+
+				// if the clock is not already set, then assign a default TimeServiceProvider
+				if (timerService == null) {
+					ThreadFactory timerThreadFactory =
+						new DispatcherThreadFactory(TRIGGER_THREAD_GROUP, "Time Trigger for " + getName());
+
+					timerService = new SystemProcessingTimeService(this, getCheckpointLock(), timerThreadFactory);
+				}
 			}
+
 
 			operatorChain = new OperatorChain<>(this);
 			headOperator = operatorChain.getHeadOperator();
@@ -254,7 +256,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			}
 
 			// -------- Invoke --------
-			LOG.info("Invoking {}", getName());
+			LOG.info("Invoking {} with chain {}", getName(), operatorChain);
 
 			// we need to make sure that any triggers scheduled in open() cannot be
 			// executed before all operators are opened
@@ -264,8 +266,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				// so that we avoid race conditions in the case that initializeState()
 				// registers a timer, that fires before the open() is called.
 
-				initializeState();
-				openAllOperators();
+				if (!resumeFromMigration) {
+					initializeState();
+				}
+
+					openAllOperators();
 			}
 
 			// final check to exit early before starting to run
@@ -274,7 +279,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			}
 
 
-			}
 
 			// let the task do its work
 			isRunning = true;

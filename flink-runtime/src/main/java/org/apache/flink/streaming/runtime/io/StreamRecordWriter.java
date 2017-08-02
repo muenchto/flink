@@ -25,6 +25,8 @@ import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.runtime.io.network.api.writer.ChannelSelector;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This record writer keeps data in buffers at most for a certain timeout. It spawns a separate thread
@@ -38,17 +40,22 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	/** Default name for teh output flush thread, if no name with a task reference is given. */
 	private static final String DEFAULT_OUTPUT_FLUSH_THREAD_NAME = "OutputFlusher";
 
+	protected static final Logger LOG = LoggerFactory.getLogger(StreamRecordWriter.class);
 
 	/** The thread that periodically flushes the output, to give an upper latency bound. */
 	private final OutputFlusher outputFlusher;
 
 	/** Flag indicating whether the output should be flushed after every element. */
 	private final boolean flushAlways;
+	private final String name;
 
 	/** The exception encountered in the flushing thread. */
 	private Throwable flusherException;
 
-
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + " for " + name;
+	}
 
 	public StreamRecordWriter(ResultPartitionWriter writer, ChannelSelector<T> channelSelector, long timeout) {
 		this(writer, channelSelector, timeout, null);
@@ -58,6 +65,10 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 								long timeout, String taskName) {
 
 		super(writer, channelSelector);
+
+		LOG.info("{} Creating StreamRecordWriter for {} and {}", taskName, writer, channelSelector);
+
+		this.name = taskName;
 
 		checkArgument(timeout >= -1);
 
@@ -82,6 +93,7 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	@Override
 	public void emit(T record) throws IOException, InterruptedException {
 		checkErroneous();
+		LOG.info(name + " emmits: " + record);
 		super.emit(record);
 		if (flushAlways) {
 			flush();
@@ -91,6 +103,8 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	@Override
 	public void broadcastEmit(T record) throws IOException, InterruptedException {
 		checkErroneous();
+		LOG.info(name + " broadcast emmits: " + record);
+
 		super.broadcastEmit(record);
 		if (flushAlways) {
 			flush();
@@ -100,6 +114,8 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	@Override
 	public void randomEmit(T record) throws IOException, InterruptedException {
 		checkErroneous();
+		LOG.info(name + " random emmits: " + record);
+
 		super.randomEmit(record);
 		if (flushAlways) {
 			flush();

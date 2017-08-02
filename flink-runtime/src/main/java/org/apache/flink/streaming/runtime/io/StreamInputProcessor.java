@@ -21,6 +21,8 @@ package org.apache.flink.streaming.runtime.io;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 import java.io.IOException;
+import java.util.Arrays;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.configuration.Configuration;
@@ -52,6 +54,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
+import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,7 +116,7 @@ public class StreamInputProcessor<IN> {
 	public StreamInputProcessor(
 			InputGate[] inputGates,
 			TypeSerializer<IN> inputSerializer,
-			StatefulTask checkpointedTask,
+			StreamTask checkpointedTask,
 			CheckpointingMode checkpointMode,
 			Object lock,
 			IOManager ioManager,
@@ -122,6 +125,8 @@ public class StreamInputProcessor<IN> {
 			OneInputStreamOperator<IN, ?> streamOperator) throws IOException {
 
 		InputGate inputGate = InputGateUtil.createInputGate(inputGates);
+
+		LOG.info("StreamInputProcessor: InputGate: " + inputGate);
 
 		if (checkpointMode == CheckpointingMode.EXACTLY_ONCE) {
 			long maxAlign = taskManagerConfig.getLong(TaskManagerOptions.TASK_CHECKPOINT_ALIGNMENT_BYTES_LIMIT);
@@ -133,7 +138,8 @@ public class StreamInputProcessor<IN> {
 			this.barrierHandler = new BarrierBuffer(inputGate, ioManager, maxAlign);
 		}
 		else if (checkpointMode == CheckpointingMode.AT_LEAST_ONCE) {
-			this.barrierHandler = new BarrierTracker(inputGate);
+			this.barrierHandler = new BarrierTracker(inputGate, checkpointedTask.getName());
+			LOG.info("StreamInputProcessor: AtLeastOnce");
 		}
 		else {
 			throw new IllegalArgumentException("Unrecognized Checkpointing Mode: " + checkpointMode);
@@ -166,6 +172,8 @@ public class StreamInputProcessor<IN> {
 		this.statusWatermarkValve = new StatusWatermarkValve(
 				numInputChannels,
 				new ForwardingValveOutputHandler(streamOperator, lock));
+
+		LOG.info("StreamInputProcessor: " + streamOperator.getClass().getSimpleName() + " with gate " + inputGate);
 	}
 
 	public boolean processInput() throws Exception {
@@ -220,7 +228,7 @@ public class StreamInputProcessor<IN> {
 			try {
 				bufferOrEvent = barrierHandler.getNextNonBlocked();
 			} catch (InterruptedException interruptedException) {
-				LOG.debug("Catched interruption in onProcess");
+				LOG.info("Catched interruption in onProcess");
 				return false;
 			}
 
@@ -316,4 +324,9 @@ public class StreamInputProcessor<IN> {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return getClass().getName() + statusWatermarkValve + " - numInputChannels: " + numInputChannels
+			+ " - currentChannel: " + currentChannel + " - OneInputStreamOperator: " + streamOperator;
+	}
 }
