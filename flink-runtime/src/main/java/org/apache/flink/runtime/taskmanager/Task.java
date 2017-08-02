@@ -80,10 +80,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.URL;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -168,7 +165,7 @@ public class Task implements Runnable, TaskActions {
 
 	/** Access to task manager configuration and host names*/
 	private final TaskManagerRuntimeInfo taskManagerConfig;
-	
+
 	/** The memory manager to be used by this task */
 	private final MemoryManager memoryManager;
 
@@ -184,8 +181,9 @@ public class Task implements Runnable, TaskActions {
 	private final ResultPartition[] producedPartitions;
 
 	private final ResultPartitionWriter[] writers;
+	private final TaskMetricGroup taskMetricGroup;
 
-	private final SingleInputGate[] inputGates;
+	private SingleInputGate[] inputGates;
 
 	private final Map<IntermediateDataSetID, SingleInputGate> inputGatesById;
 
@@ -257,6 +255,7 @@ public class Task implements Runnable, TaskActions {
 
 	/** Initialized from the Flink configuration. May also be set at the ExecutionConfig */
 	private long taskCancellationTimeout;
+	private boolean resuming = false;
 
 	/**
 	 * <p><b>IMPORTANT:</b> This constructor may not start any work that would need to
@@ -314,6 +313,7 @@ public class Task implements Runnable, TaskActions {
 		this.nameOfInvokableClass = taskInformation.getInvokableClassName();
 		this.serializedExecutionConfig = jobInformation.getSerializedExecutionConfig();
 		this.taskStateHandles = taskStateHandles;
+		this.taskMetricGroup = metricGroup;
 
 		Configuration tmConfig = taskManagerConfig.getConfiguration();
 		this.taskCancellationInterval = tmConfig.getLong(TaskManagerOptions.TASK_CANCELLATION_INTERVAL);
@@ -367,6 +367,8 @@ public class Task implements Runnable, TaskActions {
 
 			writers[counter] = new ResultPartitionWriter(producedPartitions[counter]);
 
+			LOG.info("Creating writer {}", writers[counter]);
+
 			++counter;
 		}
 
@@ -384,7 +386,7 @@ public class Task implements Runnable, TaskActions {
 				inputGateDeploymentDescriptor,
 				networkEnvironment,
 				this,
-				metricGroup.getIOMetricGroup());
+				taskMetricGroup.getIOMetricGroup());
 
 			inputGates[counter] = gate;
 			inputGatesById.put(gate.getConsumedResultId(), gate);
@@ -392,10 +394,36 @@ public class Task implements Runnable, TaskActions {
 			++counter;
 		}
 
+		LOG.info("Current input gates: " + Arrays.toString(inputGates));
+
 		invokableHasBeenCanceled = new AtomicBoolean(false);
 
 		// finally, create the executing thread, but do not start it
 		executingThread = new Thread(TASK_THREADS_GROUP, this, taskNameWithSubtask);
+	}
+
+	public void connectToNewInputAfterModification(NetworkEnvironment networkEnvironment,
+								  InputGateDeploymentDescriptor inputGateDeploymentDescriptor) {
+
+		final String taskNameWithSubtaskAndId = taskNameWithSubtask + " (" + executionId + ')';
+
+		// Omitted single case for multiple input
+
+		SingleInputGate gate = SingleInputGate.create(
+			taskNameWithSubtaskAndId,
+			jobId,
+			executionId,
+			inputGateDeploymentDescriptor,
+			networkEnvironment,
+			this,
+			taskMetricGroup.getIOMetricGroup());
+
+		LOG.info(taskNameWithSubtaskAndId + "Before Current input gates: " + Arrays.toString(inputGates));
+
+		inputGates[0] = gate;
+		inputGatesById.put(gate.getConsumedResultId(), gate);
+
+		LOG.info(taskNameWithSubtaskAndId + "After Current input gates: " + Arrays.toString(inputGates));
 	}
 
 	public void resetTask() {
@@ -774,7 +802,7 @@ public class Task implements Runnable, TaskActions {
 
 			try {
 				// check if the exception is unrecoverable
-				if (ExceptionUtils.isJvmFatalError(t) || 
+				if (ExceptionUtils.isJvmFatalError(t) ||
 					(t instanceof OutOfMemoryError && taskManagerConfig.shouldExitJvmOnOutOfMemoryError()))
 				{
 					// terminate the JVM immediately
@@ -869,7 +897,7 @@ public class Task implements Runnable, TaskActions {
 				removeCachedFiles(distributedCacheEntries, fileCache);
 
 				// close and de-activate safety net for task thread
-				LOG.info("Ensuring all FileSystem streams are closed for task {}", this); 
+				LOG.info("Ensuring all FileSystem streams are closed for task {}", this);
 				FileSystemSafetyNet.closeSafetyNetAndGuardedResourcesForThread();
 
 				notifyFinalState();
@@ -996,7 +1024,7 @@ public class Task implements Runnable, TaskActions {
 	 * <p>
 	 * This method never blocks.
 	 * </p>
-	 * 
+	 *
 	 * @throws UnsupportedOperationException
 	 *             if the {@link AbstractInvokable} does not implement {@link StoppableTask}
 	 */
@@ -1025,7 +1053,7 @@ public class Task implements Runnable, TaskActions {
 	 * (such as FINISHED, CANCELED, FAILED), or if the task is already canceling this does nothing.
 	 * Otherwise it sets the state to CANCELING, and, if the invokable code is running,
 	 * starts an asynchronous thread that aborts that code.
-	 * 
+	 *
 	 * <p>This method never blocks.</p>
 	 */
 	public void cancelExecution() {
@@ -1041,6 +1069,7 @@ public class Task implements Runnable, TaskActions {
 	public void resumeExecution() {
 		LOG.info("Attempting to resume task {} ({}).", taskNameWithSubtask, executionId);
 
+		resuming = true;
 		ExecutionState current = executionState;
 
 		// if the task is not running, then we need not do anything
@@ -1275,7 +1304,7 @@ public class Task implements Runnable, TaskActions {
 	/**
 	 * Calls the invokable to trigger a checkpoint, if the invokable implements the interface
 	 * {@link StatefulTask}.
-	 * 
+	 *
 	 * @param checkpointID The ID identifying the checkpoint.
 	 * @param checkpointTimestamp The timestamp associated with the checkpoint.
 	 * @param checkpointOptions Options for performing this checkpoint.
@@ -1330,7 +1359,7 @@ public class Task implements Runnable, TaskActions {
 			else {
 				checkpointResponder.declineCheckpoint(jobId, executionId, checkpointID,
 						new CheckpointDeclineTaskNotCheckpointingException(taskNameWithSubtask));
-				
+
 				LOG.error("Task received a checkpoint request, but is not a checkpointing task - {} ({}).",
 						taskNameWithSubtask, executionId);
 
@@ -1445,7 +1474,7 @@ public class Task implements Runnable, TaskActions {
 
 	/**
 	 * Utility method to dispatch an asynchronous call on the invokable.
-	 * 
+	 *
 	 * @param runnable The async call runnable.
 	 * @param callName The name of the call, for logging purposes.
 	 */
@@ -1455,7 +1484,7 @@ public class Task implements Runnable, TaskActions {
 			if (executionState != ExecutionState.RUNNING) {
 				return;
 			}
-			
+
 			// get ourselves a reference on the stack that cannot be concurrently modified
 			ExecutorService executor = this.asyncCallDispatcher;
 			if (executor == null) {
@@ -1463,7 +1492,7 @@ public class Task implements Runnable, TaskActions {
 				executor = Executors.newSingleThreadExecutor(
 						new DispatcherThreadFactory(TASK_THREADS_GROUP, "Async calls on " + taskNameWithSubtask));
 				this.asyncCallDispatcher = executor;
-				
+
 				// double-check for execution state, and make sure we clean up after ourselves
 				// if we created the dispatcher while the task was concurrently canceled
 				if (executionState != ExecutionState.RUNNING) {

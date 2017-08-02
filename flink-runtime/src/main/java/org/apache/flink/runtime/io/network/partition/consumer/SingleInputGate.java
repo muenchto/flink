@@ -655,4 +655,10 @@ public class SingleInputGate implements InputGate {
 
 		return inputGate;
 	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + " - " + owningTaskName + "IDSID: " + consumedResultId +
+			" SubPartitionIndex: " + consumedSubpartitionIndex;
+	}
 }

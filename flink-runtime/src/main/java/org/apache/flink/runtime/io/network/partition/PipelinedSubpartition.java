@@ -55,7 +55,14 @@ class PipelinedSubpartition extends ResultSubpartition {
 	// ------------------------------------------------------------------------
 
 	PipelinedSubpartition(int index, ResultPartition parent) {
-		super(index, parent);
+		this(index, parent, null);
+	}
+
+	private final String name;
+
+	public PipelinedSubpartition(int i, ResultPartition resultPartition, String owningTaskName) {
+		super(i, resultPartition);
+		name = owningTaskName;
 	}
 
 	@Override
@@ -70,6 +77,8 @@ class PipelinedSubpartition extends ResultSubpartition {
 				return false;
 			}
 
+			LOG.info("For {} adding buffer to {}.", name, buffers);
+
 			// Add the buffer and update the stats
 			buffers.add(buffer);
 			reader = readView;
@@ -78,6 +87,7 @@ class PipelinedSubpartition extends ResultSubpartition {
 
 		// Notify the listener outside of the synchronized block
 		if (reader != null) {
+			LOG.info("{} Notifying {}.", name, reader);
 			reader.notifyBuffersAvailable(1);
 		}
 
@@ -167,13 +177,19 @@ class PipelinedSubpartition extends ResultSubpartition {
 
 		synchronized (buffers) {
 			checkState(!isReleased);
-			checkState(readView == null,
-					"Subpartition %s of is being (or already has been) consumed, " +
-					"but pipelined subpartitions can only be consumed once.", index, parent.getPartitionId());
+			// TODO Masterthesis: Temporarily disable this check, afterwards continue
+//			checkState(readView == null,
+//					"Subpartition %s of is being (or already has been) consumed, " +
+//					"but pipelined subpartitions can only be consumed once.", index, parent.getPartitionId());
 
 			LOG.debug("Creating read view for subpartition {} of partition {}.", index, parent.getPartitionId());
 
 			queueSize = buffers.size();
+
+			if (readView != null) {
+				LOG.debug("ReadView was not null, but {}", readView);
+			}
+
 			readView = new PipelinedSubpartitionView(this, availabilityListener);
 		}
 
@@ -205,8 +221,8 @@ class PipelinedSubpartition extends ResultSubpartition {
 		}
 
 		return String.format(
-				"PipelinedSubpartition [number of buffers: %d (%d bytes), finished? %s, read view? %s]",
-				numBuffers, numBytes, finished, hasReadView);
+				"PipelinedSubpartition for %s [number of buffers: %d (%d bytes), finished? %s, read view? %s]",
+				name, numBuffers, numBytes, finished, hasReadView);
 	}
 
 	@Override

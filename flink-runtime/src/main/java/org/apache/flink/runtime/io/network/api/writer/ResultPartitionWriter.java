@@ -44,6 +44,11 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 		this.partition = partition;
 	}
 
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + partition;
+	}
+
 	// ------------------------------------------------------------------------
 	// Attributes
 	// ------------------------------------------------------------------------

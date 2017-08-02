@@ -23,27 +23,31 @@ import java.lang.management.ManagementFactory
 import java.net.{InetAddress, InetSocketAddress}
 import java.util
 import java.util.concurrent.{Callable, TimeUnit}
-import java.util.{Collections, UUID}
+import java.util.{Collections, Timer, TimerTask, UUID}
 
 import _root_.akka.actor._
 import _root_.akka.pattern.ask
 import _root_.akka.util.Timeout
 import grizzled.slf4j.Logger
 import org.apache.commons.lang3.exception.ExceptionUtils
+import org.apache.flink.api.common.functions.FilterFunction
 import org.apache.flink.api.common.time.Time
+import org.apache.flink.api.common.typeutils.base.StringSerializer
+import org.apache.flink.api.java.operators.FilterOperator
 import org.apache.flink.configuration._
 import org.apache.flink.core.fs.FileSystem
+import org.apache.flink.migration.streaming.runtime.streamrecord.StreamRecordSerializer
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot
 import org.apache.flink.runtime.akka.{AkkaUtils, DefaultQuarantineHandler, QuarantineMonitor}
 import org.apache.flink.runtime.blob.{BlobCache, BlobClient, BlobService}
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager
 import org.apache.flink.runtime.clusterframework.messages.StopCluster
-import org.apache.flink.runtime.clusterframework.types.ResourceID
+import org.apache.flink.runtime.clusterframework.types.{AllocationID, ResourceID}
 import org.apache.flink.runtime.concurrent.Executors
-import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor
+import org.apache.flink.runtime.deployment._
 import org.apache.flink.runtime.execution.ExecutionState
 import org.apache.flink.runtime.execution.librarycache.{BlobLibraryCacheManager, FallbackLibraryCacheManager, LibraryCacheManager}
-import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, PartitionInfo}
+import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, IntermediateResultPartition, PartitionInfo}
 import org.apache.flink.runtime.filecache.FileCache
 import org.apache.flink.runtime.highavailability.HighAvailabilityServicesUtils.AddressResolution
 import org.apache.flink.runtime.highavailability.{HighAvailabilityServices, HighAvailabilityServicesUtils}
@@ -51,7 +55,7 @@ import org.apache.flink.runtime.instance.{AkkaActorGateway, HardwareDescription,
 import org.apache.flink.runtime.io.disk.iomanager.IOManager
 import org.apache.flink.runtime.io.network.NetworkEnvironment
 import org.apache.flink.runtime.io.network.netty.PartitionProducerStateChecker
-import org.apache.flink.runtime.io.network.partition.ResultPartitionConsumableNotifier
+import org.apache.flink.runtime.io.network.partition.{ResultPartitionConsumableNotifier, ResultPartitionID, ResultPartitionType}
 import org.apache.flink.runtime.leaderretrieval.{LeaderRetrievalListener, LeaderRetrievalService}
 import org.apache.flink.runtime.memory.MemoryManager
 import org.apache.flink.runtime.messages.Messages._
@@ -70,6 +74,8 @@ import org.apache.flink.runtime.security.SecurityUtils.SecurityConfiguration
 import org.apache.flink.runtime.taskexecutor.{TaskExecutor, TaskManagerConfiguration, TaskManagerServices, TaskManagerServicesConfiguration}
 import org.apache.flink.runtime.util._
 import org.apache.flink.runtime.{FlinkActor, LeaderSessionMessageFilter, LogMessages}
+import org.apache.flink.streaming.api.graph.{StreamConfig, StreamEdge}
+import org.apache.flink.streaming.api.operators.StreamFilter
 
 import scala.collection.JavaConverters._
 import scala.concurrent._
@@ -514,8 +520,202 @@ class TaskManager(
             log.debug(s"Cannot find task to resume for execution $executionID)")
             sender ! decorateMessage(Acknowledge.get())
           }
+        case IntroduceNewOperator(executionAttemptID, taskDeploymentDescriptor) =>
+          log.debug(s"Received message for introducing new operator for $executionAttemptID)")
+
+          introduceNewOperator(executionAttemptID, taskDeploymentDescriptor)
       }
       }
+  }
+
+  private def introduceNewOperator(executionAttemptID: ExecutionAttemptID, tdd: TaskDeploymentDescriptor): Unit = {
+    val task = runningTasks.get(executionAttemptID)
+
+    if (task != null) {
+
+      log.debug(s"Found task for introducing new operator for $task)")
+
+      val partitions = task.getProducedPartitions
+
+      if (partitions.length != 1) {
+        throw new RuntimeException("Failed to find correct operator")
+      }
+
+      // grab some handles and sanity check on the fly
+      val jobManagerActor = currentJobManager match {
+        case Some(jm) => jm
+        case None =>
+          throw new IllegalStateException("TaskManager is not associated with a JobManager.")
+      }
+      val libCache = libraryCacheManager match {
+        case Some(manager) => manager
+        case None => throw new IllegalStateException("There is no valid library cache manager.")
+      }
+
+      val slot = tdd.getTargetSlotNumber
+      if (slot < 0 || slot >= numberOfSlots) {
+        throw new IllegalArgumentException(s"Target slot $slot does not exist on TaskManager.")
+      }
+
+      val (checkpointResponder,
+      partitionStateChecker,
+      resultPartitionConsumableNotifier,
+      taskManagerConnection) = connectionUtils match {
+        case Some(x) => x
+        case None => throw new IllegalStateException("The connection utils have not been initialized.")
+      }
+
+      // create the task. this does not grab any TaskManager resources or download
+      // and libraries - the operation does not block
+
+      val jobManagerGateway = new AkkaActorGateway(jobManagerActor, leaderSessionID.orNull)
+
+      val jobInformation = try {
+        tdd.getSerializedJobInformation.deserializeValue(getClass.getClassLoader)
+      } catch {
+        case e @ (_: IOException | _: ClassNotFoundException) =>
+          throw new IOException("Could not deserialize the job information.", e)
+      }
+
+      val taskInformation = try {
+        tdd.getSerializedTaskInformation.deserializeValue(getClass.getClassLoader)
+      } catch {
+        case e@(_: IOException | _: ClassNotFoundException) =>
+          throw new IOException("Could not deserialize the job vertex information.", e)
+      }
+
+      val taskMetricGroup = taskManagerMetricGroup.addTaskForJob(
+        jobInformation.getJobId,
+        jobInformation.getJobName,
+        taskInformation.getJobVertexId,
+        tdd.getExecutionAttemptId,
+        taskInformation.getTaskName,
+        tdd.getSubtaskIndex,
+        tdd.getAttemptNumber)
+
+      val inputSplitProvider = new TaskInputSplitProvider(
+        jobManagerGateway,
+        jobInformation.getJobId,
+        taskInformation.getJobVertexId,
+        tdd.getExecutionAttemptId,
+        new FiniteDuration(
+          config.getTimeout().getSize(),
+          config.getTimeout().getUnit()))
+
+      for (name <- tdd.getProducedPartitions.asScala) {
+        log.info(s"Created intermediateDataSet with id: IntermediateDatasetID ${name.getResultId} and" +
+          s"IntermediateResultPartitionID ${name.getPartitionId} + parallelism ${name.getMaxParallelism}")
+      }
+
+      for (name <- tdd.getInputGates.asScala) {
+        log.info(s"Created InputGate with SubpartitionIndex ${name.getConsumedSubpartitionIndex}")
+
+        for (two <- name.getInputChannelDeploymentDescriptors) {
+          log.info(s"Created InputChannel with ResultPartitionID ${two.getConsumedPartitionId}")
+        }
+      }
+
+      taskInformation.setNumberOfInputs(1)
+      //      taskInformation.setTypeSerializerOne(new StreamRecordSerializer[String](StringSerializer.INSTANCE))
+      taskInformation.setTypeSerializerOne(StringSerializer.INSTANCE)
+      val filterFunction = new FilterFunction[String]() {
+        def filter(value: String): Boolean = {
+          value.startsWith("A")
+        }
+      }
+
+      taskInformation.setOperator(new StreamFilter(filterFunction))
+      taskInformation.setOperatorName("IntroducedFilterOperator")
+
+      val list = new util.ArrayList(makeCollection(tdd.getProducedPartitions.asScala))
+
+      if (list.size() != 1) {
+        log.info("List has more than 1 element. Unexpected!")
+      }
+
+      val x = list.get(0)
+
+      val consumedPartitionId = new ResultPartitionID(x.getPartitionId, tdd.getExecutionAttemptId)
+
+      val icdd = new InputChannelDeploymentDescriptor(consumedPartitionId, ResultPartitionLocation.createLocal())
+      val a = new Array[InputChannelDeploymentDescriptor](1)
+      a(0) = icdd
+
+      val igdd = new InputGateDeploymentDescriptor(
+        x.getResultId,
+        ResultPartitionType.PIPELINED,
+        0,
+        a)
+
+      task.connectToNewInputAfterModification(network, igdd)
+
+      val streamConfig = new StreamConfig(task.getTaskConfiguration)
+
+//      val userCodeClassloader = streamConfig.getUserCodeClassLoader
+//      log.info("Received streamConfig: " + streamConfig.getOutEdges())
+
+//      val se = new StreamEdge()
+
+      // TODO Unregister upon pausing from old resultpartition
+
+//      taskInformation.setOutputEdges()
+
+      val newTask = new Task(
+        jobInformation,
+        taskInformation,
+        tdd.getExecutionAttemptId,
+        tdd.getAllocationId,
+        tdd.getSubtaskIndex,
+        tdd.getAttemptNumber,
+        tdd.getProducedPartitions,
+        tdd.getInputGates,
+        tdd.getTargetSlotNumber,
+        tdd.getTaskStateHandles,
+        memoryManager,
+        ioManager,
+        network,
+        bcVarManager,
+        taskManagerConnection,
+        inputSplitProvider,
+        checkpointResponder,
+        libCache,
+        fileCache,
+        config,
+        taskMetricGroup,
+        resultPartitionConsumableNotifier,
+        partitionStateChecker,
+        context.dispatcher)
+
+      log.info(s"Received task ${newTask.getTaskInfo.getTaskNameWithSubtasks()}")
+
+      val execId = tdd.getExecutionAttemptId
+      // add the task to the map
+      val prevTask = runningTasks.put(execId, newTask)
+      if (prevTask != null) {
+        // already have a task for that ID, put if back and report an error
+        runningTasks.put(execId, prevTask)
+        throw new IllegalStateException("TaskManager already contains a task for id " + execId)
+      }
+
+      // all good, we kick off the task, which performs its own initialization
+      newTask.startTaskThread()
+
+      sender ! decorateMessage(Acknowledge.get())
+
+    } else {
+      log.debug(s"Cannot find source task for execution $executionAttemptID)")
+      sender ! decorateMessage(Acknowledge.get())
+    }
+  }
+
+  import java.util
+
+  def makeCollection[E](iter: Iterable[E]): util.Collection[E] = {
+    val list = new util.ArrayList[E]
+    for (item <- iter) {
+      list.add(item)
+    }
+    list
   }
 
   /**
@@ -523,7 +723,7 @@ class TaskManager(
    *
    * @param actorMessage The checkpoint message.
    */
-  private def handleCheckpointingMessage(actorMessage: AbstractCheckpointMessage): Unit = {
+  private def handleCheckpointingMessage(actorMessage: AbstractCheckpointMessage) = {
 
     actorMessage match {
       case message: TriggerCheckpoint =>
