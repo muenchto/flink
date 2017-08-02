@@ -19,7 +19,10 @@ package org.apache.flink.streaming.api.operators;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link StreamOperator} for executing {@link FilterFunction FilterFunctions}.
@@ -27,17 +30,30 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 @Internal
 public class StreamFilter<IN> extends AbstractUdfStreamOperator<IN, FilterFunction<IN>> implements OneInputStreamOperator<IN, IN> {
 
+	private static final Logger LOG = LoggerFactory.getLogger(StreamFilter.class);
+
 	private static final long serialVersionUID = 1L;
 
 	public StreamFilter(FilterFunction<IN> filterFunction) {
 		super(filterFunction);
 		chainingStrategy = ChainingStrategy.ALWAYS;
+		LOG.info("StreamFilter INIT");
 	}
 
 	@Override
 	public void processElement(StreamRecord<IN> element) throws Exception {
+
+		LOG.info("StreamFilter received {}", element);
+
 		if (userFunction.filter(element.getValue())) {
+			LOG.info("Sending element: {}", element);
+
 			output.collect(element);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
 	}
 }

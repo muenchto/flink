@@ -20,6 +20,8 @@ package org.apache.flink.streaming.api.operators;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link StreamOperator} for executing {@link MapFunction MapFunctions}.
@@ -29,15 +31,24 @@ public class StreamMap<IN, OUT>
 		extends AbstractUdfStreamOperator<OUT, MapFunction<IN, OUT>>
 		implements OneInputStreamOperator<IN, OUT> {
 
+	private static final Logger LOG = LoggerFactory.getLogger(StreamMap.class);
+
 	private static final long serialVersionUID = 1L;
 
 	public StreamMap(MapFunction<IN, OUT> mapper) {
 		super(mapper);
+		LOG.info("StreamMap Init");
 		chainingStrategy = ChainingStrategy.ALWAYS;
 	}
 
 	@Override
 	public void processElement(StreamRecord<IN> element) throws Exception {
+		LOG.info("StreamMap Received {}", element);
 		output.collect(element.replace(userFunction.map(element.getValue())));
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
 	}
 }

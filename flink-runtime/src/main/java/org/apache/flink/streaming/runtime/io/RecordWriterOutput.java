@@ -20,6 +20,7 @@ package org.apache.flink.streaming.runtime.io;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 import java.io.IOException;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.runtime.event.AbstractEvent;
@@ -34,12 +35,16 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusProvider;
 import org.apache.flink.util.OutputTag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of {@link Output} that sends data using a {@link RecordWriter}.
  */
 @Internal
 public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
+
+	protected static final Logger LOG = LoggerFactory.getLogger(RecordWriterOutput.class);
 
 	private StreamRecordWriter<SerializationDelegate<StreamElement>> recordWriter;
 
@@ -49,12 +54,25 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 	private final OutputTag outputTag;
 
+	private final String name;
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + " - " + name	;
+//			+ " - StreamRecordWriter: " + recordWriter
+//			+ " - SerializationDelegate: " + serializationDelegate
+//			+ " - StreamStatusProvider:  " + streamStatusProvider
+//			+ " - OutputTag: " + outputTag;
+	}
+
 	@SuppressWarnings("unchecked")
 	public RecordWriterOutput(
-			StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>> recordWriter,
-			TypeSerializer<OUT> outSerializer,
-			OutputTag outputTag,
-			StreamStatusProvider streamStatusProvider) {
+		StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>> recordWriter,
+		TypeSerializer<OUT> outSerializer,
+		OutputTag outputTag,
+		StreamStatusProvider streamStatusProvider, String name) {
+
+		this.name = name;
 
 		checkNotNull(recordWriter);
 		this.outputTag = outputTag;
@@ -71,6 +89,8 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 		}
 
 		this.streamStatusProvider = checkNotNull(streamStatusProvider);
+
+		LOG.info("Creating RecordWriterOutput for " + name);
 	}
 
 	@Override
@@ -96,6 +116,8 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 	private <X> void pushToRecordWriter(StreamRecord<X> record) {
 		serializationDelegate.setInstance(record);
+
+		LOG.info("From {} sending record {} to {}.", name, record, recordWriter);
 
 		try {
 			recordWriter.emit(serializationDelegate);
