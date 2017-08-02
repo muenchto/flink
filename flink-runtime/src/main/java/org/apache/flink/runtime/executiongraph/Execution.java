@@ -344,7 +344,141 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		}
 	}
 
-	public Future<SimpleSlot> allocateSlotForExecution(SlotProvider slotProvider, boolean queued) 
+	public boolean scheduleForRuntimeExecution(SlotProvider slotProvider, boolean queued, final ExecutionAttemptID attemptId) {
+
+		LOG.info("Starting new operator");
+
+		try {
+			final Future<SimpleSlot> slotAllocationFuture = allocateSlotForExecution(slotProvider, queued);
+
+			LOG.info("Received slot: " + slotAllocationFuture);
+
+			// IMPORTANT: We have to use the synchronous handle operation (direct executor) here so
+			// that we directly deploy the tasks if the slot allocation future is completed. This is
+			// necessary for immediate deployment.
+			final Future<Void> deploymentFuture = slotAllocationFuture.handle(new BiFunction<SimpleSlot, Throwable, Void>() {
+				@Override
+				public Void apply(SimpleSlot simpleSlot, Throwable throwable) {
+					if (simpleSlot != null) {
+						try {
+							LOG.info("Try deploying to slot");
+
+							deployToSlotRuntime(simpleSlot, attemptId);
+						} catch (Throwable t) {
+							try {
+								simpleSlot.releaseSlot();
+							} finally {
+								markFailed(t);
+							}
+						}
+					}
+					else {
+						markFailed(throwable);
+					}
+					return null;
+				}
+			});
+
+			// if tasks have to scheduled immediately check that the task has been deployed
+			if (!queued && !deploymentFuture.isDone()) {
+				markFailed(new IllegalArgumentException("The slot allocation future has not been completed yet."));
+			}
+
+			return true;
+		}
+		catch (IllegalExecutionStateException e) {
+			return false;
+		}
+	}
+
+	public void deployToSlotRuntime(final SimpleSlot slot, ExecutionAttemptID sourceAttemptId) throws JobException {
+		checkNotNull(slot);
+
+		LOG.info("deployToSlotRuntime for " + attemptId);
+
+
+		// Check if the TaskManager died in the meantime
+		// This only speeds up the response to TaskManagers failing concurrently to deployments.
+		// The more general check is the timeout of the deployment call
+		if (!slot.isAlive()) {
+			throw new JobException("Target slot (TaskManager) for deployment is no longer alive.");
+		}
+
+		// make sure exactly one deployment call happens from the correct state
+		// note: the transition from CREATED to DEPLOYING is for testing purposes only
+		ExecutionState previous = this.state;
+		if (previous == SCHEDULED || previous == CREATED) {
+			if (!transitionState(previous, DEPLOYING)) {
+				// race condition, someone else beat us to the deploying call.
+				// this should actually not happen and indicates a race somewhere else
+				throw new IllegalStateException("Cannot deploy task: Concurrent deployment call race.");
+			}
+		}
+		else {
+			// vertex may have been cancelled, or it was already scheduled
+			throw new IllegalStateException("The vertex must be in CREATED or SCHEDULED state to be deployed. Found state " + previous);
+		}
+
+		try {
+			// good, we are allowed to deploy
+			if (!slot.setExecutedVertex(this)) {
+				throw new JobException("Could not assign the ExecutionVertex to the slot " + slot);
+			}
+			this.assignedResource = slot;
+
+			LOG.info("Before DEPLOY Check for " + attemptId);
+
+			// race double check, did we fail/cancel and do we need to release the slot?
+			if (this.state != DEPLOYING) {
+				slot.releaseSlot();
+				return;
+			}
+
+			if (LOG.isInfoEnabled()) {
+				LOG.info(String.format("Deploying %s (attempt #%d) to %s", vertex.getTaskNameWithSubtaskIndex(),
+					attemptNumber, getAssignedResourceLocation().getHostname()));
+			}
+
+			LOG.info("Before tdd for " + attemptId);
+
+
+			final TaskDeploymentDescriptor deployment = vertex.createRuntimeDeploymentDescriptor(
+				attemptId,
+				slot,
+				taskState,
+				attemptNumber);
+
+			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
+
+			LOG.info("Before sending message with " + deployment);
+
+			final Future<Acknowledge> submitResultFuture = taskManagerGateway
+				.introduceNewOperator(sourceAttemptId, deployment, timeout);
+
+			submitResultFuture.exceptionallyAsync(new ApplyFunction<Throwable, Void>() {
+				@Override
+				public Void apply(Throwable failure) {
+					if (failure instanceof TimeoutException) {
+						String taskname = vertex.getTaskNameWithSubtaskIndex()+ " (" + Execution.this.attemptId + ')';
+
+						markFailed(new Exception(
+							"Cannot deploy task " + taskname + " - TaskManager (" + getAssignedResourceLocation()
+								+ ") not responding after a timeout of " + timeout, failure));
+					}
+					else {
+						markFailed(failure);
+					}
+					return null;
+				}
+			}, executor);
+		}
+		catch (Throwable t) {
+			markFailed(t);
+			ExceptionUtils.rethrow(t);
+		}
+	}
+
+	public Future<SimpleSlot> allocateSlotForExecution(SlotProvider slotProvider, boolean queued)
 			throws IllegalExecutionStateException {
 
 		checkNotNull(slotProvider);

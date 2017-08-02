@@ -26,7 +26,6 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.accumulators.Accumulator;
 import org.apache.flink.api.common.accumulators.AccumulatorHelper;
-import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
@@ -57,19 +56,15 @@ import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
-import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.ExternalizedCheckpointSettings;
 import org.apache.flink.runtime.jobgraph.tasks.JobCheckpointingSettings;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationGroup;
 import org.apache.flink.runtime.jobmanager.scheduler.NoResourceAvailableException;
-import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
-import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
-import org.apache.flink.runtime.messages.Acknowledge;
-import org.apache.flink.runtime.operators.BatchTask;
 import org.apache.flink.runtime.query.KvStateLocationRegistry;
 import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.runtime.taskmanager.TaskExecutionState;
 import org.apache.flink.runtime.util.SerializedThrowable;
+import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.FlinkRuntimeException;
@@ -82,16 +77,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
@@ -863,6 +849,36 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 		}
 	}
 
+	public void startFilterOperator() {
+
+		ExecutionJobVertex source = findMap();
+
+		ExecutionVertex[] sourceTaskVertices = source.getTaskVertices();
+
+		if (sourceTaskVertices.length != 1) {
+			failGlobal(new RuntimeException("Failed to find sourceTaskVertex"));
+		}
+
+		Execution execution = sourceTaskVertices[0].getCurrentExecutionAttempt();
+
+		ExecutionJobVertex executionJobVertex = buildFilterExecution();
+
+		boolean b = executionJobVertex.getTaskVertices()[0].getCurrentExecutionAttempt()
+			.scheduleForRuntimeExecution(slotProvider, allowQueuedScheduling, execution.getAttemptId());
+
+
+//		for (ExecutionVertex vertex : sourceTaskVertices) {
+//			Execution execution = vertex.getCurrentExecutionAttempt();
+//
+//			execution.getVertex().createDeploymentDescriptor();
+//
+//			execution.getAssignedResource()
+//				.getTaskManagerGateway()
+//				.introduceNewOperator(execution.getAttemptId(), slot.getAllocatedSlot().getSlotAllocationId(), slot.getRoot().getSlotNumber(), rpcCallTimeout);
+//		}
+	}
+
+
 	public String getDetails() throws JobException {
 
 		StringBuilder currentPlan = new StringBuilder();
@@ -965,25 +981,25 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 		return executionJobVertex;
 	}
 
-	private JobVertex buildFilterJobVertex() {
-		JobVertex jobVertex = new JobVertex("IntroducedOperator", new JobVertexID());
+	private ExecutionJobVertex buildFilterExecution() {
 
-		ExecutionJobVertex source = findSource();
-		ExecutionJobVertex map = findMap();
+		JobVertex jobVertex = new JobVertex("IntroducedFilterOperator", new JobVertexID());
+		jobVertex.setParallelism(1);
+		jobVertex.setInvokableClass(OneInputStreamTask.class);
 
-		IntermediateDataSet sourceDataSet = jobVertex.getProducedDataSets().get(0);
-
-		jobVertex.connectDataSetAsInput(sourceDataSet, DistributionPattern.ALL_TO_ALL);
-
-		// New IntermediateResult for Filter
-		IntermediateDataSet filterDataSet = new IntermediateDataSet(new IntermediateDataSetID(),
+		IntermediateDataSet intermediateDataSet = new IntermediateDataSet(
+			new IntermediateDataSetID(),
 			ResultPartitionType.PIPELINED,
 			jobVertex);
 
-		JobEdge jobEdge = jobVertex.connectDataSetAsInput(filterDataSet, DistributionPattern.ALL_TO_ALL);
+		LOG.info("Created intermediateDataSet with id: " + intermediateDataSet.getId());
 
-		jobVertex.setInvokableClass(null);
-		jobVertex.setParallelism(1);
+		jobVertex.createAndAddResultDataSet(intermediateDataSet.getId(), ResultPartitionType.PIPELINED);
+
+		ExecutionJobVertex source = findSource();
+
+		IntermediateDataSet producedDataSets = source.getJobVertex().getProducedDataSets().get(0);
+		jobVertex.connectDataSetAsInput(producedDataSets, DistributionPattern.ALL_TO_ALL);
 
 		try {
 			ExecutionJobVertex vertex =
@@ -994,9 +1010,29 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 					globalModVersion,
 					System.currentTimeMillis());
 
-			vertex.connectToPredecessors(intermediateResults);
+			vertex.connectToPredecessorsRuntime(intermediateResults);
 
-			vertex.scheduleAll(slotProvider, false);
+			// TODO Add produced datasets data sets to intermediateResults
+//			for (IntermediateResult res : ejv.getProducedDataSets()) {
+//				IntermediateResult previousDataSet = this.intermediateResults.putIfAbsent(res.getId(), res);
+//				if (previousDataSet != null) {
+//					throw new JobException(String.format("Encountered two intermediate data set with ID %s : previous=[%s] / new=[%s]",
+//						res.getId(), res, previousDataSet));
+//				}
+//			}
+
+			ExecutionJobVertex previousTask = this.tasks.putIfAbsent(jobVertex.getID(), vertex);
+			if (previousTask != null) {
+				throw new JobException(String.format("Encountered two job vertices with ID %s : previous=[%s] / new=[%s]",
+					jobVertex.getID(), vertex, previousTask));
+			}
+
+			this.verticesInCreationOrder.add(vertex);
+			this.numVerticesTotal += vertex.getParallelism();
+
+			// TODO Add to failover strategy
+
+			return vertex;
 		} catch (JobException e) {
 			failGlobal(e);
 		}

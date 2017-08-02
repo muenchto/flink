@@ -436,6 +436,46 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 			}
 		}
 	}
+
+	public void connectToPredecessorsRuntime(Map<IntermediateDataSetID, IntermediateResult> intermediateDataSets) throws JobException {
+
+		List<JobEdge> inputs = jobVertex.getInputs();
+
+		if (LOG.isDebugEnabled()) {
+			LOG.debug(String.format("Connecting ExecutionJobVertex %s (%s) to %d predecessors.", jobVertex.getID(), jobVertex.getName(), inputs.size()));
+		}
+
+		for (int num = 0; num < inputs.size(); num++) {
+			JobEdge edge = inputs.get(num);
+
+			if (LOG.isDebugEnabled()) {
+				if (edge.getSource() == null) {
+					LOG.debug(String.format("Connecting input %d of vertex %s (%s) to intermediate result referenced via ID %s.",
+						num, jobVertex.getID(), jobVertex.getName(), edge.getSourceId()));
+				} else {
+					LOG.debug(String.format("Connecting input %d of vertex %s (%s) to intermediate result referenced via predecessor %s (%s).",
+						num, jobVertex.getID(), jobVertex.getName(), edge.getSource().getProducer().getID(), edge.getSource().getProducer().getName()));
+				}
+			}
+
+			// fetch the intermediate result via ID. if it does not exist, then it either has not been created, or the order
+			// in which this method is called for the job vertices is not a topological order
+			IntermediateResult ires = intermediateDataSets.get(edge.getSourceId());
+			if (ires == null) {
+				throw new JobException("Cannot connect this job graph to the previous graph. No previous intermediate result found for ID "
+					+ edge.getSourceId());
+			}
+
+			this.inputs.add(ires);
+
+			int consumerIndex = ires.registerConsumerRuntime();
+
+			for (int i = 0; i < parallelism; i++) {
+				ExecutionVertex ev = taskVertices[i];
+				ev.connectSource(num, ires, edge, consumerIndex);
+			}
+		}
+	}
 	
 	//---------------------------------------------------------------------------------------------
 	//  Actions

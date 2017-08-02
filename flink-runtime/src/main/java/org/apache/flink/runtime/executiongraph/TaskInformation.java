@@ -18,11 +18,16 @@
 
 package org.apache.flink.runtime.executiongraph;
 
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
+import org.apache.flink.streaming.api.graph.StreamConfig;
+import org.apache.flink.streaming.api.graph.StreamEdge;
+import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * Container class for operator/task specific information which are stored at the
@@ -48,7 +53,7 @@ public class TaskInformation implements Serializable {
 	private final String invokableClassName;
 
 	/** Configuration for the task */
-	private final Configuration taskConfiguration;
+	private Configuration taskConfiguration;
 
 	public TaskInformation(
 			JobVertexID jobVertexId,
@@ -87,5 +92,36 @@ public class TaskInformation implements Serializable {
 
 	public Configuration getTaskConfiguration() {
 		return taskConfiguration;
+	}
+
+	public void setNumberOfInputs(int numberOfInputs) {
+		StreamConfig streamConfig = new StreamConfig(taskConfiguration);
+		streamConfig.setNumberOfInputs(numberOfInputs);
+		taskConfiguration = streamConfig.getConfiguration();
+	}
+
+	public void setTypeSerializerOne(TypeSerializer typeSerializer) {
+		StreamConfig streamConfig = new StreamConfig(taskConfiguration);
+		streamConfig.setTypeSerializerIn1(typeSerializer);
+		taskConfiguration = streamConfig.getConfiguration();
+	}
+
+	public void setOperator(StreamOperator operator) {
+		StreamConfig streamConfig = new StreamConfig(taskConfiguration);
+		streamConfig.setStreamOperator(operator);
+		taskConfiguration = streamConfig.getConfiguration();
+	}
+
+	public void setOperatorName(String operatorName) {
+		StreamConfig streamConfig = new StreamConfig(taskConfiguration);
+		streamConfig.setOperatorName(operatorName);
+		taskConfiguration = streamConfig.getConfiguration();
+	}
+
+	public void setOutputEdges(List<StreamEdge> outputEdges) {
+		StreamConfig streamConfig = new StreamConfig(taskConfiguration);
+		streamConfig.setOutEdges(outputEdges);
+		streamConfig.setOutEdgesInOrder(outputEdges);
+		taskConfiguration = streamConfig.getConfiguration();
 	}
 }

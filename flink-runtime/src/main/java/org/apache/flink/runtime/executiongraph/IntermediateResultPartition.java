@@ -84,6 +84,19 @@ public class IntermediateResultPartition {
 		return pos;
 	}
 
+	int addConsumerGroupRuntime() {
+		int pos = consumers.size();
+
+		// NOTE: currently we support only one consumer per result!!!
+		// TODO Masterthesis: Temporarily allow more than one consumer per result
+//		if (pos != 0) {
+//			throw new RuntimeException("Currently, each intermediate result can only have one consumer.");
+//		}
+
+		consumers.add(new ArrayList<ExecutionEdge>());
+		return pos;
+	}
+
 	void addConsumer(ExecutionEdge edge, int consumerNumber) {
 		consumers.get(consumerNumber).add(edge);
 	}

@@ -135,6 +135,9 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 
 	@Override
 	public Future<SimpleSlot> allocateSlot(ScheduledUnit task, boolean allowQueued) {
+
+		LOG.info("Allocating slot for " + task);
+
 		try {
 			final Object ret = scheduleTask(task, allowQueued);
 
