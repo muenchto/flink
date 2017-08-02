@@ -874,13 +874,16 @@ class JobManager(
 
           val result = command match {
             case "pause" => executionGraph.pauseMapOperator()
-              (true, "pausing submitted")
+              (true, "Pausing submitted")
 
             case "resume" => executionGraph.resumeMapOperator()
-              (true, "pausing submitted")
+              (true, "Resuming submitted")
 
             case "details" => val details = executionGraph.getDetails()
               (true, details)
+
+            case "start" => executionGraph.startFilterOperator()
+              (true, "Starting new operator submitted")
 
             case _ =>
               (false, s"Unkown command $command")

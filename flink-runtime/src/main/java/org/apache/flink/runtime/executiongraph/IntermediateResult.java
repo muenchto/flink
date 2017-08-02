@@ -150,6 +150,18 @@ public class IntermediateResult {
 		return index;
 	}
 
+	public int registerConsumerRuntime() {
+		final int index = numConsumers;
+		numConsumers++;
+
+		for (IntermediateResultPartition p : partitions) {
+			if (p.addConsumerGroupRuntime() != index) {
+				throw new RuntimeException("Inconsistent consumer mapping between intermediate result partitions.");
+			}
+		}
+		return index;
+	}
+
 	public int getConnectionIndex() {
 		return connectionIndex;
 	}
