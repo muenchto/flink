@@ -30,13 +30,18 @@ import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.EndOfSuperstepEvent;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.FreeingBufferRecycler;
+import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.util.DataInputDeserializer;
 import org.apache.flink.runtime.util.DataOutputSerializer;
+import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
+import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.util.InstantiationUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.List;
+
 import org.apache.flink.util.Preconditions;
 
 /**
@@ -55,6 +60,10 @@ public class EventSerializer {
 	private static final int OTHER_EVENT = 3;
 
 	private static final int CANCEL_CHECKPOINT_MARKER_EVENT = 4;
+
+	private static final int MODIFICATION_START_EVENT = 5;
+
+	private static final int MODIFICATION_CANCEL_EVENT = 6;
 
 	// ------------------------------------------------------------------------
 
@@ -106,16 +115,49 @@ public class EventSerializer {
 			buf.putInt(0, CANCEL_CHECKPOINT_MARKER_EVENT);
 			buf.putLong(4, marker.getCheckpointId());
 			return buf;
-		}
-		else {
+		} else if (eventClass == StartModificationMarker.class) {
+			StartModificationMarker marker = (StartModificationMarker) event;
+
+			List<JobVertexID> jobVertexIDs = marker.getJobVertexIDs();
+
+			ByteBuffer buf = ByteBuffer.allocate(12);
+			buf.putInt(0, MODIFICATION_START_EVENT);
+			buf.putLong(4, marker.getModificationID());
+			buf.putInt(12, jobVertexIDs.size());
+
+			for (int index = 16, i = 0; i < jobVertexIDs.size(); i++, index += 16) {
+				JobVertexID vertexID = jobVertexIDs.get(i);
+				buf.putLong(index, vertexID.getLowerPart());
+				buf.putLong(index + 8, vertexID.getUpperPart());
+			}
+
+			return buf;
+
+		} else if (eventClass == CancelModificationMarker.class) {
+			CancelModificationMarker marker = (CancelModificationMarker) event;
+
+			List<JobVertexID> jobVertexIDs = marker.getJobVertexIDs();
+
+			ByteBuffer buf = ByteBuffer.allocate(12);
+			buf.putInt(0, MODIFICATION_CANCEL_EVENT);
+			buf.putLong(4, marker.getModificationID());
+			buf.putInt(12, jobVertexIDs.size());
+
+			for (int index = 16, i = 0; i < jobVertexIDs.size(); i++, index += 16) {
+				JobVertexID vertexID = jobVertexIDs.get(i);
+				buf.putLong(index, vertexID.getLowerPart());
+				buf.putLong(index + 8, vertexID.getUpperPart());
+			}
+
+			return buf;
+		} else {
 			try {
 				final DataOutputSerializer serializer = new DataOutputSerializer(128);
 				serializer.writeInt(OTHER_EVENT);
 				serializer.writeUTF(event.getClass().getName());
 				event.write(serializer);
 				return serializer.wrapAsByteBuffer();
-			}
-			catch (IOException e) {
+			} catch (IOException e) {
 				throw new IOException("Error while serializing event.", e);
 			}
 		}
@@ -256,7 +298,7 @@ public class EventSerializer {
 				catch (Exception e) {
 					throw new IOException("Error while deserializing or instantiating event.", e);
 				}
-			} 
+			}
 			else {
 				throw new IOException("Corrupt byte stream for event");
 			}
@@ -274,7 +316,7 @@ public class EventSerializer {
 		final ByteBuffer serializedEvent = EventSerializer.toSerializedEvent(event);
 
 		MemorySegment data = MemorySegmentFactory.wrap(serializedEvent.array());
-		
+
 		final Buffer buffer = new Buffer(data, FreeingBufferRecycler.INSTANCE, false);
 		buffer.setSize(serializedEvent.remaining());
 

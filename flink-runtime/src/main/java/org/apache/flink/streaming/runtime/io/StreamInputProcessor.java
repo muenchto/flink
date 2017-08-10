@@ -228,7 +228,7 @@ public class StreamInputProcessor<IN> {
 			try {
 				bufferOrEvent = barrierHandler.getNextNonBlocked();
 			} catch (InterruptedException interruptedException) {
-				LOG.info("Catched interruption in onProcess");
+				LOG.info("Catched interruption in onProcess"); // TODO Masterthesis
 				return false;
 			}
 
