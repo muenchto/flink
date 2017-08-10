@@ -37,6 +37,7 @@ import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
+import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -71,6 +72,7 @@ public class RuntimeEnvironment implements Environment {
 	private final InputGate[] inputGates;
 	
 	private final CheckpointResponder checkpointResponder;
+	private final ModificationResponder modificationResponder;
 
 	private final AccumulatorRegistry accumulatorRegistry;
 
@@ -102,6 +104,7 @@ public class RuntimeEnvironment implements Environment {
 			ResultPartitionWriter[] writers,
 			InputGate[] inputGates,
 			CheckpointResponder checkpointResponder,
+			ModificationResponder modificationResponder,
 			TaskManagerRuntimeInfo taskManagerInfo,
 			TaskMetricGroup metrics,
 			Task containingTask) {
@@ -124,6 +127,7 @@ public class RuntimeEnvironment implements Environment {
 		this.writers = checkNotNull(writers);
 		this.inputGates = checkNotNull(inputGates);
 		this.checkpointResponder = checkNotNull(checkpointResponder);
+		this.modificationResponder = checkNotNull(modificationResponder);
 		this.taskManagerInfo = checkNotNull(taskManagerInfo);
 		this.containingTask = containingTask;
 		this.metrics = metrics;
@@ -255,6 +259,16 @@ public class RuntimeEnvironment implements Environment {
 	@Override
 	public void declineCheckpoint(long checkpointId, Throwable cause) {
 		checkpointResponder.declineCheckpoint(jobId, executionId, checkpointId, cause);
+	}
+
+	@Override
+	public void acknowledgeModification(long modificationID) {
+		modificationResponder.acknowledgeModification(jobId, executionId, modificationID);
+	}
+
+	@Override
+	public void declineModification(long modificationID, Throwable cause) {
+		modificationResponder.declineModification(jobId, executionId, modificationID, cause);
 	}
 
 	@Override

@@ -76,6 +76,7 @@ import org.apache.flink.runtime.util._
 import org.apache.flink.runtime.{FlinkActor, LeaderSessionMessageFilter, LogMessages}
 import org.apache.flink.streaming.api.graph.{StreamConfig, StreamEdge}
 import org.apache.flink.streaming.api.operators.StreamFilter
+import org.apache.flink.streaming.runtime.modification.ModificationResponder
 
 import scala.collection.JavaConverters._
 import scala.concurrent._
@@ -184,6 +185,7 @@ class TaskManager(
 
   private var connectionUtils: Option[(
     CheckpointResponder,
+    ModificationResponder,
     PartitionProducerStateChecker,
     ResultPartitionConsumableNotifier,
     TaskManagerActions)] = None
@@ -558,6 +560,7 @@ class TaskManager(
       }
 
       val (checkpointResponder,
+      modificationResponder,
       partitionStateChecker,
       resultPartitionConsumableNotifier,
       taskManagerConnection) = connectionUtils match {
@@ -678,6 +681,7 @@ class TaskManager(
         taskManagerConnection,
         inputSplitProvider,
         checkpointResponder,
+        modificationResponder,
         libCache,
         fileCache,
         config,
@@ -1150,6 +1154,8 @@ class TaskManager(
 
     val checkpointResponder = new ActorGatewayCheckpointResponder(jobManagerGateway)
 
+    val modificationResponder = new ActorGatewayModificationResponder(jobManagerGateway)
+
     val taskManagerConnection = new ActorGatewayTaskManagerActions(taskManagerGateway)
 
     val partitionStateChecker = new ActorGatewayPartitionProducerStateChecker(
@@ -1163,6 +1169,7 @@ class TaskManager(
 
     connectionUtils = Some(
       (checkpointResponder,
+        modificationResponder,
         partitionStateChecker,
         resultPartitionConsumableNotifier,
         taskManagerConnection))
@@ -1360,6 +1367,7 @@ class TaskManager(
       }
 
       val (checkpointResponder,
+        modificationResponder,
         partitionStateChecker,
         resultPartitionConsumableNotifier,
         taskManagerConnection) = connectionUtils match {
@@ -1423,6 +1431,7 @@ class TaskManager(
         taskManagerConnection,
         inputSplitProvider,
         checkpointResponder,
+        modificationResponder,
         libCache,
         fileCache,
         config,

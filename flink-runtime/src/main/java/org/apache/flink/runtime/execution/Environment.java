@@ -187,6 +187,23 @@ public interface Environment {
 	void declineCheckpoint(long checkpointId, Throwable cause);
 
 	/**
+	 * Confirms that the invokable has successfully completed all required steps for
+	 * the modification command with the give modification-ID.
+	 *
+	 * @param modificationID ID of this modification
+	 */
+	void acknowledgeModification(long modificationID);
+
+	/**
+	 * Declines a modification. This tells the modification coordinator that this task will
+	 * not be able to successfully complete a certain modification.
+	 *
+	 * @param modificationID The ID of the declined modification.
+	 * @param cause An optional reason why the checkpoint was declined.
+	 */
+	void declineModification(long modificationID, Throwable cause);
+
+	/**
 	 * Marks task execution failed for an external reason (a reason other than the task code itself
 	 * throwing an exception). If the task is already in a terminal state
 	 * (such as FINISHED, CANCELED, FAILED), or if the task is already canceling this does nothing.

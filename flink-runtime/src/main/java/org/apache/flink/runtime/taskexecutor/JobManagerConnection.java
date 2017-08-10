@@ -26,6 +26,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionConsumableNo
 import org.apache.flink.runtime.jobmaster.JobMasterGateway;
 import org.apache.flink.runtime.taskmanager.CheckpointResponder;
 import org.apache.flink.runtime.taskmanager.TaskManagerActions;
+import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.Preconditions;
 
 import java.util.UUID;
@@ -53,6 +54,9 @@ public class JobManagerConnection {
 	// Checkpoint responder for the specific job manager
 	private final CheckpointResponder checkpointResponder;
 
+	// Modification responder for the specific job manager
+	private final ModificationResponder modificationResponder;
+
 	// Library cache manager connected to the specific job manager
 	private final LibraryCacheManager libraryCacheManager;
 
@@ -69,6 +73,7 @@ public class JobManagerConnection {
 		UUID leaderId,
 		TaskManagerActions taskManagerActions,
 		CheckpointResponder checkpointResponder,
+		ModificationResponder modificationResponder,
 		LibraryCacheManager libraryCacheManager,
 		ResultPartitionConsumableNotifier resultPartitionConsumableNotifier,
 		PartitionProducerStateChecker partitionStateChecker) {
@@ -78,6 +83,7 @@ public class JobManagerConnection {
 		this.jobMasterGateway = Preconditions.checkNotNull(jobMasterGateway);
 		this.taskManagerActions = Preconditions.checkNotNull(taskManagerActions);
 		this.checkpointResponder = Preconditions.checkNotNull(checkpointResponder);
+		this.modificationResponder = Preconditions.checkNotNull(modificationResponder);
 		this.libraryCacheManager = Preconditions.checkNotNull(libraryCacheManager);
 		this.resultPartitionConsumableNotifier = Preconditions.checkNotNull(resultPartitionConsumableNotifier);
 		this.partitionStateChecker = Preconditions.checkNotNull(partitionStateChecker);
@@ -105,6 +111,10 @@ public class JobManagerConnection {
 
 	public CheckpointResponder getCheckpointResponder() {
 		return checkpointResponder;
+	}
+
+	public ModificationResponder getModificationResponder() {
+		return modificationResponder;
 	}
 
 	public LibraryCacheManager getLibraryCacheManager() {

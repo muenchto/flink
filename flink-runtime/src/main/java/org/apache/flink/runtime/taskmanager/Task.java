@@ -69,6 +69,7 @@ import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateHandles;
+import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
@@ -196,6 +197,9 @@ public class Task implements Runnable, TaskActions {
 	/** Checkpoint notifier used to communicate with the CheckpointCoordinator */
 	private final CheckpointResponder checkpointResponder;
 
+	/** Modification notifier used to communicate with the ModificationCoordinator */
+	private final ModificationResponder modificationResponder;
+
 	/** All listener that want to be notified about changes in the task's execution state */
 	private final List<TaskExecutionStateListener> taskExecutionStateListeners;
 
@@ -279,6 +283,7 @@ public class Task implements Runnable, TaskActions {
 		TaskManagerActions taskManagerActions,
 		InputSplitProvider inputSplitProvider,
 		CheckpointResponder checkpointResponder,
+		ModificationResponder modificationResponder,
 		LibraryCacheManager libraryCache,
 		FileCache fileCache,
 		TaskManagerRuntimeInfo taskManagerConfig,
@@ -326,6 +331,7 @@ public class Task implements Runnable, TaskActions {
 
 		this.inputSplitProvider = Preconditions.checkNotNull(inputSplitProvider);
 		this.checkpointResponder = Preconditions.checkNotNull(checkpointResponder);
+		this.modificationResponder = Preconditions.checkNotNull(modificationResponder);
 		this.taskManagerActions = checkNotNull(taskManagerActions);
 
 		this.libraryCache = Preconditions.checkNotNull(libraryCache);
@@ -706,7 +712,7 @@ public class Task implements Runnable, TaskActions {
 				memoryManager, ioManager, broadcastVariableManager,
 				accumulatorRegistry, kvStateRegistry, inputSplitProvider,
 				distributedCacheEntries, writers, inputGates,
-				checkpointResponder, taskManagerConfig, metrics, this);
+				checkpointResponder, modificationResponder, taskManagerConfig, metrics, this);
 
 			// let the task code create its readers and writers
 			invokable.setEnvironment(env);
