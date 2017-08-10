@@ -72,10 +72,7 @@ import org.apache.flink.runtime.taskexecutor.exceptions.SlotAllocationException;
 import org.apache.flink.runtime.taskexecutor.exceptions.SlotOccupiedException;
 import org.apache.flink.runtime.taskexecutor.exceptions.TaskException;
 import org.apache.flink.runtime.taskexecutor.exceptions.TaskSubmissionException;
-import org.apache.flink.runtime.taskexecutor.rpc.RpcCheckpointResponder;
-import org.apache.flink.runtime.taskexecutor.rpc.RpcInputSplitProvider;
-import org.apache.flink.runtime.taskexecutor.rpc.RpcPartitionStateChecker;
-import org.apache.flink.runtime.taskexecutor.rpc.RpcResultPartitionConsumableNotifier;
+import org.apache.flink.runtime.taskexecutor.rpc.*;
 import org.apache.flink.runtime.taskexecutor.slot.SlotActions;
 import org.apache.flink.runtime.taskexecutor.slot.SlotNotActiveException;
 import org.apache.flink.runtime.taskexecutor.slot.SlotNotFoundException;
@@ -87,6 +84,7 @@ import org.apache.flink.runtime.taskmanager.Task;
 import org.apache.flink.runtime.taskmanager.TaskExecutionState;
 import org.apache.flink.runtime.taskmanager.TaskManagerActions;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 
@@ -351,6 +349,7 @@ public class TaskExecutor extends RpcEndpoint<TaskExecutorGateway> {
 
 		TaskManagerActions taskManagerActions = jobManagerConnection.getTaskManagerActions();
 		CheckpointResponder checkpointResponder = jobManagerConnection.getCheckpointResponder();
+		ModificationResponder modificationResponder = jobManagerConnection.getModificationResponder();
 		LibraryCacheManager libraryCache = jobManagerConnection.getLibraryCacheManager();
 		ResultPartitionConsumableNotifier resultPartitionConsumableNotifier = jobManagerConnection.getResultPartitionConsumableNotifier();
 		PartitionProducerStateChecker partitionStateChecker = jobManagerConnection.getPartitionStateChecker();
@@ -373,6 +372,7 @@ public class TaskExecutor extends RpcEndpoint<TaskExecutorGateway> {
 			taskManagerActions,
 			inputSplitProvider,
 			checkpointResponder,
+			modificationResponder,
 			libraryCache,
 			fileCache,
 			taskManagerConfiguration,
@@ -919,6 +919,8 @@ public class TaskExecutor extends RpcEndpoint<TaskExecutorGateway> {
 
 		CheckpointResponder checkpointResponder = new RpcCheckpointResponder(jobMasterGateway);
 
+		ModificationResponder modificationResponder = new RpcModificationResponder();
+
 		InetSocketAddress blobServerAddress = new InetSocketAddress(jobMasterGateway.getHostname(), blobPort);
 
 		final LibraryCacheManager libraryCacheManager;
@@ -954,6 +956,7 @@ public class TaskExecutor extends RpcEndpoint<TaskExecutorGateway> {
 			jobManagerLeaderId,
 			taskManagerActions,
 			checkpointResponder,
+			modificationResponder,
 			libraryCacheManager,
 			resultPartitionConsumableNotifier,
 			partitionStateChecker);
