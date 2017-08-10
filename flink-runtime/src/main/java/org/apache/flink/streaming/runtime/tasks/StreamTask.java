@@ -28,6 +28,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.accumulators.Accumulator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -42,6 +44,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
+import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
@@ -63,6 +66,8 @@ import org.apache.flink.streaming.api.operators.OperatorSnapshotResult;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
+import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
+import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 import org.apache.flink.util.CollectionUtil;
@@ -596,6 +601,81 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		// notify all downstream operators that they should not wait for a barrier from us
 		synchronized (lock) {
 			operatorChain.broadcastCheckpointCancelMarker(checkpointId);
+		}
+	}
+
+	@Override
+	public void abortModification(ModificationMetaData modificationMetaData,
+								  List<JobVertexID> jobVertexIDs,
+								  Throwable cause) throws Exception {
+		LOG.debug("Aborting modification via cancel-barrier {} for task {}", modificationMetaData.getModificationID(), getName());
+
+		// notify the coordinator that we decline this checkpoint
+		getEnvironment().declineCheckpoint(modificationMetaData.getModificationID(), cause);
+
+		// notify all downstream operators that they should not wait for a barrier from us
+		synchronized (lock) {
+			operatorChain.broadcastCancelModificationEvent(modificationMetaData.getModificationID(), jobVertexIDs);
+		}
+	};
+
+	@Override
+	public boolean triggerModification(ModificationMetaData metaData, List<JobVertexID> jobVertexIDs) throws Exception {
+		try {
+
+			LOG.debug("Starting modification ({}) for {} on task {}",
+				metaData.getModificationID(), StringUtils.join(jobVertexIDs, ","), getName());
+
+			synchronized (lock) {
+				if (isRunning) {
+					// we can do a modification
+
+					// Since both state checkpointing and downstream barrier emission occurs in this
+					// lock scope, they are an atomic operation regardless of the order in which they occur.
+					// Given this, we immediately emit the checkpoint barriers, so the downstream operators
+					// can start their checkpoint work as soon as possible
+					operatorChain.broadcastStartModificationEvent(metaData.getModificationID(), jobVertexIDs);
+
+					return true;
+				}
+				else {
+					// we cannot perform our modification - let the downstream operators know that they
+					// should not wait for any input from this operator
+
+					// we cannot broadcast the modification markers on the 'operator chain', because it may not
+					// yet be created
+					final CancelModificationMarker cancelModificationMarker =
+						new CancelModificationMarker(metaData.getModificationID(), jobVertexIDs);
+
+					Exception exception = null;
+
+					for (ResultPartitionWriter output : getEnvironment().getAllWriters()) {
+						try {
+							output.writeBufferToAllChannels(EventSerializer.toBuffer(cancelModificationMarker));
+						} catch (Exception e) {
+							exception = ExceptionUtils.firstOrSuppressed(
+								new Exception("Could not send cancel checkpoint marker to downstream tasks.", e),
+								exception);
+						}
+					}
+
+					if (exception != null) {
+						throw exception;
+					}
+
+					return false;
+				}
+			}
+		} catch (Exception e) {
+			// propagate exceptions only if the task is still in "running" state
+			if (isRunning) {
+				throw new Exception("Could not perform modification " + metaData.getModificationID() +
+					" for operator " + getName() + '.', e);
+			} else {
+				LOG.debug("Could not perform modification {} for operator {} while the " +
+					"invokable was not in state running.", metaData.getModificationID(), getName(), e);
+				return false;
+			}
 		}
 	}
 

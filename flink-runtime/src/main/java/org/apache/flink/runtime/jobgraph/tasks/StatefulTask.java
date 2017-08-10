@@ -21,7 +21,11 @@ package org.apache.flink.runtime.jobgraph.tasks;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.state.TaskStateHandles;
+import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
+
+import java.util.List;
 
 /**
  * This interface must be implemented by any invokable that has recoverable state and participates
@@ -85,4 +89,24 @@ public interface StatefulTask {
 	 * @throws Exception The notification method may forward its exceptions.
 	 */
 	void notifyCheckpointComplete(long checkpointId) throws Exception;
+
+	/**
+	 * This method is called to trigger a modification of the graph.
+	 *
+	 * @param jobVertexIDs Options for performing this modification
+	 *
+	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
+	 */
+	boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs) throws Exception;
+
+	/**
+	 * This method is called to abort a modification of the graph.
+	 *
+	 * @param jobVertexIDs Options for aborting this modification
+	 *
+	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
+	 */
+	void abortModification(ModificationMetaData modificationMetaData,
+						   List<JobVertexID> jobVertexIDs,
+						   Throwable cause) throws Exception;
 }
