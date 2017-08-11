@@ -92,6 +92,9 @@ public interface StatefulTask {
 
 	/**
 	 * This method is called to trigger a modification of the graph.
+	 * This methods pauses the current task, if it contains a operator for the JobVertexID specified
+	 * by {@code jobVertexIDs} and propagates the
+	 * {@link org.apache.flink.streaming.runtime.modification.events.StartModificationMarker}.
 	 *
 	 * @param jobVertexIDs Options for performing this modification
 	 *

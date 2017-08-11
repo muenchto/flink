@@ -872,17 +872,19 @@ class JobManager(
       currentJobs.get(jobId) match {
         case Some((executionGraph, jobInfo)) =>
 
+          val modificationCoordinator = executionGraph.getModificationCoordinator
+
           val result = command match {
-            case "pause" => executionGraph.pauseMapOperator()
+            case "pause" => modificationCoordinator.pauseMapOperator()
               (true, "Pausing submitted")
 
-            case "resume" => executionGraph.resumeMapOperator()
+            case "resume" => modificationCoordinator.resumeMapOperator()
               (true, "Resuming submitted")
 
-            case "details" => val details = executionGraph.getDetails()
+            case "details" => val details = modificationCoordinator.getDetails()
               (true, details)
 
-            case "start" => executionGraph.startFilterOperator()
+            case "start" => modificationCoordinator.startFilterOperator()
               (true, "Starting new operator submitted")
 
             case _ =>

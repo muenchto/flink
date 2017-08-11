@@ -19,10 +19,12 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class CancelModificationMarker extends RuntimeEvent {
 
 	private final long modificationID;
+	private final long timestamp;
 	private final List<JobVertexID> vertexIds;
 
-	public CancelModificationMarker(long modificationID, List<JobVertexID> vertexIDs) {
+	public CancelModificationMarker(long modificationID, long timestamp, List<JobVertexID> vertexIDs) {
 		this.modificationID = modificationID;
+		this.timestamp = timestamp;
 		this.vertexIds = checkNotNull(vertexIDs);
 	}
 
@@ -32,6 +34,10 @@ public class CancelModificationMarker extends RuntimeEvent {
 
 	public List<JobVertexID> getJobVertexIDs() {
 		return vertexIds;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
 	}
 
 	// ------------------------------------------------------------------------
@@ -59,6 +65,7 @@ public class CancelModificationMarker extends RuntimeEvent {
 
 	@Override
 	public String toString() {
-		return String.format("CancelModificationMarker with ids: %d @ %s", modificationID, StringUtils.join(vertexIds, ","));
+		return String.format("CancelModificationMarker with ids: %d @ %s - %d",
+			modificationID, StringUtils.join(vertexIds, ","), timestamp);
 	}
 }

@@ -123,9 +123,10 @@ public class EventSerializer {
 			ByteBuffer buf = ByteBuffer.allocate(12);
 			buf.putInt(0, MODIFICATION_START_EVENT);
 			buf.putLong(4, marker.getModificationID());
-			buf.putInt(12, jobVertexIDs.size());
+			buf.putLong(12, marker.getTimestamp());
+			buf.putInt(20, jobVertexIDs.size());
 
-			for (int index = 16, i = 0; i < jobVertexIDs.size(); i++, index += 16) {
+			for (int index = 24, i = 0; i < jobVertexIDs.size(); i++, index += 16) {
 				JobVertexID vertexID = jobVertexIDs.get(i);
 				buf.putLong(index, vertexID.getLowerPart());
 				buf.putLong(index + 8, vertexID.getUpperPart());
@@ -141,9 +142,10 @@ public class EventSerializer {
 			ByteBuffer buf = ByteBuffer.allocate(12);
 			buf.putInt(0, MODIFICATION_CANCEL_EVENT);
 			buf.putLong(4, marker.getModificationID());
-			buf.putInt(12, jobVertexIDs.size());
+			buf.putLong(12, marker.getTimestamp());
+			buf.putInt(20, jobVertexIDs.size());
 
-			for (int index = 16, i = 0; i < jobVertexIDs.size(); i++, index += 16) {
+			for (int index = 24, i = 0; i < jobVertexIDs.size(); i++, index += 16) {
 				JobVertexID vertexID = jobVertexIDs.get(i);
 				buf.putLong(index, vertexID.getLowerPart());
 				buf.putLong(index + 8, vertexID.getUpperPart());
