@@ -36,6 +36,8 @@ import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
+import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
+import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -186,7 +188,18 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 				else if (next.getEvent().getClass() == CancelCheckpointMarker.class) {
 					processCancellationBarrier((CancelCheckpointMarker) next.getEvent());
 				}
-				else {
+				else if (next.getEvent().getClass() == StartModificationMarker.class) {
+					LOG.info("Received {}", StartModificationMarker.class);
+
+					notifyModification((StartModificationMarker) next.getEvent());
+
+					return next;
+
+				} else if (next.getEvent().getClass() == CancelCheckpointMarker.class) {
+					LOG.info("Received {}", CancelCheckpointMarker.class);
+
+					return next;
+				} else {
 					if (next.getEvent().getClass() == EndOfPartitionEvent.class) {
 						processEndOfPartition();
 					}
@@ -363,6 +376,20 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 			releaseBlocksAndResetBarriers();
 		}
 	}
+
+	private void notifyModification(StartModificationMarker startModificationMarker) throws Exception {
+		if (toNotifyOnCheckpoint != null) {
+
+			ModificationMetaData checkpointMetaData =
+				new ModificationMetaData(startModificationMarker.getModificationID(), startModificationMarker.getTimestamp());
+
+			toNotifyOnCheckpoint.triggerModification(checkpointMetaData, startModificationMarker.getJobVertexIDs());
+
+		} else {
+			throw new NullPointerException("toNotifyOnCheckpoint must not be null");
+		}
+	}
+
 
 	private void notifyCheckpoint(CheckpointBarrier checkpointBarrier) throws Exception {
 		if (toNotifyOnCheckpoint != null) {

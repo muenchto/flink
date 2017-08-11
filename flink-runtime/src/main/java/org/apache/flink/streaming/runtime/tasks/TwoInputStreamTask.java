@@ -27,12 +27,16 @@ import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
 import org.apache.flink.streaming.runtime.io.StreamTwoInputProcessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link StreamTask} for executing a {@link TwoInputStreamOperator}.
  */
 @Internal
 public class TwoInputStreamTask<IN1, IN2, OUT> extends StreamTask<OUT, TwoInputStreamOperator<IN1, IN2, OUT>> {
+
+	private static final Logger LOG = LoggerFactory.getLogger(TwoInputStreamTask.class);
 
 	private StreamTwoInputProcessor<IN1, IN2> inputProcessor;
 
@@ -91,6 +95,8 @@ public class TwoInputStreamTask<IN1, IN2, OUT> extends StreamTask<OUT, TwoInputS
 		while (running && inputProcessor.processInput()) {
 			// all the work happens in the "processInput" method
 		}
+
+		LOG.info("Stopped {} with pausedForModification={}", getName(), pausedForModification);
 	}
 
 	@Override
@@ -103,5 +109,11 @@ public class TwoInputStreamTask<IN1, IN2, OUT> extends StreamTask<OUT, TwoInputS
 	@Override
 	protected void cancelTask() {
 		running = false;
+	}
+
+	@Override
+	protected boolean pauseInputs() {
+		pausedForModification = true;
+		return false;
 	}
 }

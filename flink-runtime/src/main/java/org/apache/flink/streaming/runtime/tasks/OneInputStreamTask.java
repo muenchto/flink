@@ -21,7 +21,6 @@ package org.apache.flink.streaming.runtime.tasks;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.io.StreamInputProcessor;
@@ -29,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * A {@link StreamTask} for executing a {@link OneInputStreamOperator}.
@@ -88,6 +86,12 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 		while (running && inputProcessor.processInput()) {
 			// all the work happens in the "processInput" method
 		}
+
+		if (pausedForModification) {
+			LOG.info("{} - Paused from migration command", getName());
+		} else {
+			LOG.info("{} - Stopped, but not from migration command", getName());
+		}
 	}
 
 	@Override
@@ -110,5 +114,14 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 	@Override
 	protected void resumeTask()  throws Exception {
 		running = true; // TODO Actually resuming the task
+	}
+
+	@Override
+	protected boolean pauseInputs() {
+
+		running = false;
+		pausedForModification = true;
+
+		return true;
 	}
 }
