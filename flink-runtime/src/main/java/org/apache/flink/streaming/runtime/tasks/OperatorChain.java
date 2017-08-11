@@ -45,6 +45,7 @@ import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.io.StreamRecordWriter;
+import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.streaming.runtime.partitioner.ConfigurableStreamPartitioner;
@@ -219,9 +220,10 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		}
 	}
 
-	public void broadcastStartModificationEvent(long id, List<JobVertexID> vertexIDS) throws IOException {
+	public void broadcastStartModificationEvent(ModificationMetaData metaData, List<JobVertexID> vertexIDS) throws IOException {
 		try {
-			StartModificationMarker startModificationMarker = new StartModificationMarker(id, vertexIDS);
+			StartModificationMarker startModificationMarker =
+				new StartModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), vertexIDS);
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
 				streamOutput.broadcastEvent(startModificationMarker);
 			}
@@ -231,9 +233,10 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		}
 	}
 
-	public void broadcastCancelModificationEvent(long id, List<JobVertexID> vertexIDS) throws IOException {
+	public void broadcastCancelModificationEvent(ModificationMetaData metaData, List<JobVertexID> vertexIDS) throws IOException {
 		try {
-			CancelModificationMarker cancelModificationMarker = new CancelModificationMarker(id, vertexIDS);
+			CancelModificationMarker cancelModificationMarker =
+				new CancelModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), vertexIDS);
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
 				streamOutput.broadcastEvent(cancelModificationMarker);
 			}

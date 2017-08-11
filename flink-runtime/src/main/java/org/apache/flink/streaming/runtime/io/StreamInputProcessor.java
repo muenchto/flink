@@ -48,6 +48,7 @@ import org.apache.flink.runtime.plugable.NonReusingDeserializationDelegate;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -223,14 +224,14 @@ public class StreamInputProcessor<IN> {
 				}
 			}
 
-			final BufferOrEvent bufferOrEvent;
+			final BufferOrEvent bufferOrEvent = barrierHandler.getNextNonBlocked();
 
-			try {
-				bufferOrEvent = barrierHandler.getNextNonBlocked();
-			} catch (InterruptedException interruptedException) {
-				LOG.info("Catched interruption in onProcess"); // TODO Masterthesis
-				return false;
-			}
+//			try {
+//				bufferOrEvent = barrierHandler.getNextNonBlocked();
+//			} catch (InterruptedException interruptedException) {
+//				LOG.info("Catched interruption in onProcess"); // TODO Masterthesis - old approach
+//				return false;
+//			}
 
 			if (bufferOrEvent != null) {
 				if (bufferOrEvent.isBuffer()) {
@@ -241,6 +242,13 @@ public class StreamInputProcessor<IN> {
 				else {
 					// Event received
 					final AbstractEvent event = bufferOrEvent.getEvent();
+
+					if (event.getClass() == StartModificationMarker.class) {
+						// Pause execution and exit loop
+						LOG.info("Registered StartModificationMarker - Stopping {}", this);
+						return false;
+					}
+
 					if (event.getClass() != EndOfPartitionEvent.class) {
 						throw new IOException("Unexpected event: " + event);
 					}

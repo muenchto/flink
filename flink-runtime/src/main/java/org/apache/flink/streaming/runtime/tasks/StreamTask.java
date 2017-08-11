@@ -175,7 +175,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	/** Flag to mark this task as canceled. */
 	private volatile boolean canceled;
 
-	volatile boolean resumeFromMigration;
+	protected volatile boolean pausedForModification = false;
 
 	/** Thread pool for async snapshot workers. */
 	private ExecutorService asyncOperationsThreadPool;
@@ -227,11 +227,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		try {
 
 			// -------- Initialize ---------
-			LOG.info("Initializing {} with migration {}.", getName(), resumeFromMigration);
+			LOG.info("Initializing {} with migration {}.", getName(), pausedForModification);
 
 			configuration = new StreamConfig(getTaskConfiguration());
 
-			if (!resumeFromMigration) {
+			if (pausedForModification) {
 
 				asyncOperationsThreadPool = Executors.newCachedThreadPool();
 
@@ -271,7 +271,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				// so that we avoid race conditions in the case that initializeState()
 				// registers a timer, that fires before the open() is called.
 
-				if (!resumeFromMigration) {
+				if (pausedForModification) { // TODO Masterthesis Necessary?
 					initializeState();
 				}
 
@@ -293,6 +293,18 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			// make sure the "clean shutdown" is not attempted
 			if (canceled) {
 				throw new CancelTaskException();
+			}
+
+			synchronized (lock) {
+
+				isRunning = false;
+
+				if (pausedForModification) {
+					LOG.debug("Paused task {} for migration", getName());
+					return;
+				} else {
+					LOG.debug("Task {} stopped but not for migration", getName());
+				}
 			}
 
 			// make sure all timers finish and no new timers can come
@@ -376,7 +388,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	@Override
 	public void resume() throws Exception {
 		isRunning = true;
-		resumeFromMigration = true;
+		pausedForModification = false;
 	}
 
 	@Override
@@ -611,30 +623,48 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		LOG.debug("Aborting modification via cancel-barrier {} for task {}", modificationMetaData.getModificationID(), getName());
 
 		// notify the coordinator that we decline this checkpoint
-		getEnvironment().declineCheckpoint(modificationMetaData.getModificationID(), cause);
+		getEnvironment().declineModification(modificationMetaData.getModificationID(), cause);
 
 		// notify all downstream operators that they should not wait for a barrier from us
 		synchronized (lock) {
-			operatorChain.broadcastCancelModificationEvent(modificationMetaData.getModificationID(), jobVertexIDs);
+			operatorChain.broadcastCancelModificationEvent(modificationMetaData, jobVertexIDs);
 		}
-	};
+	}
+
+	protected abstract boolean pauseInputs();
 
 	@Override
 	public boolean triggerModification(ModificationMetaData metaData, List<JobVertexID> jobVertexIDs) throws Exception {
 		try {
 
-			LOG.debug("Starting modification ({}) for {} on task {}",
+			LOG.info("Starting modification ({}) for {} on task {}",
 				metaData.getModificationID(), StringUtils.join(jobVertexIDs, ","), getName());
 
 			synchronized (lock) {
 				if (isRunning) {
 					// we can do a modification
 
+					if (jobVertexIDs.contains(getEnvironment().getJobVertexId())) {
+						LOG.info("Found {} in vertices for {}, that should be modified. Attempting to pause operator",
+							getEnvironment().getJobVertexId(), getName());
+
+						if (pauseInputs()) {
+							getEnvironment().acknowledgeModification(metaData.getModificationID());
+						} else {
+							getEnvironment().declineModification(metaData.getModificationID(),
+								new Throwable("Failed to pause inputs for " + getName()));
+						}
+
+					} else {
+						LOG.info("Could not find {} in vertices for {}, that should be modified. Not attempting to pause operator",
+							getEnvironment().getJobVertexId(), getName());
+					}
+
 					// Since both state checkpointing and downstream barrier emission occurs in this
 					// lock scope, they are an atomic operation regardless of the order in which they occur.
 					// Given this, we immediately emit the checkpoint barriers, so the downstream operators
 					// can start their checkpoint work as soon as possible
-					operatorChain.broadcastStartModificationEvent(metaData.getModificationID(), jobVertexIDs);
+					operatorChain.broadcastStartModificationEvent(metaData, jobVertexIDs);
 
 					return true;
 				}
@@ -645,7 +675,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					// we cannot broadcast the modification markers on the 'operator chain', because it may not
 					// yet be created
 					final CancelModificationMarker cancelModificationMarker =
-						new CancelModificationMarker(metaData.getModificationID(), jobVertexIDs);
+						new CancelModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), jobVertexIDs);
 
 					Exception exception = null;
 
