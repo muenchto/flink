@@ -18,10 +18,12 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class StartModificationMarker extends RuntimeEvent {
 
 	private final long modificationID;
+	private final long timestamp;
 	private final List<JobVertexID> vertexIds;
 
-	public StartModificationMarker(long modificationID, List<JobVertexID> vertexIDs) {
+	public StartModificationMarker(long modificationID, long timestamp, List<JobVertexID> vertexIDs) {
 		this.modificationID = modificationID;
+		this.timestamp = timestamp;
 		this.vertexIds = checkNotNull(vertexIDs);
 	}
 
@@ -31,6 +33,10 @@ public class StartModificationMarker extends RuntimeEvent {
 
 	public List<JobVertexID> getJobVertexIDs() {
 		return vertexIds;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
 	}
 
 	// ------------------------------------------------------------------------
@@ -58,6 +64,7 @@ public class StartModificationMarker extends RuntimeEvent {
 
 	@Override
 	public String toString() {
-		return String.format("StartModificationMarker %d with ids: %s", modificationID, StringUtils.join(vertexIds, ","));
+		return String.format("StartModificationMarker %d with ids: %s @ %d",
+			modificationID, StringUtils.join(vertexIds, ","), timestamp);
 	}
 }

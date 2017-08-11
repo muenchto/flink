@@ -64,6 +64,7 @@ import org.apache.flink.runtime.query.KvStateLocationRegistry;
 import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.runtime.taskmanager.TaskExecutionState;
 import org.apache.flink.runtime.util.SerializedThrowable;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkException;
@@ -258,6 +259,8 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 	/** The coordinator for checkpoints, if snapshot checkpoints are enabled */
 	private CheckpointCoordinator checkpointCoordinator;
 
+	private ModificationCoordinator modificationCoordinator;
+
 	/** Checkpoint stats tracker separate from the coordinator in order to be
 	 * available after archiving. */
 	private CheckpointStatsTracker checkpointStatsTracker;
@@ -364,6 +367,8 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 
 		this.globalModVersion = 1L;
 
+		this.modificationCoordinator = new ModificationCoordinator(this, rpcCallTimeout);
+
 		// the failover strategy must be instantiated last, so that the execution graph
 		// is ready by the time the failover strategy sees it
 		this.failoverStrategy = checkNotNull(failoverStrategyFactory.create(this), "null failover strategy");
@@ -396,6 +401,30 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 
 	public ScheduleMode getScheduleMode() {
 		return scheduleMode;
+	}
+
+	public JobInformation getJobInformation() {
+		return jobInformation;
+	}
+
+	public ConcurrentHashMap<JobVertexID, ExecutionJobVertex> getTasks() {
+		return tasks;
+	}
+
+	public List<ExecutionJobVertex> getVerticesInCreationOrder() {
+		return verticesInCreationOrder;
+	}
+
+	public void addNumVertices(int numVertices) {
+		this.numVerticesTotal += numVerticesTotal;
+	}
+
+	public AtomicInteger getVerticesFinished() {
+		return verticesFinished;
+	}
+
+	public ModificationCoordinator getModificationCoordinator() {
+		return modificationCoordinator;
 	}
 
 	@Override
@@ -657,6 +686,10 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 		return Collections.unmodifiableMap(this.intermediateResults);
 	}
 
+	public Map<IntermediateDataSetID, IntermediateResult> getIntermediateResults() {
+		return this.intermediateResults;
+	}
+
 	@Override
 	public Iterable<ExecutionVertex> getAllExecutionVertices() {
 		return new Iterable<ExecutionVertex>() {
@@ -819,225 +852,6 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 				ejv.scheduleAll(slotProvider, allowQueuedScheduling);
 			}
 		}
-	}
-
-	public void pauseMapOperator() {
-		ExecutionJobVertex source = findMap();
-
-		ExecutionVertex[] taskVertices = source.getTaskVertices();
-
-		for (ExecutionVertex vertex : taskVertices) {
-			Execution execution = vertex.getCurrentExecutionAttempt();
-
-			execution.getAssignedResource()
-				.getTaskManagerGateway()
-				.pauseTask(execution.getAttemptId(), rpcCallTimeout);
-		}
-	}
-
-	public void resumeMapOperator() {
-		ExecutionJobVertex source = findMap();
-
-		ExecutionVertex[] taskVertices = source.getTaskVertices();
-
-		for (ExecutionVertex vertex : taskVertices) {
-			Execution execution = vertex.getCurrentExecutionAttempt();
-
-			execution.getAssignedResource()
-				.getTaskManagerGateway()
-				.resumeTask(execution.getAttemptId(), rpcCallTimeout);
-		}
-	}
-
-	public void startFilterOperator() {
-
-		ExecutionJobVertex source = findMap();
-
-		ExecutionVertex[] sourceTaskVertices = source.getTaskVertices();
-
-		if (sourceTaskVertices.length != 1) {
-			failGlobal(new RuntimeException("Failed to find sourceTaskVertex"));
-		}
-
-		Execution execution = sourceTaskVertices[0].getCurrentExecutionAttempt();
-
-		ExecutionJobVertex executionJobVertex = buildFilterExecution();
-
-		boolean b = executionJobVertex.getTaskVertices()[0].getCurrentExecutionAttempt()
-			.scheduleForRuntimeExecution(slotProvider, allowQueuedScheduling, execution.getAttemptId());
-
-
-//		for (ExecutionVertex vertex : sourceTaskVertices) {
-//			Execution execution = vertex.getCurrentExecutionAttempt();
-//
-//			execution.getVertex().createDeploymentDescriptor();
-//
-//			execution.getAssignedResource()
-//				.getTaskManagerGateway()
-//				.introduceNewOperator(execution.getAttemptId(), slot.getAllocatedSlot().getSlotAllocationId(), slot.getRoot().getSlotNumber(), rpcCallTimeout);
-//		}
-	}
-
-
-	public String getDetails() throws JobException {
-
-		StringBuilder currentPlan = new StringBuilder();
-
-		currentPlan.append(jsonPlan).append("\n");
-
-		for (ExecutionJobVertex ejv : verticesInCreationOrder) {
-			currentPlan.append(ejv.generateDebugString()).append("\n");
-		}
-
-		currentPlan.append("JobInfo: ").append(jobInformation).append(jobInformation.getJobConfiguration()).append("\n");
-
-		for (Map.Entry<JobVertexID, ExecutionJobVertex> vertex: tasks.entrySet()) {
-			currentPlan
-				.append("Vertex:")
-				.append(vertex.getKey()).append(" - ")
-				.append(vertex.getValue().generateDebugString())
-				.append(vertex.getValue().getAggregateState())
-				.append(" Outputs: ")
-				.append(Arrays.toString(vertex.getValue().getProducedDataSets()))
-				.append(" JobVertex: ")
-				.append(vertex.getValue().getJobVertex())
-				.append(" Inputs: ")
-				.append(Joiner.on(",").join(vertex.getValue().getInputs()))
-				.append(" IntermediateResultPartition: ");
-
-			for (IntermediateResult result:vertex.getValue().getInputs()) {
-				for (IntermediateResultPartition partition : result.getPartitions()) {
-					currentPlan
-						.append(" PartitionId: ")
-						.append(partition.getPartitionId())
-						.append(" PartitionNumber: ")
-						.append(partition.getPartitionNumber())
-						.append("\n");
-				}
-			}
-
-			currentPlan.append("\n");
-		}
-
-		for (Map.Entry<ExecutionAttemptID, Execution> exec: currentExecutions.entrySet()) {
-			currentPlan.append(exec.getKey())
-				.append(exec.getValue())
-				.append(exec.getValue().getVertexWithAttempt())
-				.append(exec.getValue().getAssignedResourceLocation())
-				.append(" InvokableName: ")
-				.append(exec.getValue().getVertex().getJobVertex().getJobVertex().getInvokableClassName())
-				.append("\n");
-		}
-
-		currentPlan.append("numVerticesTotal: ").append(numVerticesTotal);
-		currentPlan.append("finishedVertices: ").append(verticesFinished);
-
-		return currentPlan.toString();
-	}
-
-	private ExecutionJobVertex findSource() {
-
-		ExecutionJobVertex executionJobVertex = null;
-
-		for (ExecutionJobVertex ejv : verticesInCreationOrder) {
-			if (ejv.getJobVertex().getName().toLowerCase().contains("source")) {
-				executionJobVertex =  ejv;
-			}
-		}
-
-		if (executionJobVertex == null) {
-			failGlobal(new ExecutionGraphException("Could not find Source"));
-		}
-
-		List<IntermediateDataSet> producedDataSets = executionJobVertex.getJobVertex().getProducedDataSets();
-
-		if (producedDataSets.size() != 1) {
-			failGlobal(new ExecutionGraphException("Source has not one producing output dataset"));
-		}
-
-		return executionJobVertex;
-	}
-
-	private ExecutionJobVertex findMap() {
-
-		ExecutionJobVertex executionJobVertex = null;
-
-		for (ExecutionJobVertex ejv : verticesInCreationOrder) {
-			if (ejv.getJobVertex().getName().toLowerCase().contains("map")) {
-				executionJobVertex =  ejv;
-			}
-		}
-
-		if (executionJobVertex == null) {
-			failGlobal(new ExecutionGraphException("Could not find map"));
-		}
-
-		List<JobEdge> producedDataSets = executionJobVertex.getJobVertex().getInputs();
-
-		if (producedDataSets.size() != 1) {
-			failGlobal(new ExecutionGraphException("Map has not one consuming input dataset"));
-		}
-
-		return executionJobVertex;
-	}
-
-	private ExecutionJobVertex buildFilterExecution() {
-
-		JobVertex jobVertex = new JobVertex("IntroducedFilterOperator", new JobVertexID());
-		jobVertex.setParallelism(1);
-		jobVertex.setInvokableClass(OneInputStreamTask.class);
-
-		IntermediateDataSet intermediateDataSet = new IntermediateDataSet(
-			new IntermediateDataSetID(),
-			ResultPartitionType.PIPELINED,
-			jobVertex);
-
-		LOG.info("Created intermediateDataSet with id: " + intermediateDataSet.getId());
-
-		jobVertex.createAndAddResultDataSet(intermediateDataSet.getId(), ResultPartitionType.PIPELINED);
-
-		ExecutionJobVertex source = findSource();
-
-		IntermediateDataSet producedDataSets = source.getJobVertex().getProducedDataSets().get(0);
-		jobVertex.connectDataSetAsInput(producedDataSets, DistributionPattern.ALL_TO_ALL);
-
-		try {
-			ExecutionJobVertex vertex =
-				new ExecutionJobVertex(this,
-					jobVertex,
-					1,
-					rpcCallTimeout,
-					globalModVersion,
-					System.currentTimeMillis());
-
-			vertex.connectToPredecessorsRuntime(intermediateResults);
-
-			// TODO Add produced datasets data sets to intermediateResults
-//			for (IntermediateResult res : ejv.getProducedDataSets()) {
-//				IntermediateResult previousDataSet = this.intermediateResults.putIfAbsent(res.getId(), res);
-//				if (previousDataSet != null) {
-//					throw new JobException(String.format("Encountered two intermediate data set with ID %s : previous=[%s] / new=[%s]",
-//						res.getId(), res, previousDataSet));
-//				}
-//			}
-
-			ExecutionJobVertex previousTask = this.tasks.putIfAbsent(jobVertex.getID(), vertex);
-			if (previousTask != null) {
-				throw new JobException(String.format("Encountered two job vertices with ID %s : previous=[%s] / new=[%s]",
-					jobVertex.getID(), vertex, previousTask));
-			}
-
-			this.verticesInCreationOrder.add(vertex);
-			this.numVerticesTotal += vertex.getParallelism();
-
-			// TODO Add to failover strategy
-
-			return vertex;
-		} catch (JobException e) {
-			failGlobal(e);
-		}
-
-		return null;
 	}
 
 	/**
@@ -1452,7 +1266,7 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 	 * and is used to disambiguate concurrent modifications between local and global
 	 * failover actions.
 	 */
-	long getGlobalModVersion() {
+	public long getGlobalModVersion() {
 		return globalModVersion;
 	}
 
