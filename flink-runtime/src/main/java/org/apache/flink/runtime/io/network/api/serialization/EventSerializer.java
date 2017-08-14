@@ -40,6 +40,7 @@ import org.apache.flink.util.InstantiationUtil;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.flink.util.Preconditions;
@@ -120,7 +121,10 @@ public class EventSerializer {
 
 			List<JobVertexID> jobVertexIDs = marker.getJobVertexIDs();
 
-			ByteBuffer buf = ByteBuffer.allocate(12);
+			// 24 for all base field and dynamic size for the list of objects
+			int bufferSize = jobVertexIDs.size() * 16 + 24;
+
+			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
 			buf.putInt(0, MODIFICATION_START_EVENT);
 			buf.putLong(4, marker.getModificationID());
 			buf.putLong(12, marker.getTimestamp());
@@ -139,7 +143,10 @@ public class EventSerializer {
 
 			List<JobVertexID> jobVertexIDs = marker.getJobVertexIDs();
 
-			ByteBuffer buf = ByteBuffer.allocate(12);
+			// 24 for all base field and dynamic size for the list of objects
+			int bufferSize = jobVertexIDs.size() * 16 + 24;
+
+			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
 			buf.putInt(0, MODIFICATION_CANCEL_EVENT);
 			buf.putLong(4, marker.getModificationID());
 			buf.putLong(12, marker.getTimestamp());
@@ -197,6 +204,10 @@ public class EventSerializer {
 					return eventClass.equals(EndOfSuperstepEvent.class);
 				case CANCEL_CHECKPOINT_MARKER_EVENT:
 					return eventClass.equals(CancelCheckpointMarker.class);
+				case MODIFICATION_START_EVENT:
+					return eventClass.equals(StartModificationMarker.class);
+				case MODIFICATION_CANCEL_EVENT:
+					return eventClass.equals(CancelModificationMarker.class);
 				case OTHER_EVENT:
 					try {
 						final DataInputDeserializer deserializer = new DataInputDeserializer(buffer);
@@ -274,8 +285,39 @@ public class EventSerializer {
 			else if (type == CANCEL_CHECKPOINT_MARKER_EVENT) {
 				long id = buffer.getLong();
 				return new CancelCheckpointMarker(id);
-			}
-			else if (type == OTHER_EVENT) {
+			} else if (type == MODIFICATION_START_EVENT) {
+
+				long modificationID = buffer.getLong();
+				long timestamp = buffer.getLong();
+				int size = buffer.getInt();
+
+				List<JobVertexID> ids = new ArrayList<>(size);
+
+				for (int i = 0; i < size; i++) {
+					long lower = buffer.getLong();
+					long upper = buffer.getLong();
+					ids.add(new JobVertexID(lower, upper));
+				}
+
+				return new StartModificationMarker(modificationID, timestamp, ids);
+
+			} else if (type == MODIFICATION_CANCEL_EVENT) {
+
+				long modificationID = buffer.getLong();
+				long timestamp = buffer.getLong();
+				int size = buffer.getInt();
+
+				List<JobVertexID> ids = new ArrayList<>(size);
+
+				for (int i = 0; i < size; i++) {
+					long lower = buffer.getLong();
+					long upper = buffer.getLong();
+					ids.add(new JobVertexID(lower, upper));
+				}
+
+				return new CancelModificationMarker(modificationID, timestamp, ids);
+
+			} else if (type == OTHER_EVENT) {
 				try {
 					final DataInputDeserializer deserializer = new DataInputDeserializer(buffer);
 					final String className = deserializer.readUTF();
@@ -283,25 +325,21 @@ public class EventSerializer {
 					final Class<? extends AbstractEvent> clazz;
 					try {
 						clazz = classLoader.loadClass(className).asSubclass(AbstractEvent.class);
-					}
-					catch (ClassNotFoundException e) {
+					} catch (ClassNotFoundException e) {
 						throw new IOException("Could not load event class '" + className + "'.", e);
-					}
-					catch (ClassCastException e) {
+					} catch (ClassCastException e) {
 						throw new IOException("The class '" + className + "' is not a valid subclass of '"
-								+ AbstractEvent.class.getName() + "'.", e);
+							+ AbstractEvent.class.getName() + "'.", e);
 					}
 
 					final AbstractEvent event = InstantiationUtil.instantiate(clazz, AbstractEvent.class);
 					event.read(deserializer);
 
 					return event;
-				}
-				catch (Exception e) {
+				} catch (Exception e) {
 					throw new IOException("Error while deserializing or instantiating event.", e);
 				}
-			}
-			else {
+			} else {
 				throw new IOException("Corrupt byte stream for event");
 			}
 		}

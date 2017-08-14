@@ -231,7 +231,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 			configuration = new StreamConfig(getTaskConfiguration());
 
-			if (pausedForModification) {
+			if (!pausedForModification) {
 
 				asyncOperationsThreadPool = Executors.newCachedThreadPool();
 
@@ -271,7 +271,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				// so that we avoid race conditions in the case that initializeState()
 				// registers a timer, that fires before the open() is called.
 
-				if (pausedForModification) { // TODO Masterthesis Necessary?
+				if (!pausedForModification) { // TODO Masterthesis Necessary?
 					initializeState();
 				}
 
