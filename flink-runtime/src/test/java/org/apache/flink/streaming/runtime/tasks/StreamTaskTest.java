@@ -83,6 +83,7 @@ import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.operators.StreamCheckpointedOperator;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.operators.StreamSource;
+import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 import org.apache.flink.util.ExceptionUtils;
@@ -806,6 +807,7 @@ public class StreamTaskTest extends TestLogger {
 			mock(TaskManagerActions.class),
 			mock(InputSplitProvider.class),
 			mock(CheckpointResponder.class),
+			mock(ModificationResponder.class),
 			libCache,
 			mock(FileCache.class),
 			new TestingTaskManagerRuntimeInfo(taskManagerConfig, new String[] {System.getProperty("java.io.tmpdir")}),
@@ -952,6 +954,11 @@ public class StreamTaskTest extends TestLogger {
 		@Override
 		protected void cancelTask() throws Exception {}
 
+		@Override
+		protected boolean pauseInputs() {
+			return false;
+		}
+
 	}
 
 	/**
@@ -994,6 +1001,11 @@ public class StreamTaskTest extends TestLogger {
 			holder.cancel();
 			// do not interrupt the lock holder here, to simulate spawned threads that
 			// we cannot properly interrupt on cancellation
+		}
+
+		@Override
+		protected boolean pauseInputs() {
+			return false;
 		}
 
 	}
@@ -1042,6 +1054,11 @@ public class StreamTaskTest extends TestLogger {
 		@Override
 		protected void cancelTask() throws Exception {
 			throw new Exception("test exception");
+		}
+
+		@Override
+		protected boolean pauseInputs() {
+			return false;
 		}
 
 	}

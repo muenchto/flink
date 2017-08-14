@@ -82,6 +82,7 @@ import org.apache.flink.runtime.testingUtils.TestingTaskManagerMessages;
 import org.apache.flink.runtime.testingUtils.TestingUtils;
 import org.apache.flink.runtime.testutils.RecoverableCompletedCheckpointStore;
 import org.apache.flink.runtime.util.TestByteStreamStateHandleDeepCompare;
+import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.util.InstantiationUtil;
 
 import org.apache.flink.util.TestLogger;
@@ -594,6 +595,16 @@ public class JobManagerHARecoveryTest extends TestLogger {
 			if (completedCheckpoints++ > NUM_CHECKPOINTS_TO_COMPLETE) {
 				completedCheckpointsLatch.countDown();
 			}
+		}
+
+		@Override
+		public boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs) throws Exception {
+			return false;
+		}
+
+		@Override
+		public void abortModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, Throwable cause) throws Exception {
+
 		}
 
 		public static void initializeStaticHelpers(int numSubtasks) {

@@ -325,6 +325,16 @@ public class MockEnvironment implements Environment {
 	}
 
 	@Override
+	public void acknowledgeModification(long modificationID) {
+
+	}
+
+	@Override
+	public void declineModification(long modificationID, Throwable cause) {
+
+	}
+
+	@Override
 	public void failExternally(Throwable cause) {
 		throw new UnsupportedOperationException("MockEnvironment does not support external task failure.");
 	}

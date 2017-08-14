@@ -190,6 +190,11 @@ public class StreamTaskCancellationBarrierTest {
 				lock.notifyAll();
 			}
 		}
+
+		@Override
+		protected boolean pauseInputs() {
+			return false;
+		}
 	}
 
 	private static class IdentityMap implements MapFunction<String, String> {
