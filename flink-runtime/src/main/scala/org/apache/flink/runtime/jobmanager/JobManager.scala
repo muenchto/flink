@@ -69,6 +69,7 @@ import org.apache.flink.runtime.messages.TaskManagerMessages.Heartbeat
 import org.apache.flink.runtime.messages.TaskMessages.UpdateTaskExecutionState
 import org.apache.flink.runtime.messages.accumulators._
 import org.apache.flink.runtime.messages.checkpoint.{AbstractCheckpointMessage, AcknowledgeCheckpoint, DeclineCheckpoint}
+import org.apache.flink.runtime.messages.modification.{AbstractModificationMessage, AcknowledgeModification, DeclineModification}
 import org.apache.flink.runtime.messages.webmonitor.{InfoMessage, _}
 import org.apache.flink.runtime.metrics.groups.JobManagerMetricGroup
 import org.apache.flink.runtime.metrics.{MetricRegistryConfiguration, MetricRegistry => FlinkMetricRegistry}
@@ -293,6 +294,72 @@ class JobManager(
     }
 
     log.debug(s"Job manager ${self.path} is completely stopped.")
+  }
+
+  /**
+    * Dedicated handler for modification messages.
+    *
+    * @param modificationMessage The modification actor message.
+    */
+  def handleModificationMessage(modificationMessage: AbstractModificationMessage): Unit = {
+    modificationMessage match {
+      case ackMessage: AcknowledgeModification =>
+        val jid = ackMessage.getJob()
+        currentJobs.get(jid) match {
+          case Some((graph, _)) =>
+
+            val modificationCoordinator = graph.getModificationCoordinator
+
+            if (modificationCoordinator != null) {
+              future {
+                try {
+                  if (!modificationCoordinator.receiveAcknowledgeMessage(ackMessage)) {
+                    log.info("Received message for non-existing modification " + ackMessage.getModificationID)
+                  }
+                }
+                catch {
+                  case t: Throwable =>
+                    log.error(s"Error in ModificationCoordinator while processing $ackMessage", t)
+                }
+              }(context.dispatcher)
+            }
+            else {
+              log.error(
+                s"Received AcknowledgeModification message for job $jid with no ModificationCoordinator")
+            }
+
+          case None => log.error(s"Received AcknowledgeCheckpoint for unavailable job $jid")
+        }
+
+      case declineMessage: DeclineModification =>
+        val jid = declineMessage.getJob()
+        currentJobs.get(jid) match {
+          case Some((graph, _)) =>
+            val modificationCoordinator = graph.getModificationCoordinator()
+
+            if (modificationCoordinator != null) {
+              future {
+                try {
+                  modificationCoordinator.receiveDeclineMessage(declineMessage)
+                }
+                catch {
+                  case t: Throwable =>
+                    log.error(s"Error in ModificationCoordinator while processing $declineMessage", t)
+                }
+              }(context.dispatcher)
+            }
+            else {
+              log.error(
+                s"Received DeclineModification message for job $jid with no ModificationCoordinator")
+            }
+
+          case None => log.error(s"Received DeclineModification for unavailable job $jid")
+        }
+
+
+      // unknown checkpoint message
+      case _ => unhandled(modificationMessage)
+    }
   }
 
   /**
@@ -773,6 +840,9 @@ class JobManager(
     case checkpointMessage : AbstractCheckpointMessage =>
       handleCheckpointMessage(checkpointMessage)
 
+    case modificationMessage : AbstractModificationMessage =>
+      handleModificationMessage(modificationMessage)
+
     case kvStateMsg : KvStateMessage =>
       handleKvStateMessage(kvStateMsg)
 
@@ -875,7 +945,7 @@ class JobManager(
           val modificationCoordinator = executionGraph.getModificationCoordinator
 
           val result = command match {
-            case "pause" => modificationCoordinator.pauseMapOperator()
+            case "pause" => modificationCoordinator.pauseJob()
               (true, "Pausing submitted")
 
             case "resume" => modificationCoordinator.resumeMapOperator()
