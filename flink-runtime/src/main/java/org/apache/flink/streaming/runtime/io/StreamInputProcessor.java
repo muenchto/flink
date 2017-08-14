@@ -48,6 +48,7 @@ import org.apache.flink.runtime.plugable.NonReusingDeserializationDelegate;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
@@ -244,12 +245,16 @@ public class StreamInputProcessor<IN> {
 					final AbstractEvent event = bufferOrEvent.getEvent();
 
 					if (event.getClass() == StartModificationMarker.class) {
-						// Pause execution and exit loop
-						LOG.info("Registered StartModificationMarker - Stopping {}", this);
-						return false;
-					}
+						// Do nothing here, as modification was triggered in BarrierTracker
+						// Return true, so that we can restart this method, but check if we are still running
 
-					if (event.getClass() != EndOfPartitionEvent.class) {
+						return true;
+					} else if (event.getClass() == CancelModificationMarker.class) {
+						// Do nothing here, as modification was triggered in BarrierTracker
+						// Return true, so that we can restart this method, but check if we are still running
+						return true;
+
+					} else if (event.getClass() != EndOfPartitionEvent.class) {
 						throw new IOException("Unexpected event: " + event);
 					}
 				}

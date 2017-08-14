@@ -40,6 +40,7 @@ import org.apache.flink.runtime.instance.SimpleSlot;
 import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
+import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationConstraint;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
@@ -872,6 +873,25 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
 			taskManagerGateway.triggerCheckpoint(attemptId, getVertex().getJobId(), checkpointId, timestamp, checkpointOptions);
+		} else {
+			LOG.debug("The execution has no slot assigned. This indicates that the execution is " +
+				"no longer running.");
+		}
+	}
+
+	/**
+	 * Trigger a new modification on the task of this execution.
+	 *
+	 * @param modificationID of the modification to trigger
+	 * @param timestamp of the modification to trigger
+	 */
+	public void triggerModification(long modificationID, long timestamp, List<JobVertexID> ids) {
+		final SimpleSlot slot = assignedResource;
+
+		if (slot != null) {
+			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
+
+			taskManagerGateway.triggerModification(attemptId, getVertex().getJobId(), modificationID, timestamp, ids);
 		} else {
 			LOG.debug("The execution has no slot assigned. This indicates that the execution is " +
 				"no longer running.");

@@ -29,6 +29,9 @@ import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
+import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
+import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
+import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +77,7 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 	private final String name;
 
 	/** The listener to be notified on complete checkpoints. */
-	private StatefulTask toNotifyOnCheckpoint;
+	private StatefulTask statefulTask;
 
 	/** The highest checkpoint ID encountered so far. */
 	private long latestPendingCheckpointID = -1;
@@ -101,7 +104,7 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 			BufferOrEvent next = inputGate.getNextBufferOrEvent();
 
 			if (next == null || next.isBuffer()) {
-				LOG.info("Received from task {} via Gate {}", name, inputGate);
+				LOG.info("Received {} from task {} via Gate {}", next, name, inputGate);
 
 				// buffer or input exhausted
 				return next;
@@ -111,8 +114,20 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 			}
 			else if (next.getEvent().getClass() == CancelCheckpointMarker.class) {
 				processCheckpointAbortBarrier((CancelCheckpointMarker) next.getEvent(), next.getChannelIndex());
-			}
-			else {
+			} else if (next.getEvent().getClass() == StartModificationMarker.class) {
+				LOG.info("Received ModificationMarker:  {}", StartModificationMarker.class);
+
+				notifyStartModification((StartModificationMarker) next.getEvent());
+
+				return next;
+			} else if (next.getEvent().getClass() == CancelModificationMarker.class) {
+				LOG.info("Received ModificationMarker: {}", CancelModificationMarker.class);
+
+				// TODO Masterthesis Implement / Think about
+
+				return next;
+
+			} else {
 				LOG.info("Received Event from task {} via Gate {}", name, inputGate);
 				// some other event
 				return next;
@@ -120,10 +135,23 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 		}
 	}
 
+	private void notifyStartModification(StartModificationMarker startModificationMarker) throws Exception {
+		if (statefulTask != null) {
+
+			ModificationMetaData checkpointMetaData =
+				new ModificationMetaData(startModificationMarker.getModificationID(), startModificationMarker.getTimestamp());
+
+			statefulTask.triggerModification(checkpointMetaData, startModificationMarker.getJobVertexIDs());
+
+		} else {
+			throw new NullPointerException("statefulTask must not be null");
+		}
+	}
+
 	@Override
 	public void registerCheckpointEventHandler(StatefulTask toNotifyOnCheckpoint) {
-		if (this.toNotifyOnCheckpoint == null) {
-			this.toNotifyOnCheckpoint = toNotifyOnCheckpoint;
+		if (this.statefulTask == null) {
+			this.statefulTask = toNotifyOnCheckpoint;
 		}
 		else {
 			throw new IllegalStateException("BarrierTracker already has a registered checkpoint notifyee");
@@ -268,19 +296,19 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 	}
 
 	private void notifyCheckpoint(long checkpointId, long timestamp, CheckpointOptions checkpointOptions) throws Exception {
-		if (toNotifyOnCheckpoint != null) {
+		if (statefulTask != null) {
 			CheckpointMetaData checkpointMetaData = new CheckpointMetaData(checkpointId, timestamp);
 			CheckpointMetrics checkpointMetrics = new CheckpointMetrics()
 				.setBytesBufferedInAlignment(0L)
 				.setAlignmentDurationNanos(0L);
 
-			toNotifyOnCheckpoint.triggerCheckpointOnBarrier(checkpointMetaData, checkpointOptions, checkpointMetrics);
+			statefulTask.triggerCheckpointOnBarrier(checkpointMetaData, checkpointOptions, checkpointMetrics);
 		}
 	}
 
 	private void notifyAbort(long checkpointId) throws Exception {
-		if (toNotifyOnCheckpoint != null) {
-			toNotifyOnCheckpoint.abortCheckpointOnBarrier(
+		if (statefulTask != null) {
+			statefulTask.abortCheckpointOnBarrier(
 					checkpointId, new CheckpointDeclineOnCancellationBarrierException());
 		}
 	}

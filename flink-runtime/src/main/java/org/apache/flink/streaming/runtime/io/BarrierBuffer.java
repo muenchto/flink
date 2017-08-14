@@ -37,6 +37,7 @@ import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
+import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +86,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 	private BufferSpiller.SpilledBufferOrEventSequence currentBuffered;
 
 	/** Handler that receives the checkpoint notifications. */
-	private StatefulTask toNotifyOnCheckpoint;
+	private StatefulTask statefulTask;
 
 	/** The ID of the checkpoint for which we expect barriers. */
 	private long currentCheckpointId = -1L;
@@ -189,14 +190,14 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 					processCancellationBarrier((CancelCheckpointMarker) next.getEvent());
 				}
 				else if (next.getEvent().getClass() == StartModificationMarker.class) {
-					LOG.info("Received {}", StartModificationMarker.class);
+					LOG.info("Received ModificationMarker:  {}", StartModificationMarker.class);
 
 					notifyModification((StartModificationMarker) next.getEvent());
 
 					return next;
 
-				} else if (next.getEvent().getClass() == CancelCheckpointMarker.class) {
-					LOG.info("Received {}", CancelCheckpointMarker.class);
+				} else if (next.getEvent().getClass() == CancelModificationMarker.class) {
+					LOG.info("Received ModificationMarker: {}", CancelModificationMarker.class);
 
 					return next;
 				} else {
@@ -378,21 +379,20 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 	}
 
 	private void notifyModification(StartModificationMarker startModificationMarker) throws Exception {
-		if (toNotifyOnCheckpoint != null) {
+		if (statefulTask != null) {
 
 			ModificationMetaData checkpointMetaData =
 				new ModificationMetaData(startModificationMarker.getModificationID(), startModificationMarker.getTimestamp());
 
-			toNotifyOnCheckpoint.triggerModification(checkpointMetaData, startModificationMarker.getJobVertexIDs());
+			statefulTask.triggerModification(checkpointMetaData, startModificationMarker.getJobVertexIDs());
 
 		} else {
-			throw new NullPointerException("toNotifyOnCheckpoint must not be null");
+			throw new NullPointerException("statefulTask must not be null");
 		}
 	}
 
-
 	private void notifyCheckpoint(CheckpointBarrier checkpointBarrier) throws Exception {
-		if (toNotifyOnCheckpoint != null) {
+		if (statefulTask != null) {
 			CheckpointMetaData checkpointMetaData =
 					new CheckpointMetaData(checkpointBarrier.getId(), checkpointBarrier.getTimestamp());
 
@@ -402,7 +402,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 					.setBytesBufferedInAlignment(bytesBuffered)
 					.setAlignmentDurationNanos(latestAlignmentDurationNanos);
 
-			toNotifyOnCheckpoint.triggerCheckpointOnBarrier(
+			statefulTask.triggerCheckpointOnBarrier(
 				checkpointMetaData,
 				checkpointBarrier.getCheckpointOptions(),
 				checkpointMetrics);
@@ -414,8 +414,8 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 	}
 
 	private void notifyAbort(long checkpointId, CheckpointDeclineException cause) throws Exception {
-		if (toNotifyOnCheckpoint != null) {
-			toNotifyOnCheckpoint.abortCheckpointOnBarrier(checkpointId, cause);
+		if (statefulTask != null) {
+			statefulTask.abortCheckpointOnBarrier(checkpointId, cause);
 		}
 	}
 
@@ -432,8 +432,8 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 
 	@Override
 	public void registerCheckpointEventHandler(StatefulTask toNotifyOnCheckpoint) {
-		if (this.toNotifyOnCheckpoint == null) {
-			this.toNotifyOnCheckpoint = toNotifyOnCheckpoint;
+		if (this.statefulTask == null) {
+			this.statefulTask = toNotifyOnCheckpoint;
 		}
 		else {
 			throw new IllegalStateException("BarrierBuffer already has a registered checkpoint notifyee");

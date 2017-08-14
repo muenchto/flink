@@ -32,6 +32,8 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.instance.InstanceID;
+import org.apache.flink.runtime.jobgraph.JobVertex;
+import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.Messages;
 import org.apache.flink.runtime.messages.StackTrace;
@@ -41,11 +43,14 @@ import org.apache.flink.runtime.messages.TaskManagerMessages;
 import org.apache.flink.runtime.messages.TaskMessages;
 import org.apache.flink.runtime.messages.checkpoint.NotifyCheckpointComplete;
 import org.apache.flink.runtime.messages.checkpoint.TriggerCheckpoint;
+import org.apache.flink.runtime.messages.modification.TriggerModification;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.FiniteDuration;
 import scala.reflect.ClassTag$;
+
+import java.util.List;
 
 /**
  * Implementation of the {@link TaskManagerGateway} for {@link ActorGateway}.
@@ -250,6 +255,18 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 		Preconditions.checkNotNull(jobId);
 
 		actorGateway.tell(new TriggerCheckpoint(jobId, executionAttemptID, checkpointId, timestamp, checkpointOptions));
+	}
+
+	@Override
+	public void triggerModification(ExecutionAttemptID attemptId,
+									JobID jobId,
+									long modificationID,
+									long timestamp,
+									List<JobVertexID> ids) {
+		Preconditions.checkNotNull(attemptId);
+		Preconditions.checkNotNull(jobId);
+
+		actorGateway.tell(new TriggerModification(jobId, attemptId, modificationID, timestamp, ids));
 	}
 
 	@Override

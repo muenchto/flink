@@ -69,7 +69,9 @@ import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateHandles;
+import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
+import org.apache.flink.streaming.runtime.modification.exceptions.TaskNotStatefulModificationException;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
@@ -757,8 +759,6 @@ public class Task implements Runnable, TaskActions {
 
 			}
 
-			LOG.info("Invoking user code");
-
 			// run the invokable
 			this.invokable.invoke();
 
@@ -1417,6 +1417,79 @@ public class Task implements Runnable, TaskActions {
 		}
 		else {
 			LOG.debug("Ignoring checkpoint commit notification for non-running task {}.", taskNameWithSubtask);
+		}
+	}
+
+	/**
+	 * Calls the invokable to trigger a modification, if the invokable implements the interface
+	 * {@link StatefulTask}.
+	 *
+	 * @param modificationID The ID identifying the modification.
+	 * @param modificationTimestamp The timestamp associated with the checkpoint.
+	 */
+	public void triggerStartModificationMessage(
+		final long modificationID,
+		long modificationTimestamp,
+		final List<JobVertexID> vertexIDS) {
+
+		final AbstractInvokable invokable = this.invokable;
+
+		if (executionState == ExecutionState.RUNNING && invokable != null) {
+			if (invokable instanceof StatefulTask) {
+				// build a local closure
+				final StatefulTask statefulTask = (StatefulTask) invokable;
+
+				final ModificationMetaData metaData = new ModificationMetaData(modificationID, modificationTimestamp);
+
+				final SafetyNetCloseableRegistry safetyNetCloseableRegistry =
+					FileSystemSafetyNet.getSafetyNetCloseableRegistryForThread();
+				Runnable runnable = new Runnable() {
+					@Override
+					public void run() {
+						// activate safety net for checkpointing thread
+						LOG.debug("Creating FileSystem stream leak safety net for {}", Thread.currentThread().getName());
+						FileSystemSafetyNet.setSafetyNetCloseableRegistryForThread(safetyNetCloseableRegistry);
+
+						try {
+							boolean success = statefulTask.triggerModification(metaData, vertexIDS);
+							if (!success) {
+								modificationResponder.declineModification(jobId, executionId, modificationID,
+									new TaskNotStatefulModificationException(taskNameWithSubtask));
+							}
+						}
+						catch (Throwable t) {
+							if (getExecutionState() == ExecutionState.RUNNING) {
+								failExternally(new Exception(
+									"Error while triggering modification " + modificationID + " for " +
+										taskNameWithSubtask, t));
+							} else {
+								LOG.debug("Encountered error while triggering modification {} for " +
+										"{} ({}) while being not in state running.", modificationID,
+									taskNameWithSubtask, executionId, t);
+							}
+						} finally {
+							// close and de-activate safety net for checkpointing thread
+							LOG.debug("Ensuring all FileSystem streams are closed for {}",
+								Thread.currentThread().getName());
+						}
+					}
+				};
+				executeAsyncCallRunnable(runnable, String.format("Modification Trigger for %s (%s).",
+					taskNameWithSubtask, executionId));
+			}
+			else {
+				modificationResponder.declineModification(jobId, executionId, modificationID,
+					new TaskNotStatefulModificationException(taskNameWithSubtask));
+
+				LOG.error("Task received a modification request, but is not a stateful task - {} ({}).",
+					taskNameWithSubtask, executionId);
+			}
+		}
+		else {
+			LOG.debug("Declining modification request for non-running task {} ({}).", taskNameWithSubtask, executionId);
+
+			modificationResponder.declineModification(jobId, executionId, modificationID,
+				new TaskNotStatefulModificationException(taskNameWithSubtask));
 		}
 	}
 
