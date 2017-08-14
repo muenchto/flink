@@ -67,6 +67,7 @@ import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.StreamSource;
+import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.SerializedValue;
 import org.junit.Test;
 
@@ -266,6 +267,7 @@ public class InterruptSensitiveRestoreTest {
 			mock(TaskManagerActions.class),
 			mock(InputSplitProvider.class),
 			mock(CheckpointResponder.class),
+			mock(ModificationResponder.class),
 			new FallbackLibraryCacheManager(),
 			new FileCache(new String[] { EnvironmentInformation.getTemporaryFileDirectory() }),
 			new TestingTaskManagerRuntimeInfo(),

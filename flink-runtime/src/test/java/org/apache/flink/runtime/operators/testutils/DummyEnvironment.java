@@ -165,6 +165,16 @@ public class DummyEnvironment implements Environment {
 	}
 
 	@Override
+	public void acknowledgeModification(long modificationID) {
+		throw new UnsupportedOperationException("DummyEnvironment does not support external task failure.");
+	}
+
+	@Override
+	public void declineModification(long modificationID, Throwable cause) {
+		throw new UnsupportedOperationException("DummyEnvironment does not support external task failure.");
+	}
+
+	@Override
 	public void failExternally(Throwable cause) {
 		throw new UnsupportedOperationException("DummyEnvironment does not support external task failure.");
 	}

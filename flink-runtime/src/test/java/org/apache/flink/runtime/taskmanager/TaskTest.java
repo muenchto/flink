@@ -991,6 +991,7 @@ public class TaskTest extends TestLogger {
 			taskManagerConnection,
 			inputSplitProvider,
 			checkpointResponder,
+			null,
 			libCache,
 			mock(FileCache.class),
 			new TestingTaskManagerRuntimeInfo(taskManagerConfig),

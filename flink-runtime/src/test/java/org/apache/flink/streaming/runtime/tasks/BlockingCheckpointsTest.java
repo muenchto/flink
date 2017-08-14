@@ -66,6 +66,7 @@ import org.apache.flink.runtime.util.EnvironmentInformation;
 import org.apache.flink.runtime.util.TestingTaskManagerRuntimeInfo;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.StreamFilter;
+import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.SerializedValue;
 import org.junit.Test;
 
@@ -154,7 +155,8 @@ public class BlockingCheckpointsTest {
 				mock(TaskManagerActions.class),
 				mock(InputSplitProvider.class),
 				mock(CheckpointResponder.class),
-				new FallbackLibraryCacheManager(),
+				mock(ModificationResponder.class),
+			new FallbackLibraryCacheManager(),
 				new FileCache(new String[] { EnvironmentInformation.getTemporaryFileDirectory() }),
 				new TestingTaskManagerRuntimeInfo(),
 				new UnregisteredTaskMetricsGroup(),

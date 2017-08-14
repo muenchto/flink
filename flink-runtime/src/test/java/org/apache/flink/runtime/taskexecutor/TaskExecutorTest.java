@@ -75,6 +75,7 @@ import org.apache.flink.runtime.taskmanager.Task;
 import org.apache.flink.runtime.taskmanager.TaskManagerActions;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.runtime.util.TestingFatalErrorHandler;
+import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.SerializedValue;
 import org.apache.flink.util.TestLogger;
 import org.junit.Ignore;
@@ -533,7 +534,8 @@ public class TaskExecutorTest extends TestLogger {
 			jobManagerLeaderId,
 			mock(TaskManagerActions.class),
 			mock(CheckpointResponder.class),
-			modificationResponder, libraryCacheManager,
+			mock(ModificationResponder.class),
+			libraryCacheManager,
 			mock(ResultPartitionConsumableNotifier.class),
 			mock(PartitionProducerStateChecker.class));
 
@@ -1012,7 +1014,8 @@ public class TaskExecutorTest extends TestLogger {
 			jobManagerLeaderId,
 			mock(TaskManagerActions.class),
 			mock(CheckpointResponder.class),
-			modificationResponder, libraryCacheManager,
+			mock(ModificationResponder.class),
+			libraryCacheManager,
 			mock(ResultPartitionConsumableNotifier.class),
 			mock(PartitionProducerStateChecker.class));
 
