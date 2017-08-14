@@ -56,6 +56,7 @@ import org.apache.flink.runtime.io.disk.iomanager.IOManager
 import org.apache.flink.runtime.io.network.NetworkEnvironment
 import org.apache.flink.runtime.io.network.netty.PartitionProducerStateChecker
 import org.apache.flink.runtime.io.network.partition.{ResultPartitionConsumableNotifier, ResultPartitionID, ResultPartitionType}
+import org.apache.flink.runtime.jobgraph.tasks.StatefulTask
 import org.apache.flink.runtime.leaderretrieval.{LeaderRetrievalListener, LeaderRetrievalService}
 import org.apache.flink.runtime.memory.MemoryManager
 import org.apache.flink.runtime.messages.Messages._
@@ -64,6 +65,7 @@ import org.apache.flink.runtime.messages.StackTraceSampleMessages.{SampleTaskSta
 import org.apache.flink.runtime.messages.TaskManagerMessages._
 import org.apache.flink.runtime.messages.TaskMessages._
 import org.apache.flink.runtime.messages.checkpoint.{AbstractCheckpointMessage, NotifyCheckpointComplete, TriggerCheckpoint}
+import org.apache.flink.runtime.messages.modification.{AbstractModificationMessage, TriggerModification}
 import org.apache.flink.runtime.messages.{Acknowledge, StackTraceSampleResponse}
 import org.apache.flink.runtime.metrics.groups.TaskManagerMetricGroup
 import org.apache.flink.runtime.metrics.util.MetricUtils
@@ -76,7 +78,7 @@ import org.apache.flink.runtime.util._
 import org.apache.flink.runtime.{FlinkActor, LeaderSessionMessageFilter, LogMessages}
 import org.apache.flink.streaming.api.graph.{StreamConfig, StreamEdge}
 import org.apache.flink.streaming.api.operators.StreamFilter
-import org.apache.flink.streaming.runtime.modification.ModificationResponder
+import org.apache.flink.streaming.runtime.modification.{ModificationMetaData, ModificationResponder}
 
 import scala.collection.JavaConverters._
 import scala.concurrent._
@@ -283,6 +285,8 @@ class TaskManager(
   override def handleMessage: Receive = {
     // task messages are most common and critical, we handle them first
     case message: TaskMessage => handleTaskMessage(message)
+
+    case message: AbstractModificationMessage => handleModificationMessage(message)
 
     // messages for coordinating checkpoints
     case message: AbstractCheckpointMessage => handleCheckpointingMessage(message)
@@ -761,6 +765,29 @@ class TaskManager(
         }
 
       // unknown checkpoint message
+      case _ => unhandled(actorMessage)
+    }
+  }
+
+  private def handleModificationMessage(actorMessage: AbstractModificationMessage): Unit = {
+    actorMessage match {
+      case message: TriggerModification => {
+        val taskExecutionId = message.getTaskExecutionId
+        val modificationID = message.getModificationID
+        val timestamp = message.getTimestamp
+        val ids = message.getVertexIDs
+
+        log.info(s"Receiver TriggerModification $modificationID@$timestamp for $taskExecutionId.")
+
+        val task = runningTasks.get(taskExecutionId)
+
+        if (task != null) {
+          task.triggerStartModificationMessage(modificationID, timestamp, ids)
+        } else {
+          log.info(s"TaskManager received a modification request for unknown task $taskExecutionId.")
+        }
+      }
+
       case _ => unhandled(actorMessage)
     }
   }

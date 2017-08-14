@@ -10,7 +10,7 @@ import org.apache.flink.runtime.messages.checkpoint.AbstractCheckpointMessage;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
-public class AcknowledgeModification extends AbstractCheckpointMessage implements java.io.Serializable {
+public class AcknowledgeModification extends AbstractModificationMessage implements java.io.Serializable {
 
 	private static final long serialVersionUID = -7606214777192401493L;
 
@@ -21,6 +21,6 @@ public class AcknowledgeModification extends AbstractCheckpointMessage implement
 	@Override
 	public String toString() {
 		return String.format("Confirm Task Modification %d for (%s/%s)",
-			getCheckpointId(), getJob(), getTaskExecutionId());
+			getModificationID(), getJob(), getTaskExecutionId());
 	}
 }

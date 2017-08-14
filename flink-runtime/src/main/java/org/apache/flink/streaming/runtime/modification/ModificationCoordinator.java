@@ -7,18 +7,20 @@ import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.executiongraph.*;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
+import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
+import org.apache.flink.runtime.messages.modification.DeclineModification;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ModificationCoordinator {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ModificationCoordinator.class);
+
+	private static final long DUMMY_MODIFICATION_ID = 123;
 
 	private final ExecutionGraph executionGraph;
 	private final Time rpcCallTimeout;
@@ -28,22 +30,45 @@ public class ModificationCoordinator {
 		this.rpcCallTimeout = rpcCallTimeout;
 	}
 
-	public void pauseMapOperator() {
-
-		ExecutionJobVertex source = findMap();
-
-		ExecutionVertex[] taskVertices = source.getTaskVertices();
-
-		for (ExecutionVertex vertex : taskVertices) {
-			Execution execution = vertex.getCurrentExecutionAttempt();
-
-			execution.getAssignedResource()
-				.getTaskManagerGateway()
-				.pauseTask(execution.getAttemptId(), rpcCallTimeout);
+	public boolean receiveAcknowledgeMessage(AcknowledgeModification acknowledgeModification) {
+		if (acknowledgeModification.getModificationID() == DUMMY_MODIFICATION_ID) {
+			LOG.debug("Received successful acknowledge modification message");
+			return true;
+		} else {
+			LOG.debug("Received wrong acknowledge modification message: {}", acknowledgeModification);
+			return false;
 		}
 	}
 
-	public void pauseMapOperatorLegacy() {
+	public boolean receiveDeclineMessage(DeclineModification declineModification) {
+		if (declineModification.getModificationID() == DUMMY_MODIFICATION_ID) {
+			LOG.debug("Received successful decline modification message");
+			return true;
+		} else {
+			LOG.debug("Received wrong decline modification message: {}", declineModification);
+			return false;
+		}
+	}
+
+	public void pauseJob() {
+		ExecutionJobVertex source = findSource();
+
+		ExecutionJobVertex map = findMap();
+
+		List<JobVertexID> vertexIDS = Collections.singletonList(map.getJobVertexId());
+
+		for (ExecutionVertex executionVertex: source.getTaskVertices()) {
+			Execution currentExecutionAttempt = executionVertex.getCurrentExecutionAttempt();
+
+			currentExecutionAttempt.triggerModification(
+				DUMMY_MODIFICATION_ID,
+				System.currentTimeMillis(),
+				vertexIDS);
+		}
+	}
+
+	public void pauseMapOperator() {
+
 		ExecutionJobVertex source = findMap();
 
 		ExecutionVertex[] taskVertices = source.getTaskVertices();
