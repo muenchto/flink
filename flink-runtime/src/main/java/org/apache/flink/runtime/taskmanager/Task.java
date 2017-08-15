@@ -72,6 +72,7 @@ import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.streaming.runtime.modification.exceptions.TaskNotStatefulModificationException;
+import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
@@ -261,7 +262,9 @@ public class Task implements Runnable, TaskActions {
 
 	/** Initialized from the Flink configuration. May also be set at the ExecutionConfig */
 	private long taskCancellationTimeout;
-	private boolean resuming = false;
+
+	/** Exported from run() method */
+	private TaskKvStateRegistry kvStateRegistry;
 
 	/**
 	 * <p><b>IMPORTANT:</b> This constructor may not start any work that would need to
@@ -587,25 +590,28 @@ public class Task implements Runnable, TaskActions {
 					}
 					return;
 				}
-			} else if (current == ExecutionState.MIGRATING) {
-				if (transitionState(ExecutionState.MIGRATING, ExecutionState.RUNNING)) {
-					// success, we can start our work
+			} else if (current == ExecutionState.MODIFICATION) {
+				if (transitionState(ExecutionState.MODIFICATION, ExecutionState.RESUMING)) {
+					// success, we can start our work, but skip certain initializatinos
 
-					// TODO Currently does not happen, has state is modified from different thread
 					LOG.info("Switched to running again");
 					break;
 				}
-			} else if (current == ExecutionState.RUNNING) {
-				// Simply continue
-				LOG.info("Switched to running again after migration");
-				break;
-
 			} else {
 				if (metrics != null) {
 					metrics.close();
 				}
 				throw new IllegalStateException("Invalid state for beginning of operation of task " + this + '.');
 			}
+		}
+
+		final ExecutionConfig executionConfig;
+		try {
+			userCodeClassLoader = createUserCodeClassloader(libraryCache);
+			executionConfig = serializedExecutionConfig.deserializeValue(userCodeClassLoader);
+		} catch (Exception exception) {
+			failExternally(exception);
+			return;
 		}
 
 		// all resource acquisitions and registrations from here on
@@ -617,155 +623,190 @@ public class Task implements Runnable, TaskActions {
 			//  check for canceling as a shortcut
 			// ----------------------------
 
-		if (executionState != ExecutionState.RUNNING) {
-				LOG.debug("Already running, skipping initialization");
+			if (executionState == ExecutionState.DEPLOYING) {
+				LOG.debug("Task {} enters DEPLOYING stage", taskNameWithSubtask);
 
-			// activate safety net for task thread
-			LOG.info("Creating FileSystem stream leak safety net for task {}", this);
-			FileSystemSafetyNet.initializeSafetyNetForThread();
+				// activate safety net for task thread
+				LOG.info("Creating FileSystem stream leak safety net for task {}", this);
+				FileSystemSafetyNet.initializeSafetyNetForThread();
 
-			// first of all, get a user-code classloader
-			// this may involve downloading the job's JAR files and/or classes
-			LOG.info("Loading JAR files for task {}.", this);
+				// first of all, get a user-code classloader
+				// this may involve downloading the job's JAR files and/or classes
+				LOG.info("Loading JAR files for task {}.", this);
 
-			userCodeClassLoader = createUserCodeClassloader(libraryCache);
-			final ExecutionConfig executionConfig = serializedExecutionConfig.deserializeValue(userCodeClassLoader);
-
-			if (executionConfig.getTaskCancellationInterval() >= 0) {
-				// override task cancellation interval from Flink config if set in ExecutionConfig
-				taskCancellationInterval = executionConfig.getTaskCancellationInterval();
-			}
-
-			if (executionConfig.getTaskCancellationTimeout() >= 0) {
-				// override task cancellation timeout from Flink config if set in ExecutionConfig
-				taskCancellationTimeout = executionConfig.getTaskCancellationTimeout();
-			}
-
-			// now load the task's invokable code
-			invokable = loadAndInstantiateInvokable(userCodeClassLoader, nameOfInvokableClass);
-
-			if (isCanceledOrFailed()) {
-				throw new CancelTaskException();
-			}
-
-			// ----------------------------------------------------------------
-			// register the task with the network stack
-			// this operation may fail if the system does not have enough
-			// memory to run the necessary data exchanges
-			// the registration must also strictly be undone
-			// ----------------------------------------------------------------
-
-			LOG.info("Registering task at network: {}.", this);
-
-			network.registerTask(this);
-
-			// add metrics for buffers
-			this.metrics.getIOMetricGroup().initializeBufferMetrics(this);
-
-			// register detailed network metrics, if configured
-			if (taskManagerConfig.getConfiguration().getBoolean(TaskManagerOptions.NETWORK_DETAILED_METRICS)) {
-				// similar to MetricUtils.instantiateNetworkMetrics() but inside this IOMetricGroup
-				MetricGroup networkGroup = this.metrics.getIOMetricGroup().addGroup("Network");
-				MetricGroup outputGroup = networkGroup.addGroup("Output");
-				MetricGroup inputGroup = networkGroup.addGroup("Input");
-
-				// output metrics
-				for (int i = 0; i < producedPartitions.length; i++) {
-					ResultPartitionMetrics.registerQueueLengthMetrics(
-						outputGroup.addGroup(i), producedPartitions[i]);
+				if (executionConfig.getTaskCancellationInterval() >= 0) {
+					// override task cancellation interval from Flink config if set in ExecutionConfig
+					taskCancellationInterval = executionConfig.getTaskCancellationInterval();
 				}
 
-				for (int i = 0; i < inputGates.length; i++) {
-					InputGateMetrics.registerQueueLengthMetrics(
-						inputGroup.addGroup(i), inputGates[i]);
+				if (executionConfig.getTaskCancellationTimeout() >= 0) {
+					// override task cancellation timeout from Flink config if set in ExecutionConfig
+					taskCancellationTimeout = executionConfig.getTaskCancellationTimeout();
 				}
-			}
 
-			// next, kick off the background copying of files for the distributed cache
-			try {
-				for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry :
-						DistributedCache.readFileInfoFromConfig(jobConfiguration))
-				{
-					LOG.info("Obtaining local cache file for '{}'.", entry.getKey());
-					Future<Path> cp = fileCache.createTmpFile(entry.getKey(), entry.getValue(), jobId);
-					distributedCacheEntries.put(entry.getKey(), cp);
+				// now load the task's invokable code
+				invokable = loadAndInstantiateInvokable(userCodeClassLoader, nameOfInvokableClass);
+
+				if (isCanceledOrFailed()) {
+					throw new CancelTaskException();
 				}
-			}
-			catch (Exception e) {
-				throw new Exception(
-					String.format("Exception while adding files to distributed cache of task %s (%s).", taskNameWithSubtask, executionId),
-					e);
-			}
 
-			if (isCanceledOrFailed()) {
-				throw new CancelTaskException();
-			}
+				// ----------------------------------------------------------------
+				// register the task with the network stack
+				// this operation may fail if the system does not have enough
+				// memory to run the necessary data exchanges
+				// the registration must also strictly be undone
+				// ----------------------------------------------------------------
 
-			// ----------------------------------------------------------------
-			//  call the user code initialization methods
-			// ----------------------------------------------------------------
+				LOG.info("Registering task at network: {}.", this);
 
-			TaskKvStateRegistry kvStateRegistry = network
+				network.registerTask(this);
+
+				// add metrics for buffers
+				this.metrics.getIOMetricGroup().initializeBufferMetrics(this);
+
+				// register detailed network metrics, if configured
+				if (taskManagerConfig.getConfiguration().getBoolean(TaskManagerOptions.NETWORK_DETAILED_METRICS)) {
+					// similar to MetricUtils.instantiateNetworkMetrics() but inside this IOMetricGroup
+					MetricGroup networkGroup = this.metrics.getIOMetricGroup().addGroup("Network");
+					MetricGroup outputGroup = networkGroup.addGroup("Output");
+					MetricGroup inputGroup = networkGroup.addGroup("Input");
+
+					// output metrics
+					for (int i = 0; i < producedPartitions.length; i++) {
+						ResultPartitionMetrics.registerQueueLengthMetrics(
+							outputGroup.addGroup(i), producedPartitions[i]);
+					}
+
+					for (int i = 0; i < inputGates.length; i++) {
+						InputGateMetrics.registerQueueLengthMetrics(
+							inputGroup.addGroup(i), inputGates[i]);
+					}
+				}
+
+				// next, kick off the background copying of files for the distributed cache
+				try {
+					for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry :
+						DistributedCache.readFileInfoFromConfig(jobConfiguration)) {
+						LOG.info("Obtaining local cache file for '{}'.", entry.getKey());
+						Future<Path> cp = fileCache.createTmpFile(entry.getKey(), entry.getValue(), jobId);
+						distributedCacheEntries.put(entry.getKey(), cp);
+					}
+				} catch (Exception e) {
+					throw new Exception(
+						String.format("Exception while adding files to distributed cache of task %s (%s).", taskNameWithSubtask, executionId),
+						e);
+				}
+
+				if (isCanceledOrFailed()) {
+					throw new CancelTaskException();
+				}
+
+				// ----------------------------------------------------------------
+				//  call the user code initialization methods
+				// ----------------------------------------------------------------
+
+				kvStateRegistry = network
 					.createKvStateTaskRegistry(jobId, getJobVertexId());
 
-			Environment env = new RuntimeEnvironment(
-				jobId, vertexId, executionId, executionConfig, taskInfo,
-				jobConfiguration, taskConfiguration, userCodeClassLoader,
-				memoryManager, ioManager, broadcastVariableManager,
-				accumulatorRegistry, kvStateRegistry, inputSplitProvider,
-				distributedCacheEntries, writers, inputGates,
-				checkpointResponder, modificationResponder, taskManagerConfig, metrics, this);
+				Environment env = new RuntimeEnvironment(
+					jobId, vertexId, executionId, executionConfig, taskInfo,
+					jobConfiguration, taskConfiguration, userCodeClassLoader,
+					memoryManager, ioManager, broadcastVariableManager,
+					accumulatorRegistry, kvStateRegistry, inputSplitProvider,
+					distributedCacheEntries, writers, inputGates,
+					checkpointResponder, modificationResponder, taskManagerConfig, metrics, this);
 
-			// let the task code create its readers and writers
-			invokable.setEnvironment(env);
+				// let the task code create its readers and writers
+				invokable.setEnvironment(env);
 
-			// the very last thing before the actual execution starts running is to inject
-			// the state into the task. the state is non-empty if this is an execution
-			// of a task that failed but had backuped state from a checkpoint
+				// the very last thing before the actual execution starts running is to inject
+				// the state into the task. the state is non-empty if this is an execution
+				// of a task that failed but had backuped state from a checkpoint
 
-			if (null != taskStateHandles) {
-				if (invokable instanceof StatefulTask) {
-					StatefulTask op = (StatefulTask) invokable;
-					op.setInitialState(taskStateHandles);
-				} else {
-					throw new IllegalStateException("Found operator state for a non-stateful task invokable");
+				if (null != taskStateHandles) {
+					if (invokable instanceof StatefulTask) {
+						StatefulTask op = (StatefulTask) invokable;
+						op.setInitialState(taskStateHandles);
+					} else {
+						throw new IllegalStateException("Found operator state for a non-stateful task invokable");
+					}
+					// be memory and GC friendly - since the code stays in invoke() for a potentially long time,
+					// we clear the reference to the state handle
+					//noinspection UnusedAssignment
+					taskStateHandles = null;
 				}
-				// be memory and GC friendly - since the code stays in invoke() for a potentially long time,
-				// we clear the reference to the state handle
-				//noinspection UnusedAssignment
-				taskStateHandles = null;
-			}
 
-			// ----------------------------------------------------------------
-			//  actual task core work
-			// ----------------------------------------------------------------
+				// ----------------------------------------------------------------
+				//  actual task core work
+				// ----------------------------------------------------------------
 
-			// we must make strictly sure that the invokable is accessible to the cancel() call
-			// by the time we switched to running.
-			this.invokable = invokable;
+				// we must make strictly sure that the invokable is accessible to the cancel() call
+				// by the time we switched to running.
+				this.invokable = invokable;
 
-			// switch to the RUNNING state, if that fails, we have been canceled/failed in the meantime
-			if (!transitionState(ExecutionState.DEPLOYING, ExecutionState.RUNNING)) {
-				throw new CancelTaskException();
-			}
+				// switch to the RUNNING state, if that fails, we have been canceled/failed in the meantime
+				if (!transitionState(ExecutionState.DEPLOYING, ExecutionState.RUNNING)) {
+					throw new CancelTaskException();
+				}
 
-			// notify everyone that we switched to running
-			notifyObservers(ExecutionState.RUNNING, null);
-			taskManagerActions.updateTaskExecutionState(new TaskExecutionState(jobId, executionId, ExecutionState.RUNNING));
+				// notify everyone that we switched to running
+				notifyObservers(ExecutionState.RUNNING, null);
+				taskManagerActions.updateTaskExecutionState(new TaskExecutionState(jobId, executionId, ExecutionState.RUNNING));
 
-			// make sure the user code classloader is accessible thread-locally
-			executingThread.setContextClassLoader(userCodeClassLoader);
+				// make sure the user code classloader is accessible thread-locally
+				executingThread.setContextClassLoader(userCodeClassLoader);
+			} else {
+				LOG.info("Task {} continued from different state than DEPLOYING: {}. Switching to Running.",
+					taskNameWithSubtask, executionState);
 
+				// now load the task's invokable code
+				invokable = loadAndInstantiateInvokable(userCodeClassLoader, nameOfInvokableClass);
 
+				Environment env = new RuntimeEnvironment(
+					jobId, vertexId, executionId, executionConfig, taskInfo,
+					jobConfiguration, taskConfiguration, userCodeClassLoader,
+					memoryManager, ioManager, broadcastVariableManager,
+					accumulatorRegistry, kvStateRegistry, inputSplitProvider,
+					distributedCacheEntries, writers, inputGates,
+					checkpointResponder, modificationResponder, taskManagerConfig, metrics, this);
+
+				// let the task code create its readers and writers
+				invokable.setEnvironment(env);
+
+				// switch to the RUNNING state, if that fails, we have been canceled/failed in the meantime
+				if (!transitionState(ExecutionState.RESUMING, ExecutionState.RUNNING)) {
+					throw new CancelTaskException();
+				}
+
+				// notify everyone that we switched to running
+				notifyObservers(ExecutionState.RUNNING, null);
+				// TODO Masterthesis Enable later, extend States in ExecutionGraph
+//				taskManagerActions.updateTaskExecutionState(new TaskExecutionState(jobId, executionId, ExecutionState.RUNNING));
 			}
 
 			// run the invokable
 			this.invokable.invoke();
 
-			// TODO Does not happen, as we interrupt thread
-			if (executionState == ExecutionState.MIGRATING) {
-				LOG.debug("Returning from running state in task due to new status: " + ExecutionState.MIGRATING);
-				return;
+			// Check if Task has been paused for modification
+			if (invokable instanceof StreamTask) {
+
+				StreamTask statefulTask = (StreamTask) invokable;
+
+				boolean fromModification = statefulTask.getPausedForModification();
+
+				if (fromModification) {
+					if (transitionState(ExecutionState.RUNNING, ExecutionState.MODIFICATION)) {
+						LOG.info("Task {} successfully entered new state ", taskNameWithSubtask, ExecutionState.MODIFICATION);
+
+						notifyObservers(ExecutionState.MODIFICATION, null);
+
+						// Do not finish the partitions
+						return;
+					} else {
+						LOG.info("Task {} could not enter new state ", taskNameWithSubtask, ExecutionState.MODIFICATION);
+					}
+				}
 			}
 
 			// make sure, we enter the catch block if the task leaves the invoke() method due
@@ -874,39 +915,40 @@ public class Task implements Runnable, TaskActions {
 		finally {
 			try {
 
-				if (executionState == ExecutionState.MIGRATING) {
-					LOG.info("Doing nothing for executionState: " + ExecutionState.MIGRATING);
-					return;
+				if (executionState != ExecutionState.MODIFICATION) {
+
+					LOG.info("Freeing task resources for {} ({}).", taskNameWithSubtask, executionId);
+
+					// stop the async dispatcher.
+					// copy dispatcher reference to stack, against concurrent release
+					ExecutorService dispatcher = this.asyncCallDispatcher;
+					if (dispatcher != null && !dispatcher.isShutdown()) {
+						dispatcher.shutdownNow();
+					}
+
+					// free the network resources
+					network.unregisterTask(this);
+
+					// free memory resources
+					if (invokable != null) {
+						memoryManager.releaseAll(invokable);
+					}
+
+					// remove all of the tasks library resources
+					libraryCache.unregisterTask(jobId, executionId);
+
+					// remove all files in the distributed cache
+					removeCachedFiles(distributedCacheEntries, fileCache);
+
+					// close and de-activate safety net for task thread
+					LOG.info("Ensuring all FileSystem streams are closed for task {}", this);
+					FileSystemSafetyNet.closeSafetyNetAndGuardedResourcesForThread();
+
+					notifyFinalState();
+				} else {
+					LOG.info("Task {} entered MODIFICATION state, not releasing all current resources.",
+						taskNameWithSubtask);
 				}
-
-				LOG.info("Freeing task resources for {} ({}).", taskNameWithSubtask, executionId);
-
-				// stop the async dispatcher.
-				// copy dispatcher reference to stack, against concurrent release
-				ExecutorService dispatcher = this.asyncCallDispatcher;
-				if (dispatcher != null && !dispatcher.isShutdown()) {
-					dispatcher.shutdownNow();
-				}
-
-				// free the network resources
-				network.unregisterTask(this);
-
-				// free memory resources
-				if (invokable != null) {
-					memoryManager.releaseAll(invokable);
-				}
-
-				// remove all of the tasks library resources
-				libraryCache.unregisterTask(jobId, executionId);
-
-				// remove all files in the distributed cache
-				removeCachedFiles(distributedCacheEntries, fileCache);
-
-				// close and de-activate safety net for task thread
-				LOG.info("Ensuring all FileSystem streams are closed for task {}", this);
-				FileSystemSafetyNet.closeSafetyNetAndGuardedResourcesForThread();
-
-				notifyFinalState();
 			}
 			catch (Throwable t) {
 				// an error in the resource cleanup is fatal
@@ -919,7 +961,9 @@ public class Task implements Runnable, TaskActions {
 			// counted as finished when this happens
 			// errors here will only be logged
 			try {
-				metrics.close();
+				if (executionState != ExecutionState.MODIFICATION) {
+					metrics.close();
+				}
 			}
 			catch (Throwable t) {
 				LOG.error("Error during metrics de-registration of task {} ({}).", taskNameWithSubtask, executionId, t);
@@ -1069,40 +1113,26 @@ public class Task implements Runnable, TaskActions {
 
 	public void pauseExecution() {
 		LOG.info("Attempting to pause task {} ({}).", taskNameWithSubtask, executionId);
-		changeRuntimeState(ExecutionState.MIGRATING);
+		changeRuntimeState(ExecutionState.MODIFICATION);
 	}
 
 	public void resumeExecution() {
 		LOG.info("Attempting to resume task {} ({}).", taskNameWithSubtask, executionId);
 
-		resuming = true;
 		ExecutionState current = executionState;
 
 		// if the task is not running, then we need not do anything
-		if (current != ExecutionState.MIGRATING) {
-			LOG.info("Task {} in different state {} than expected {}", taskNameWithSubtask, current, ExecutionState.MIGRATING);
+		if (current != ExecutionState.MODIFICATION) {
+			LOG.info("Task {} in different state {} than expected {}", taskNameWithSubtask, current, ExecutionState.MODIFICATION);
 			return;
 		}
 
 		LOG.info("Triggering resuming of task code {} ({}).", taskNameWithSubtask, executionId);
 
-		if (transitionState(current, ExecutionState.RUNNING)) {
+		resetTask();
+		getExecutingThread().start();
 
-			try {
-				invokable.resume();
-			} catch (Exception e) {
-				LOG.error("Failed to resume abstract invokable {} ({}) - {}.", taskNameWithSubtask, executionId, e);
-			}
-			notifyObservers(ExecutionState.RUNNING, null);
-
-			resetTask();
-			getExecutingThread().start();
-
-			// all good, we kick off the task, which performs its own initialization
-
-		} else {
-			LOG.error("Failed triggering resuming of task code {} ({}).", taskNameWithSubtask, executionId);
-		}
+		// all good, we kick off the task, which performs its own initialization
 	}
 
 	private void changeRuntimeState(ExecutionState targetState) {

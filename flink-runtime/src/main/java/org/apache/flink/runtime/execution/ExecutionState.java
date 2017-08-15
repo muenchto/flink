@@ -60,7 +60,12 @@ public enum ExecutionState {
 	/**
 	 * Represents, that the current execution is paused, due to changes to the execution graph.
 	 */
-	MIGRATING,
+	MODIFICATION,
+
+	/**
+	 * Represents, that the current execution is paused, due to changes to the execution graph.
+	 */
+	RESUMING,
 
 	/**
 	 * This state marks "successfully completed". It can only be reached when a

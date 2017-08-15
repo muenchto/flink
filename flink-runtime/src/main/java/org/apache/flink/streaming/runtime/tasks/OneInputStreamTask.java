@@ -45,12 +45,11 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 	public void init() throws Exception {
 		StreamConfig configuration = getConfiguration();
 
+		// Explicitly set running to true, in case we have been stopped for modification
+		running = true;
+
 		TypeSerializer<IN> inSerializer = configuration.getTypeSerializerIn1(getUserCodeClassLoader());
 		int numberOfInputs = configuration.getNumberOfInputs();
-
-		LOG.info("InSerializer: " + (inSerializer != null
-			? inSerializer.getClass() + " - " + inSerializer.createInstance().getClass().getName()
-			: "null"));
 
 		if (numberOfInputs > 0) {
 			InputGate[] inputGates = getEnvironment().getAllInputGates();
@@ -80,9 +79,6 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 
 		LOG.info("{} - Starting run() with operator {}", getName(), inputProcessor);
 
-		InputGate[] inputGates = getEnvironment().getAllInputGates();
-		LOG.info("Init from " + getName() + " - " + Arrays.toString(inputGates));
-
 		while (running && inputProcessor.processInput()) {
 			// all the work happens in the "processInput" method
 		}
@@ -104,16 +100,6 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 	@Override
 	protected void cancelTask() {
 		running = false;
-	}
-
-	@Override
-	protected void pauseTask()  throws Exception {
-		running = false;
-	}
-
-	@Override
-	protected void resumeTask()  throws Exception {
-		running = true; // TODO Actually resuming the task
 	}
 
 	@Override
