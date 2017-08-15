@@ -192,19 +192,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	protected abstract void cancelTask() throws Exception;
 
-	protected void pauseTask() throws Exception {
-		LOG.info("Pausing Task in StreamTask");
-		// Default implementation does nothing
-	}
-
-	protected void resumeTask() throws Exception {
-		// Default implementation does nothing
-		LOG.info("Resuming Task in StreamTask");
-	}
-
 	// ------------------------------------------------------------------------
 	//  Core work methods of the Stream Task
 	// ------------------------------------------------------------------------
+
+	public boolean getPausedForModification() {
+		return pausedForModification;
+	}
 
 	/**
 	 * Allows the user to specify his own {@link ProcessingTimeService TimerServiceProvider}.
@@ -275,7 +269,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					initializeState();
 				}
 
-					openAllOperators();
+				openAllOperators();
 			}
 
 			// final check to exit early before starting to run
@@ -283,9 +277,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				throw new CancelTaskException();
 			}
 
-
-
 			// let the task do its work
+			pausedForModification = false;
 			isRunning = true;
 			run();
 
@@ -297,8 +290,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 			synchronized (lock) {
 
-				isRunning = false;
-
+				// Paused this StreamTask for modification, do not attempt to clean up
 				if (pausedForModification) {
 					LOG.debug("Paused task {} for migration", getName());
 					return;
@@ -359,23 +351,26 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				LOG.error("Could not shut down async checkpoint threads", t);
 			}
 
-			// we must! perform this cleanup
-			try {
-				cleanup();
-			}
-			catch (Throwable t) {
-				// catch and log the exception to not replace the original exception
-				LOG.error("Error during cleanup of stream task", t);
-			}
+			// Do not perform cleanup, if pausing for modification
+			if (!pausedForModification) {
+				// we must! perform this cleanup
+				try {
+					cleanup();
+				}
+				catch (Throwable t) {
+					// catch and log the exception to not replace the original exception
+					LOG.error("Error during cleanup of stream task", t);
+				}
 
-			// if the operators were not disposed before, do a hard dispose
-			if (!disposed) {
-				disposeAllOperators();
-			}
+				// if the operators were not disposed before, do a hard dispose
+				if (!disposed) {
+					disposeAllOperators();
+				}
 
-			// release the output resources. this method should never fail.
-			if (operatorChain != null) {
-				operatorChain.releaseOutputs();
+				// release the output resources. this method should never fail.
+				if (operatorChain != null) {
+					operatorChain.releaseOutputs();
+				}
 			}
 		}
 	}
@@ -383,12 +378,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	@Override
 	public void pause() throws Exception {
 		isRunning = false;
-	}
-
-	@Override
-	public void resume() throws Exception {
-		isRunning = true;
-		pausedForModification = false;
 	}
 
 	@Override
