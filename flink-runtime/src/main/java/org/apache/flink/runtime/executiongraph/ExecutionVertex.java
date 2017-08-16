@@ -823,7 +823,8 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 //					"Only one consumer supported in the current implementation! Found: " + consumers.size());
 
 				if (1 == consumers.size()) {
-					LOG.info("IGNORING: Only one consumer supported in the current implementation! Found: " + consumers.size());
+					LOG.info("IGNORING: Only one consumer supported in the current implementation! Found: "
+						+ consumers.size());
 				}
 
 				List<ExecutionEdge> consumer = consumers.get(0);

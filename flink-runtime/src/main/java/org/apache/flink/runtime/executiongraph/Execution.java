@@ -345,14 +345,12 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		}
 	}
 
-	public boolean scheduleForRuntimeExecution(SlotProvider slotProvider, boolean queued, final ExecutionAttemptID attemptId) {
-
-		LOG.info("Starting new operator");
+	public boolean scheduleForRuntimeExecution(SlotProvider slotProvider,
+											   boolean queued,
+											   final List<ExecutionAttemptID> attemptIDs) {
 
 		try {
 			final Future<SimpleSlot> slotAllocationFuture = allocateSlotForExecution(slotProvider, queued);
-
-			LOG.info("Received slot: " + slotAllocationFuture);
 
 			// IMPORTANT: We have to use the synchronous handle operation (direct executor) here so
 			// that we directly deploy the tasks if the slot allocation future is completed. This is
@@ -364,7 +362,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 						try {
 							LOG.info("Try deploying to slot");
 
-							deployToSlotRuntime(simpleSlot, attemptId);
+							deployToSlotRuntime(simpleSlot, attemptIDs);
 						} catch (Throwable t) {
 							try {
 								simpleSlot.releaseSlot();
@@ -392,11 +390,9 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		}
 	}
 
-	public void deployToSlotRuntime(final SimpleSlot slot, ExecutionAttemptID sourceAttemptId) throws JobException {
+	public void deployToSlotRuntime(final SimpleSlot slot, List<ExecutionAttemptID> successorAttemptIDs) throws JobException {
 		checkNotNull(slot);
-
-		LOG.info("deployToSlotRuntime for " + attemptId);
-
+		checkNotNull(successorAttemptIDs);
 
 		// Check if the TaskManager died in the meantime
 		// This only speeds up the response to TaskManagers failing concurrently to deployments.
@@ -427,8 +423,6 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			}
 			this.assignedResource = slot;
 
-			LOG.info("Before DEPLOY Check for " + attemptId);
-
 			// race double check, did we fail/cancel and do we need to release the slot?
 			if (this.state != DEPLOYING) {
 				slot.releaseSlot();
@@ -440,9 +434,6 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 					attemptNumber, getAssignedResourceLocation().getHostname()));
 			}
 
-			LOG.info("Before tdd for " + attemptId);
-
-
 			final TaskDeploymentDescriptor deployment = vertex.createRuntimeDeploymentDescriptor(
 				attemptId,
 				slot,
@@ -451,19 +442,17 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 
 			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
-			LOG.info("Before sending message with " + deployment);
-
 			final Future<Acknowledge> submitResultFuture = taskManagerGateway
-				.introduceNewOperator(sourceAttemptId, deployment, timeout);
+				.introduceNewOperator(successorAttemptIDs, deployment, timeout);
 
 			submitResultFuture.exceptionallyAsync(new ApplyFunction<Throwable, Void>() {
 				@Override
 				public Void apply(Throwable failure) {
 					if (failure instanceof TimeoutException) {
-						String taskname = vertex.getTaskNameWithSubtaskIndex()+ " (" + Execution.this.attemptId + ')';
+						String taskName = vertex.getTaskNameWithSubtaskIndex()+ " (" + Execution.this.attemptId + ')';
 
 						markFailed(new Exception(
-							"Cannot deploy task " + taskname + " - TaskManager (" + getAssignedResourceLocation()
+							"Cannot runtime deploy task " + taskName + " - TaskManager (" + getAssignedResourceLocation()
 								+ ") not responding after a timeout of " + timeout, failure));
 					}
 					else {

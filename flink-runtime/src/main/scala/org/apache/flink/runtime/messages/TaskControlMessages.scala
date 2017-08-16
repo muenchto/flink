@@ -82,7 +82,7 @@ object TaskMessages {
     * [[TaskOperationResult]] message.
     *
     * */
-  case class IntroduceNewOperator(executionAttemptID: ExecutionAttemptID, taskDeploymentDescriptor: TaskDeploymentDescriptor)
+  case class IntroduceNewOperator(executionAttemptID: java.util.List[ExecutionAttemptID], taskDeploymentDescriptor: TaskDeploymentDescriptor)
     extends TaskMessage with RequiresLeaderSessionID
 
   /**

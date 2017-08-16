@@ -49,7 +49,7 @@ public class ResultPartitionDeploymentDescriptor implements Serializable {
 	private final ResultPartitionType partitionType;
 
 	/** The number of subpartitions. */
-	private final int numberOfSubpartitions;
+	private int numberOfSubpartitions;
 
 	/** The maximum parallelism */
 	private final int maxParallelism;
@@ -90,6 +90,10 @@ public class ResultPartitionDeploymentDescriptor implements Serializable {
 
 	public int getNumberOfSubpartitions() {
 		return numberOfSubpartitions;
+	}
+
+	public void setNumberOfSubpartitions(int numberOfSubpartitions) {
+		this.numberOfSubpartitions = numberOfSubpartitions;
 	}
 
 	public int getMaxParallelism() {

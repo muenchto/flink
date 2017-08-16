@@ -378,7 +378,7 @@ public class Task implements Runnable, TaskActions {
 
 			writers[counter] = new ResultPartitionWriter(producedPartitions[counter]);
 
-			LOG.info("Creating writer {}", writers[counter]);
+			LOG.info("{} - Creating writer {}", taskNameWithSubtaskAndId, writers[counter]);
 
 			++counter;
 		}
