@@ -23,13 +23,11 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
-import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.InstanceID;
-import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTrace;
@@ -148,14 +146,13 @@ public interface TaskManagerGateway {
 	);
 
 	/**
-	 * Introduces a new {@link org.apache.flink.api.common.functions.FilterFunction} to the job
+	 * Introduces a new {@link org.apache.flink.api.common.functions.FilterFunction} to the job.
 	 *
-	 * @param executionAttemptID AttemptID of the source operator in front
-	 * @param slotAllocationId
-	 *@param slotNumber
+	 * @param successorExecutionAttemptID AttemptID of the successor operators, whose input needs to be redirected.
+	 * @param descriptor The TaskDeploymentDescriptor for the new operator.
 	 * @param timeout of the submit operation  @return Future acknowledge if the operator was successfully introduced
 	 */
-	Future<Acknowledge> introduceNewOperator(ExecutionAttemptID executionAttemptID,
+	Future<Acknowledge> introduceNewOperator(List<ExecutionAttemptID> successorExecutionAttemptID,
 											 TaskDeploymentDescriptor descriptor,
 											 Time timeout);
 

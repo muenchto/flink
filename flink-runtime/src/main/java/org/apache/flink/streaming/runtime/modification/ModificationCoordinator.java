@@ -1,7 +1,6 @@
 package org.apache.flink.streaming.runtime.modification;
 
 import com.google.common.base.Joiner;
-import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.executiongraph.*;
@@ -57,7 +56,7 @@ public class ModificationCoordinator {
 
 		List<JobVertexID> vertexIDS = Collections.singletonList(map.getJobVertexId());
 
-		for (ExecutionVertex executionVertex: source.getTaskVertices()) {
+		for (ExecutionVertex executionVertex : source.getTaskVertices()) {
 			Execution currentExecutionAttempt = executionVertex.getCurrentExecutionAttempt();
 
 			currentExecutionAttempt.triggerModification(
@@ -98,34 +97,31 @@ public class ModificationCoordinator {
 
 	public void startFilterOperator() {
 
-		ExecutionJobVertex source = findMap();
+		ExecutionJobVertex mapOperator = findMap();
+		ExecutionJobVertex sourceOperator = findSource();
 
-		ExecutionVertex[] sourceTaskVertices = source.getTaskVertices();
-
-		if (sourceTaskVertices.length != 1) {
-			executionGraph.failGlobal(new RuntimeException("Failed to find sourceTaskVertex"));
+		List<ExecutionAttemptID> mapAttemptIds = new ArrayList<>();
+		for (ExecutionVertex executionVertex : mapOperator.getTaskVertices()) {
+			mapAttemptIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
 		}
 
-		Execution execution = sourceTaskVertices[0].getCurrentExecutionAttempt();
+		ExecutionVertex[] sourceTaskVertices = sourceOperator.getTaskVertices();
 
-		ExecutionJobVertex executionJobVertex = buildFilterExecution();
+		if (sourceTaskVertices.length != 1) {
+			LOG.info("Found {} ExecutionVertices. Expected {}.", sourceTaskVertices.length, 1);
+		} else {
+			LOG.info("Found {} ExecutionVertices as expected.", sourceTaskVertices.length);
+		}
 
-		boolean b = executionJobVertex.getTaskVertices()[0].getCurrentExecutionAttempt()
-			.scheduleForRuntimeExecution(
-				executionGraph.getSlotProvider(),
-				executionGraph.isQueuedSchedulingAllowed(),
-				execution.getAttemptId());
+		ExecutionJobVertex executionJobVertex = buildFilterExecutionJobVertex(sourceOperator);
 
-
-//		for (ExecutionVertex vertex : sourceTaskVertices) {
-//			Execution execution = vertex.getCurrentExecutionAttempt();
-//
-//			execution.getVertex().createDeploymentDescriptor();
-//
-//			execution.getAssignedResource()
-//				.getTaskManagerGateway()
-//				.introduceNewOperator(execution.getAttemptId(), slot.getAllocatedSlot().getSlotAllocationId(), slot.getRoot().getSlotNumber(), rpcCallTimeout);
-//		}
+		for (ExecutionVertex executionVertex : executionJobVertex.getTaskVertices()) {
+			boolean successful = executionVertex.getCurrentExecutionAttempt()
+				.scheduleForRuntimeExecution(
+					executionGraph.getSlotProvider(),
+					executionGraph.isQueuedSchedulingAllowed(),
+					mapAttemptIds);
+		}
 	}
 
 
@@ -143,7 +139,7 @@ public class ModificationCoordinator {
 
 		currentPlan.append("JobInfo: ").append(jobInformation).append(jobInformation.getJobConfiguration()).append("\n");
 
-		for (Map.Entry<JobVertexID, ExecutionJobVertex> vertex: executionGraph.getTasks().entrySet()) {
+		for (Map.Entry<JobVertexID, ExecutionJobVertex> vertex : executionGraph.getTasks().entrySet()) {
 			currentPlan
 				.append("Vertex:")
 				.append(vertex.getKey()).append(" - ")
@@ -157,7 +153,7 @@ public class ModificationCoordinator {
 				.append(Joiner.on(",").join(vertex.getValue().getInputs()))
 				.append(" IntermediateResultPartition: ");
 
-			for (IntermediateResult result:vertex.getValue().getInputs()) {
+			for (IntermediateResult result : vertex.getValue().getInputs()) {
 				for (IntermediateResultPartition partition : result.getPartitions()) {
 					currentPlan
 						.append(" PartitionId: ")
@@ -171,7 +167,7 @@ public class ModificationCoordinator {
 			currentPlan.append("\n");
 		}
 
-		for (Map.Entry<ExecutionAttemptID, Execution> exec: executionGraph.getRegisteredExecutions().entrySet()) {
+		for (Map.Entry<ExecutionAttemptID, Execution> exec : executionGraph.getRegisteredExecutions().entrySet()) {
 			currentPlan.append(exec.getKey())
 				.append(exec.getValue())
 				.append(exec.getValue().getVertexWithAttempt())
@@ -193,7 +189,7 @@ public class ModificationCoordinator {
 
 		for (ExecutionJobVertex ejv : executionGraph.getVerticesInCreationOrder()) {
 			if (ejv.getJobVertex().getName().toLowerCase().contains("source")) {
-				executionJobVertex =  ejv;
+				executionJobVertex = ejv;
 			}
 		}
 
@@ -216,12 +212,13 @@ public class ModificationCoordinator {
 
 		for (ExecutionJobVertex ejv : executionGraph.getVerticesInCreationOrder()) {
 			if (ejv.getJobVertex().getName().toLowerCase().contains("map")) {
-				executionJobVertex =  ejv;
+				executionJobVertex = ejv;
 			}
 		}
 
 		if (executionJobVertex == null) {
 			executionGraph.failGlobal(new ExecutionGraphException("Could not find map"));
+			return null;
 		}
 
 		List<JobEdge> producedDataSets = executionJobVertex.getJobVertex().getInputs();
@@ -233,30 +230,35 @@ public class ModificationCoordinator {
 		return executionJobVertex;
 	}
 
-	private ExecutionJobVertex buildFilterExecution() {
+	private ExecutionJobVertex buildFilterExecutionJobVertex(ExecutionJobVertex source) {
 
-		JobVertex jobVertex = new JobVertex("IntroducedFilterOperator", new JobVertexID());
-		jobVertex.setParallelism(1);
-		jobVertex.setInvokableClass(OneInputStreamTask.class);
+		JobVertex filterJobVertex = new JobVertex("IntroducedFilterOperator", new JobVertexID());
+		filterJobVertex.setParallelism(source.getParallelism());
+		filterJobVertex.setInvokableClass(OneInputStreamTask.class);
 
 		IntermediateDataSet intermediateDataSet = new IntermediateDataSet(
 			new IntermediateDataSetID(),
 			ResultPartitionType.PIPELINED,
-			jobVertex);
+			filterJobVertex);
 
 		LOG.info("Created intermediateDataSet with id: " + intermediateDataSet.getId());
 
-		jobVertex.createAndAddResultDataSet(intermediateDataSet.getId(), ResultPartitionType.PIPELINED);
+		// TODO Add consumer (In this case 2)
+		filterJobVertex.createAndAddResultDataSet(intermediateDataSet.getId(), ResultPartitionType.PIPELINED);
 
-		ExecutionJobVertex source = findSource();
+		List<IntermediateDataSet> producedDataSets = source.getJobVertex().getProducedDataSets();
 
-		IntermediateDataSet producedDataSets = source.getJobVertex().getProducedDataSets().get(0);
-		jobVertex.connectDataSetAsInput(producedDataSets, DistributionPattern.ALL_TO_ALL);
+		if (producedDataSets.size() != 1) {
+			executionGraph.failGlobal(new IllegalStateException("Source has more than one producing dataset"));
+		}
+
+		// Connect source IDS as input for FilterOperator
+		filterJobVertex.connectDataSetAsInput(producedDataSets.get(0), DistributionPattern.ALL_TO_ALL);
 
 		try {
 			ExecutionJobVertex vertex =
 				new ExecutionJobVertex(executionGraph,
-					jobVertex,
+					filterJobVertex,
 					1,
 					rpcCallTimeout,
 					executionGraph.getGlobalModVersion(),
@@ -264,22 +266,20 @@ public class ModificationCoordinator {
 
 			vertex.connectToPredecessorsRuntime(executionGraph.getIntermediateResults());
 
-			// TODO Add produced datasets data sets to intermediateResults
-//			for (IntermediateResult res : ejv.getProducedDataSets()) {
-//				IntermediateResult previousDataSet = this.intermediateResults.putIfAbsent(res.getId(), res);
-//				if (previousDataSet != null) {
-//					throw new JobException(String.format("Encountered two intermediate data set with ID %s : previous=[%s] / new=[%s]",
-//						res.getId(), res, previousDataSet));
-//				}
-//			}
-
-			ExecutionJobVertex previousTask = executionGraph.getTasks().putIfAbsent(jobVertex.getID(), vertex);
+			ExecutionJobVertex previousTask = executionGraph.getTasks().putIfAbsent(filterJobVertex.getID(), vertex);
 			if (previousTask != null) {
 				throw new JobException(String.format("Encountered two job vertices with ID %s : previous=[%s] / new=[%s]",
-					jobVertex.getID(), vertex, previousTask));
+					filterJobVertex.getID(), vertex, previousTask));
 			}
 
-			executionGraph.getTotalNumberOfVertices();
+			// Add IntermediateResult to ExecutionGraph
+			for (IntermediateResult res : vertex.getProducedDataSets()) {
+				IntermediateResult previousDataSet = executionGraph.getIntermediateResults().putIfAbsent(res.getId(), res);
+				if (previousDataSet != null) {
+					throw new JobException(String.format("Encountered two intermediate data set with ID %s : previous=[%s] / new=[%s]",
+						res.getId(), res, previousDataSet));
+				}
+			}
 
 			executionGraph.getVerticesInCreationOrder().add(vertex);
 			executionGraph.addNumVertices(vertex.getParallelism());
@@ -287,10 +287,9 @@ public class ModificationCoordinator {
 			// TODO Add to failover strategy
 
 			return vertex;
-		} catch (JobException e) {
-			executionGraph.failGlobal(e);
+		} catch (JobException jobException) {
+			executionGraph.failGlobal(jobException);
+			return null;
 		}
-
-		return null;
 	}
 }

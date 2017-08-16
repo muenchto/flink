@@ -683,7 +683,7 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 		return Collections.unmodifiableMap(this.intermediateResults);
 	}
 
-	public Map<IntermediateDataSetID, IntermediateResult> getIntermediateResults() {
+	public ConcurrentHashMap<IntermediateDataSetID, IntermediateResult> getIntermediateResults() {
 		return this.intermediateResults;
 	}
 

@@ -99,7 +99,7 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public Future<Acknowledge> introduceNewOperator(ExecutionAttemptID executionAttemptID, TaskDeploymentDescriptor descriptor, Time timeout) {
+	public Future<Acknowledge> introduceNewOperator(List<ExecutionAttemptID> successorExecutionAttemptID, TaskDeploymentDescriptor descriptor, Time timeout) {
 		throw new UnsupportedOperationException();
 	}
 

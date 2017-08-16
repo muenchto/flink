@@ -24,7 +24,6 @@ import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.clusterframework.messages.StopCluster;
-import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
@@ -32,7 +31,6 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.instance.InstanceID;
-import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.Messages;
@@ -195,12 +193,12 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public Future<Acknowledge> introduceNewOperator(ExecutionAttemptID executionAttemptID, TaskDeploymentDescriptor descriptor, Time timeout) {
-		Preconditions.checkNotNull(executionAttemptID);
+	public Future<Acknowledge> introduceNewOperator(List<ExecutionAttemptID> successorExecutionAttemptID, TaskDeploymentDescriptor descriptor, Time timeout) {
+		Preconditions.checkNotNull(successorExecutionAttemptID);
 		Preconditions.checkNotNull(timeout);
 
 		scala.concurrent.Future<Acknowledge> cancelResult = actorGateway.ask(
-			new TaskMessages.IntroduceNewOperator(executionAttemptID, descriptor),
+			new TaskMessages.IntroduceNewOperator(successorExecutionAttemptID, descriptor),
 			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
 			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
 

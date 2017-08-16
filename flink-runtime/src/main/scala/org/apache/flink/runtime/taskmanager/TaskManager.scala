@@ -534,186 +534,174 @@ class TaskManager(
       }
   }
 
-  private def introduceNewOperator(executionAttemptID: ExecutionAttemptID, tdd: TaskDeploymentDescriptor): Unit = {
-    val task = runningTasks.get(executionAttemptID)
+  private def introduceNewOperator(successorExecutionAttemptIDs: java.util.List[ExecutionAttemptID],
+                                   tdd: TaskDeploymentDescriptor): Unit = {
 
-    if (task != null) {
+    log.debug(s"Looking for ${successorExecutionAttemptIDs.size()} running executions")
+    for ((k,v) <- runningTasks.asScala) {
+      log.debug(s"Found task $v for executionID $k")
+    }
 
-      log.debug(s"Found task for introducing new operator for $task)")
-
-      val partitions = task.getProducedPartitions
-
-      if (partitions.length != 1) {
-        throw new RuntimeException("Failed to find correct operator")
+    for (attemptID <- successorExecutionAttemptIDs.asScala) {
+      if (runningTasks.containsValue(attemptID)) {
+        handleError(new RuntimeException(s"Failed to find ExecutionAttemp for ID $attemptID"))
+        sender ! decorateMessage(Acknowledge.get())
       }
+    }
 
-      // grab some handles and sanity check on the fly
-      val jobManagerActor = currentJobManager match {
-        case Some(jm) => jm
-        case None =>
-          throw new IllegalStateException("TaskManager is not associated with a JobManager.")
+    // grab some handles and sanity check on the fly
+    val jobManagerActor = currentJobManager match {
+      case Some(jm) => jm
+      case None =>
+        throw new IllegalStateException("TaskManager is not associated with a JobManager.")
+    }
+
+    val libCache = libraryCacheManager match {
+      case Some(manager) => manager
+      case None => throw new IllegalStateException("There is no valid library cache manager.")
+    }
+
+    val slot = tdd.getTargetSlotNumber
+    if (slot < 0 || slot >= numberOfSlots) {
+      throw new IllegalArgumentException(s"Target slot $slot does not exist on TaskManager.")
+    }
+
+    val (checkpointResponder,
+    modificationResponder,
+    partitionStateChecker,
+    resultPartitionConsumableNotifier,
+    taskManagerConnection) = connectionUtils match {
+      case Some(x) => x
+      case None => throw new IllegalStateException("The connection utils have not been initialized.")
+    }
+
+    // create the task. this does not grab any TaskManager resources or download
+    // and libraries - the operation does not block
+
+    val jobManagerGateway = new AkkaActorGateway(jobManagerActor, leaderSessionID.orNull)
+
+    val jobInformation = try {
+      tdd.getSerializedJobInformation.deserializeValue(getClass.getClassLoader)
+    } catch {
+      case e @ (_: IOException | _: ClassNotFoundException) =>
+        throw new IOException("Could not deserialize the job information.", e)
+    }
+
+    val taskInformation = try {
+      tdd.getSerializedTaskInformation.deserializeValue(getClass.getClassLoader)
+    } catch {
+      case e@(_: IOException | _: ClassNotFoundException) =>
+        throw new IOException("Could not deserialize the job vertex information.", e)
+    }
+
+    val taskMetricGroup = taskManagerMetricGroup.addTaskForJob(
+      jobInformation.getJobId,
+      jobInformation.getJobName,
+      taskInformation.getJobVertexId,
+      tdd.getExecutionAttemptId,
+      taskInformation.getTaskName,
+      tdd.getSubtaskIndex,
+      tdd.getAttemptNumber)
+
+    val inputSplitProvider = new TaskInputSplitProvider(
+      jobManagerGateway,
+      jobInformation.getJobId,
+      taskInformation.getJobVertexId,
+      tdd.getExecutionAttemptId,
+      new FiniteDuration(
+        config.getTimeout().getSize(),
+        config.getTimeout().getUnit()))
+
+    taskInformation.setNumberOfInputs(1)
+    taskInformation.setTypeSerializerOne(StringSerializer.INSTANCE)
+    val filterFunction = new FilterFunction[String]() {
+      def filter(value: String): Boolean = {
+        value.startsWith("A")
       }
-      val libCache = libraryCacheManager match {
-        case Some(manager) => manager
-        case None => throw new IllegalStateException("There is no valid library cache manager.")
-      }
+    }
 
-      val slot = tdd.getTargetSlotNumber
-      if (slot < 0 || slot >= numberOfSlots) {
-        throw new IllegalArgumentException(s"Target slot $slot does not exist on TaskManager.")
-      }
+    // TODO Masterthesis Move create of TaskInformation to ModificationManager / Executiongraph
+    taskInformation.setOperator(new StreamFilter(filterFunction))
+    taskInformation.setOperatorName(taskInformation.getTaskName)
 
-      val (checkpointResponder,
-      modificationResponder,
-      partitionStateChecker,
-      resultPartitionConsumableNotifier,
-      taskManagerConnection) = connectionUtils match {
-        case Some(x) => x
-        case None => throw new IllegalStateException("The connection utils have not been initialized.")
-      }
+    val producedPartitions = new util.ArrayList(makeCollection(tdd.getProducedPartitions.asScala))
 
-      // create the task. this does not grab any TaskManager resources or download
-      // and libraries - the operation does not block
+    val firstResultPartition = producedPartitions.get(0)
 
-      val jobManagerGateway = new AkkaActorGateway(jobManagerActor, leaderSessionID.orNull)
+    // Connect Map to this ResultPartition
+    val consumedPartitionId = new ResultPartitionID(firstResultPartition.getPartitionId, tdd.getExecutionAttemptId)
 
-      val jobInformation = try {
-        tdd.getSerializedJobInformation.deserializeValue(getClass.getClassLoader)
-      } catch {
-        case e @ (_: IOException | _: ClassNotFoundException) =>
-          throw new IOException("Could not deserialize the job information.", e)
-      }
+    val icdd = new InputChannelDeploymentDescriptor(consumedPartitionId, ResultPartitionLocation.createLocal())
+    val icddArray = new Array[InputChannelDeploymentDescriptor](1)
+    icddArray(0) = icdd
 
-      val taskInformation = try {
-        tdd.getSerializedTaskInformation.deserializeValue(getClass.getClassLoader)
-      } catch {
-        case e@(_: IOException | _: ClassNotFoundException) =>
-          throw new IOException("Could not deserialize the job vertex information.", e)
-      }
+    for (partition <- tdd.getProducedPartitions.asScala) {
+      log.info(s"Found $partition #Subpartitions: ${partition.getNumberOfSubpartitions}")
 
-      val taskMetricGroup = taskManagerMetricGroup.addTaskForJob(
-        jobInformation.getJobId,
-        jobInformation.getJobName,
-        taskInformation.getJobVertexId,
-        tdd.getExecutionAttemptId,
-        taskInformation.getTaskName,
-        tdd.getSubtaskIndex,
-        tdd.getAttemptNumber)
+      partition.setNumberOfSubpartitions(successorExecutionAttemptIDs.size())
+    }
 
-      val inputSplitProvider = new TaskInputSplitProvider(
-        jobManagerGateway,
-        jobInformation.getJobId,
-        taskInformation.getJobVertexId,
-        tdd.getExecutionAttemptId,
-        new FiniteDuration(
-          config.getTimeout().getSize(),
-          config.getTimeout().getUnit()))
+    for (attemptID <- successorExecutionAttemptIDs.asScala) {
+      val executionToChange = runningTasks.asScala.get(attemptID)
+      val task = executionToChange.get
 
-      for (name <- tdd.getProducedPartitions.asScala) {
-        log.info(s"Created intermediateDataSet with id: IntermediateDatasetID ${name.getResultId} and" +
-          s"IntermediateResultPartitionID ${name.getPartitionId} + parallelism ${name.getMaxParallelism}")
-      }
-
-      for (name <- tdd.getInputGates.asScala) {
-        log.info(s"Created InputGate with SubpartitionIndex ${name.getConsumedSubpartitionIndex}")
-
-        for (two <- name.getInputChannelDeploymentDescriptors) {
-          log.info(s"Created InputChannel with ResultPartitionID ${two.getConsumedPartitionId}")
-        }
-      }
-
-      taskInformation.setNumberOfInputs(1)
-      //      taskInformation.setTypeSerializerOne(new StreamRecordSerializer[String](StringSerializer.INSTANCE))
-      taskInformation.setTypeSerializerOne(StringSerializer.INSTANCE)
-      val filterFunction = new FilterFunction[String]() {
-        def filter(value: String): Boolean = {
-          value.startsWith("A")
-        }
-      }
-
-      taskInformation.setOperator(new StreamFilter(filterFunction))
-      taskInformation.setOperatorName("IntroducedFilterOperator")
-
-      val list = new util.ArrayList(makeCollection(tdd.getProducedPartitions.asScala))
-
-      if (list.size() != 1) {
-        log.info("List has more than 1 element. Unexpected!")
-      }
-
-      val x = list.get(0)
-
-      val consumedPartitionId = new ResultPartitionID(x.getPartitionId, tdd.getExecutionAttemptId)
-
-      val icdd = new InputChannelDeploymentDescriptor(consumedPartitionId, ResultPartitionLocation.createLocal())
-      val a = new Array[InputChannelDeploymentDescriptor](1)
-      a(0) = icdd
-
+      // TODO Masterthesis consumedSubpartitionIndex
       val igdd = new InputGateDeploymentDescriptor(
-        x.getResultId,
+        firstResultPartition.getResultId,
         ResultPartitionType.PIPELINED,
-        0,
-        a)
+        task.getTaskInfo.getIndexOfThisSubtask, // For identifying the IntermediateResult
+        icddArray)
 
       task.connectToNewInputAfterModification(network, igdd)
-
-      val streamConfig = new StreamConfig(task.getTaskConfiguration)
-
-//      val userCodeClassloader = streamConfig.getUserCodeClassLoader
-//      log.info("Received streamConfig: " + streamConfig.getOutEdges())
-
-//      val se = new StreamEdge()
-
-      // TODO Unregister upon pausing from old resultpartition
-
-//      taskInformation.setOutputEdges()
-
-      val newTask = new Task(
-        jobInformation,
-        taskInformation,
-        tdd.getExecutionAttemptId,
-        tdd.getAllocationId,
-        tdd.getSubtaskIndex,
-        tdd.getAttemptNumber,
-        tdd.getProducedPartitions,
-        tdd.getInputGates,
-        tdd.getTargetSlotNumber,
-        tdd.getTaskStateHandles,
-        memoryManager,
-        ioManager,
-        network,
-        bcVarManager,
-        taskManagerConnection,
-        inputSplitProvider,
-        checkpointResponder,
-        modificationResponder,
-        libCache,
-        fileCache,
-        config,
-        taskMetricGroup,
-        resultPartitionConsumableNotifier,
-        partitionStateChecker,
-        context.dispatcher)
-
-      log.info(s"Received task ${newTask.getTaskInfo.getTaskNameWithSubtasks()}")
-
-      val execId = tdd.getExecutionAttemptId
-      // add the task to the map
-      val prevTask = runningTasks.put(execId, newTask)
-      if (prevTask != null) {
-        // already have a task for that ID, put if back and report an error
-        runningTasks.put(execId, prevTask)
-        throw new IllegalStateException("TaskManager already contains a task for id " + execId)
-      }
-
-      // all good, we kick off the task, which performs its own initialization
-      newTask.startTaskThread()
-
-      sender ! decorateMessage(Acknowledge.get())
-
-    } else {
-      log.debug(s"Cannot find source task for execution $executionAttemptID)")
-      sender ! decorateMessage(Acknowledge.get())
     }
+
+    val taskWithConfig = runningTasks.asScala.get(successorExecutionAttemptIDs.get(0))
+    val streamConfig = new StreamConfig(taskWithConfig.get.getTaskConfiguration)
+
+    // TODO Unregister upon pausing from old resultpartition
+
+    val newTask = new Task(
+      jobInformation,
+      taskInformation,
+      tdd.getExecutionAttemptId,
+      tdd.getAllocationId,
+      tdd.getSubtaskIndex,
+      tdd.getAttemptNumber,
+      tdd.getProducedPartitions,
+      tdd.getInputGates,
+      tdd.getTargetSlotNumber,
+      tdd.getTaskStateHandles,
+      memoryManager,
+      ioManager,
+      network,
+      bcVarManager,
+      taskManagerConnection,
+      inputSplitProvider,
+      checkpointResponder,
+      modificationResponder,
+      libCache,
+      fileCache,
+      config,
+      taskMetricGroup,
+      resultPartitionConsumableNotifier,
+      partitionStateChecker,
+      context.dispatcher)
+
+    log.info(s"Starting task ${newTask.getTaskInfo.getTaskNameWithSubtasks}")
+
+    val execId = tdd.getExecutionAttemptId
+    // add the task to the map
+    val prevTask = runningTasks.put(execId, newTask)
+    if (prevTask != null) {
+      // already have a task for that ID, put if back and report an error
+      runningTasks.put(execId, prevTask)
+      throw new IllegalStateException("TaskManager already contains a task for id " + execId)
+    }
+
+    // all good, we kick off the task, which performs its own initialization
+    newTask.startTaskThread()
+
+    sender ! decorateMessage(Acknowledge.get())
   }
 
   import java.util
