@@ -530,6 +530,8 @@ object JobManagerMessages {
 
   case class ModifyJob(jobId: JobID, command: String) extends RequiresLeaderSessionID
 
+  case class UploadNewOperatorJar(jobId: JobID, blobKey: BlobKey) extends RequiresLeaderSessionID
+
   case class ModifyJobSuccess(jobId: JobID, command: String)
 
   case class ModifyJobFailure(jobId: JobID, cause: Throwable)

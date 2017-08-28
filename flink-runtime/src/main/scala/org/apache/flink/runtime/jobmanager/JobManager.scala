@@ -20,7 +20,7 @@ package org.apache.flink.runtime.jobmanager
 
 import java.io.IOException
 import java.net._
-import java.util.UUID
+import java.util.{Collections, UUID}
 import java.util.concurrent.{TimeUnit, Future => _, TimeoutException => _, _}
 
 import akka.actor.Status.{Failure, Success}
@@ -957,7 +957,24 @@ class JobManager(
             case "start" => modificationCoordinator.startFilterOperator()
               (true, "Starting new operator submitted")
 
-            case _ =>
+            case "jar" =>
+              (false, s"Jar command $command")
+
+            case default =>
+
+              try {
+                val classLoader = libraryCacheManager.getClassLoader(jobId)
+
+                val customClass = classLoader.loadClass(default)
+
+                val customObject = customClass.newInstance()
+
+                log.info(s"Instantiated '$customObject' from JobClient for $jobId")
+              } catch {
+                case t : Throwable =>
+                  log.error(s"Encountered $t while instantiating user class")
+              }
+
               (false, s"Unkown command $command")
           }
 
@@ -967,6 +984,36 @@ class JobManager(
             sender() ! ModifyJobFailure(jobId, new IllegalStateException(s"Failure during " +
               s"execution of command $command: ${result._2}"))
           }
+
+        case None =>
+          sender() ! ModifyJobFailure(jobId, new IllegalStateException(s"Failed to find job for id $jobId"))
+      }
+
+    case UploadNewOperatorJar(jobId, blobKey) =>
+
+      log.info(s"Uploading new jar to libraryCacheManager for '$blobKey' from JobClient for $jobId")
+
+      currentJobs.get(jobId) match {
+        case Some((executionGraph, jobInfo)) =>
+
+          log.info(s"Found JobID for $jobId")
+
+          try {
+
+            executionGraph.getModificationCoordinator.addedNewOperatorJar(Collections.singleton(blobKey))
+
+            libraryCacheManager.registerAdditionalJarForJob(jobId, Collections.singleton(blobKey))
+          }
+          catch {
+            case t: Throwable =>
+              log.error(s"Failed to add jar to job due to $t")
+              throw new JobSubmissionException(jobId,
+                "Cannot set up the user code libraries: " + t.getMessage, t)
+          }
+
+          log.info(s"Successfully added $blobKey for $jobId")
+
+          sender() ! ModifyJobSuccess(jobId, "Successfully added jar to new job.")
 
         case None =>
           sender() ! ModifyJobFailure(jobId, new IllegalStateException(s"Failed to find job for id $jobId"))

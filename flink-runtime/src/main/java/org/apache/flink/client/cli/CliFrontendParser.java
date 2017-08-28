@@ -99,6 +99,9 @@ public class CliFrontendParser {
 		"mo", "modify", true, "Passes the argument to the modify command. Currently " +
 		"supported are: `pause`, `resume` and `details`");
 
+	static final Option JOB_COMMAND_OPTION = new Option(
+		"jo", "jobID", true, "ID of the Flink Job, that should be modified.");
+
 	static {
 		HELP_OPTION.setRequired(false);
 
@@ -141,6 +144,9 @@ public class CliFrontendParser {
 
 		MODIFY_COMMAND_OPTION.setRequired(true);
 		MODIFY_COMMAND_OPTION.setArgName("command");
+
+		JOB_COMMAND_OPTION.setRequired(false);
+		JOB_COMMAND_OPTION.setArgName("jobID");
 	}
 
 	private static final Options RUN_OPTIONS = getRunOptions(buildGeneralOptions(new Options()));
@@ -233,6 +239,8 @@ public class CliFrontendParser {
 	private static Options getModifyOptions(Options options) {
 		options = getJobManagerAddressOption(options);
 		options.addOption(MODIFY_COMMAND_OPTION);
+		options.addOption(JAR_OPTION);
+		options.addOption(CLASS_OPTION);
 		return addCustomCliOptions(options, false);
 	}
 
@@ -282,6 +290,8 @@ public class CliFrontendParser {
 	private static Options getModificationOptionsWithoutDeprecatedOptions(Options options) {
 		options = getJobManagerAddressOption(options);
 		options.addOption(MODIFY_COMMAND_OPTION);
+		options.addOption(JAR_OPTION);
+		options.addOption(CLASS_OPTION);
 		return options;
 	}
 

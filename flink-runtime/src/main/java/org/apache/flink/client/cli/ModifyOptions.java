@@ -28,12 +28,21 @@ public class ModifyOptions extends CommandLineOptions {
 
 	private final String[] args;
 	private final String command;
+	private final String jarFile;
+	private final String operatorClassName;
+	private final String jobID;
 
 	public ModifyOptions(CommandLine line) {
 		super(line);
-		args = line.getArgs();
+		this.args = line.getArgs();
 		this.command = line.hasOption(MODIFY_COMMAND_OPTION.getOpt()) ?
-			line.getOptionValue(MODIFY_COMMAND_OPTION.getOpt()) : null;	}
+			line.getOptionValue(MODIFY_COMMAND_OPTION.getOpt()) : null;
+		this.operatorClassName = line.hasOption(CLASS_OPTION.getOpt()) ?
+			line.getOptionValue(CLASS_OPTION.getOpt()) : null;
+		this.jobID = line.hasOption(JOB_COMMAND_OPTION.getOpt()) ?
+			line.getOptionValue(JOB_COMMAND_OPTION.getOpt()) : null;
+		this.jarFile = line.getOptionValue(JAR_OPTION.getOpt());
+	}
 
 	public String[] getArgs() {
 		return args == null ? new String[0] : args;
@@ -41,5 +50,17 @@ public class ModifyOptions extends CommandLineOptions {
 
 	public String getCommand() {
 		return command;
+	}
+
+	public String getJarFile() {
+		return jarFile;
+	}
+
+	public String getOperatorClassName() {
+		return operatorClassName;
+	}
+
+	public String getJobID() {
+		return jobID;
 	}
 }

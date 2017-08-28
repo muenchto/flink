@@ -864,7 +864,7 @@ public class CliFrontend {
 			return handleError(e);
 		}
 
-		if (cleanedArgs.length == 0) {
+		if (options.getJobID() == null) {
 			jobId = findSingleRunningJob(jobManagerGateway);
 
 			if (jobId == null) {
@@ -872,8 +872,8 @@ public class CliFrontend {
 					"Error: Could not find single running job. Try specifying a JobID instead."));
 			}
 
-		} else if (cleanedArgs.length >= 1) {
-			String jobIdString = cleanedArgs[0];
+		} else {
+			String jobIdString = options.getJobID();
 			try {
 				jobId = new JobID(StringUtils.hexStringToByte(jobIdString));
 			} catch (Exception e) {
@@ -881,10 +881,6 @@ public class CliFrontend {
 					"Error: The value for the Job ID is not a valid ID."));
 			}
 
-		} else {
-			return handleArgException(new IllegalArgumentException(
-				"Error: The value for the Job ID is not a valid ID. Either specify a Job ID or leave empty " +
-					"to trigger a runtime modification."));
 		}
 
 		return triggerModify(options, jobManagerGateway, jobId);
@@ -921,7 +917,7 @@ public class CliFrontend {
 				}
 
 				SimpleDateFormat df = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
-				Comparator<JobStatusMessage> njec = new Comparator<JobStatusMessage>(){
+				Comparator<JobStatusMessage> timeComperator = new Comparator<JobStatusMessage>(){
 					@Override
 					public int compare(JobStatusMessage o1, JobStatusMessage o2) {
 						return (int)(o1.getStartTime()-o2.getStartTime());
@@ -936,7 +932,7 @@ public class CliFrontend {
 
 					System.out.println("Could not find single running job. Currently running jobs: ");
 
-					Collections.sort(runningJobs, njec);
+					Collections.sort(runningJobs, timeComperator);
 
 					System.out.println("------------------ Running/Restarting Jobs -------------------");
 					for (JobStatusMessage rj : runningJobs) {
@@ -949,7 +945,7 @@ public class CliFrontend {
 				return null;
 			}
 			else {
-				throw new Exception("ReqeustRunningJobs requires a response of type " +
+				throw new Exception("RequestRunningJobs requires a response of type " +
 					"RunningJobs. Instead the response is of type " + result.getClass() + ".");
 			}
 		}
@@ -966,9 +962,30 @@ public class CliFrontend {
 				throw new Exception("Failed to parse command line option.");
 			}
 
-			ModifyJob modifyMessage = new ModifyJob(jobId, options.getCommand());
+			Future<Object> response;
 
-			Future<Object> response = jobManager.ask(modifyMessage,	new FiniteDuration(1, TimeUnit.HOURS));
+			if (options.getCommand().equalsIgnoreCase("jar")) {
+				// Check if JAR is present, fail otherwise
+
+				if (options.getJarFile() == null) {
+					Throwable t = new Throwable("Command 'jar' requires the additional parameters 'jarFile'.");
+					handleError(t);
+					throw t;
+				} else {
+					BlobKey blobKey = uploadJars(jobManager, options);
+
+					JobManagerMessages.UploadNewOperatorJar uploadNewOperatorJarMessage =
+						new JobManagerMessages.UploadNewOperatorJar(jobId, blobKey);
+
+					response = jobManager.ask(uploadNewOperatorJarMessage,
+						new FiniteDuration(1, TimeUnit.HOURS));
+				}
+			} else {
+
+				ModifyJob modifyMessage = new ModifyJob(jobId, options.getCommand());
+
+				response = jobManager.ask(modifyMessage, new FiniteDuration(1, TimeUnit.HOURS));
+			}
 
 			Object result;
 			try {
@@ -994,6 +1011,36 @@ public class CliFrontend {
 		catch (Throwable t) {
 			return handleError(t);
 		}
+	}
+
+	private BlobKey uploadJars(ActorGateway jobManager, ModifyOptions options) {
+
+		String jarFile = options.getJarFile();
+
+		logAndSysout("Uploading JAR file '" + jarFile + "'.");
+
+		List<File> libs = new ArrayList<>();
+		try {
+			libs.add(new File(jarFile));
+			List<Path> libPaths = new ArrayList<>(libs.size());
+			for (File f : libs) {
+				libPaths.add(new Path(f.toURI()));
+			}
+
+			LOG.debug("JAR files: " + org.apache.commons.lang.StringUtils.join(libPaths, ","));
+			List<BlobKey> blobKeys = BlobClient.uploadJarFiles(jobManager, clientTimeout, config, libPaths);
+			LOG.debug("Blob keys: " + org.apache.commons.lang.StringUtils.join(blobKeys, ","));
+
+			if (blobKeys.size() == 1) {
+				return blobKeys.get(0);
+			} else {
+				handleError(new RuntimeException("More than one BlobKey encountered"));
+			}
+		} catch (IOException e) {
+			handleError(e);
+		}
+
+		return null;
 	}
 
 	// --------------------------------------------------------------------------------------------
