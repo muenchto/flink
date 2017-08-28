@@ -1,8 +1,10 @@
 package org.apache.flink.streaming.runtime.modification;
 
 import com.google.common.base.Joiner;
+import org.apache.commons.lang.StringUtils;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.JobException;
+import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.executiongraph.*;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
@@ -23,10 +25,12 @@ public class ModificationCoordinator {
 
 	private final ExecutionGraph executionGraph;
 	private final Time rpcCallTimeout;
+	private final Collection<BlobKey> blobKeys;
 
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
 		this.rpcCallTimeout = rpcCallTimeout;
+		this.blobKeys = new HashSet<>();
 	}
 
 	public boolean receiveAcknowledgeMessage(AcknowledgeModification acknowledgeModification) {
@@ -47,6 +51,14 @@ public class ModificationCoordinator {
 			LOG.debug("Received wrong decline modification message: {}", declineModification);
 			return false;
 		}
+	}
+
+	public void addedNewOperatorJar(Collection<BlobKey> blobKeys) {
+		LOG.debug("Adding BlobKeys {} for executionGraph {}.",
+			StringUtils.join(blobKeys, ","),
+			executionGraph.getJobID());
+
+		this.blobKeys.addAll(blobKeys);
 	}
 
 	public void pauseJob() {

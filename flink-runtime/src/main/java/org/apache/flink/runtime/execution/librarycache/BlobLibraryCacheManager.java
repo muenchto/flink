@@ -21,17 +21,9 @@ package org.apache.flink.runtime.execution.librarycache;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.blob.BlobService;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -148,6 +140,67 @@ public final class BlobLibraryCacheManager extends TimerTask implements LibraryC
 	}
 
 	@Override
+	public void registerAdditionalJarForJob(JobID jobId, Collection<BlobKey> requiredJarFiles) {
+		checkNotNull(jobId, "The JobId must not be null.");
+		checkNotNull(requiredJarFiles, "The required jar files must not be null.");
+
+		synchronized (lockObject) {
+			LibraryCacheEntry entry = cacheEntries.get(jobId);
+
+			if (entry == null) {
+				throw new RuntimeException("Could not find registered job for id: " + jobId);
+			} else {
+
+				// create a new entry in the library cache
+				BlobKey[] keys = requiredJarFiles.toArray(new BlobKey[requiredJarFiles.size()]);
+				URL[] urls = new URL[keys.length + entry.libraryURLs.length];
+
+				int count = 0;
+				try {
+					for (; count < keys.length; count++) {
+						BlobKey blobKey = keys[count];
+						urls[count] = registerReferenceToBlobKeyAndGetURL(blobKey);
+						LOG.info("Referencing BlobKey {} to URL {}.", blobKey, urls[count]);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
+				// add previous URLs
+				for (URL url : entry.libraryURLs) {
+					urls[count] = url;
+					count++;
+				}
+
+				Set<BlobKey> libraries = entry.libraries;
+
+				LOG.info("Previous jar files {} to {} for jobID {}.",
+					StringUtils.join(libraries, ","),
+					getClass().getName(),
+					jobId);
+
+				Collection<BlobKey> allLibraries = new ArrayList<>();
+				allLibraries.addAll(libraries);
+				allLibraries.addAll(requiredJarFiles);
+
+				// Combined previous and new required jar files
+//				requiredJarFiles.addAll(libraries);
+
+				LOG.info("Added new jar files {} to {}.", StringUtils.join(requiredJarFiles, ",") ,getClass().getName());
+				LOG.info("All jar files {} with urls: {}", StringUtils.join(allLibraries, ","), Arrays.toString(urls));
+
+				LibraryCacheEntry put = cacheEntries.put(jobId, new LibraryCacheEntry(allLibraries, urls, JOB_ATTEMPT_ID));
+
+				if (put == null) {
+					LOG.info("Did not replace current entry.");
+				} else {
+					LOG.info("Replace current entry.");
+				}
+			}
+		}
+	}
+
+	@Override
 	public void unregisterJob(JobID id) {
 		unregisterTask(id, JOB_ATTEMPT_ID);
 	}
@@ -183,7 +236,13 @@ public final class BlobLibraryCacheManager extends TimerTask implements LibraryC
 		
 		synchronized (lockObject) {
 			LibraryCacheEntry entry = cacheEntries.get(id);
+
 			if (entry != null) {
+
+				LOG.info("Getting classloader for jar files {} for BlobKeys {}.",
+					StringUtils.join(entry.libraryURLs, ","),
+					StringUtils.join(entry.libraries, ","));
+
 				return entry.getClassLoader();
 			} else {
 				throw new IllegalStateException("No libraries are registered for job " + id);
@@ -293,10 +352,12 @@ public final class BlobLibraryCacheManager extends TimerTask implements LibraryC
 		private final Set<ExecutionAttemptID> referenceHolders;
 		
 		private final Set<BlobKey> libraries;
-		
-		
+
+		private final URL[] libraryURLs;
+
 		public LibraryCacheEntry(Collection<BlobKey> libraries, URL[] libraryURLs, ExecutionAttemptID initialReference) {
 			this.classLoader = new FlinkUserCodeClassLoader(libraryURLs);
+			this.libraryURLs = libraryURLs;
 			this.libraries = new HashSet<>(libraries);
 			this.referenceHolders = new HashSet<>();
 			this.referenceHolders.add(initialReference);
@@ -313,8 +374,10 @@ public final class BlobLibraryCacheManager extends TimerTask implements LibraryC
 		
 		public void register(ExecutionAttemptID task, Collection<BlobKey> keys) {
 			if (!libraries.containsAll(keys)) {
-				throw new IllegalStateException(
-						"The library registration references a different set of libraries than previous registrations for this job.");
+//				throw new IllegalStateException(
+//						"The library registration references a different set of libraries than previous registrations for this job.");
+				LOG.info("Omitting - The library registration references a different set of " +
+					"libraries than previous registrations for this job.");
 			}
 			
 			this.referenceHolders.add(task);

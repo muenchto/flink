@@ -55,6 +55,11 @@ public class FallbackLibraryCacheManager implements LibraryCacheManager {
 	}
 
 	@Override
+	public void registerAdditionalJarForJob(JobID id, Collection<BlobKey> requiredJarFiles) {
+		LOG.warn("FallbackLibraryCacheManager cannot download files associated with blob keys.");
+	}
+
+	@Override
 	public void unregisterJob(JobID id) {
 		LOG.warn("FallbackLibraryCacheManager does not book keeping of job IDs.");
 	}

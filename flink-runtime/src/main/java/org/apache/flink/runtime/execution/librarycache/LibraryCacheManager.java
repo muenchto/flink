@@ -68,6 +68,14 @@ public interface LibraryCacheManager {
 			Collection<URL> requiredClasspaths) throws IOException;
 
 	/**
+	 * Adds additional jars to the already running job.
+	 *
+	 * @param id job ID
+	 * @param requiredJarFiles collection of blob keys identifying the required jar files
+	 */
+	void registerAdditionalJarForJob(JobID id, Collection<BlobKey> requiredJarFiles);
+
+	/**
 	 * Unregisters a job from the library cache manager.
 	 *
 	 * @param id job ID
