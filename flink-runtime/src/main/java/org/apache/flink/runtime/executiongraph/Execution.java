@@ -31,15 +31,14 @@ import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.FutureUtils;
 import org.apache.flink.runtime.concurrent.impl.FlinkCompletableFuture;
 import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
-import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
-import org.apache.flink.runtime.deployment.PartialInputChannelDeploymentDescriptor;
-import org.apache.flink.runtime.deployment.ResultPartitionLocation;
-import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
+import org.apache.flink.runtime.deployment.*;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.instance.SimpleSlot;
 import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
+import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
+import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationConstraint;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
@@ -345,9 +344,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		}
 	}
 
-	public boolean scheduleForRuntimeExecution(SlotProvider slotProvider,
-											   boolean queued,
-											   final List<ExecutionAttemptID> attemptIDs) {
+	public boolean scheduleForRuntimeExecution(SlotProvider slotProvider, boolean queued) {
 
 		try {
 			final Future<SimpleSlot> slotAllocationFuture = allocateSlotForExecution(slotProvider, queued);
@@ -362,7 +359,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 						try {
 							LOG.info("Try deploying to slot");
 
-							deployToSlotRuntime(simpleSlot, attemptIDs);
+							deployToSlotRuntime(simpleSlot);
 						} catch (Throwable t) {
 							try {
 								simpleSlot.releaseSlot();
@@ -390,9 +387,8 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		}
 	}
 
-	public void deployToSlotRuntime(final SimpleSlot slot, List<ExecutionAttemptID> successorAttemptIDs) throws JobException {
+	public void deployToSlotRuntime(final SimpleSlot slot) throws JobException {
 		checkNotNull(slot);
-		checkNotNull(successorAttemptIDs);
 
 		// Check if the TaskManager died in the meantime
 		// This only speeds up the response to TaskManagers failing concurrently to deployments.
@@ -431,8 +427,10 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 
 			if (LOG.isInfoEnabled()) {
 				LOG.info(String.format("Deploying %s (attempt #%d) to %s", vertex.getTaskNameWithSubtaskIndex(),
-					attemptNumber, getAssignedResourceLocation().getHostname()));
+					attemptNumber, getAssignedResourceLocation()));
 			}
+
+			ExecutionAttemptID executionAttemptID = vertex.getSuccessorOperator(slot);
 
 			final TaskDeploymentDescriptor deployment = vertex.createRuntimeDeploymentDescriptor(
 				attemptId,
@@ -443,7 +441,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
 			final Future<Acknowledge> submitResultFuture = taskManagerGateway
-				.introduceNewOperator(successorAttemptIDs, deployment, timeout);
+				.introduceNewOperator(executionAttemptID, deployment, timeout);
 
 			submitResultFuture.exceptionallyAsync(new ApplyFunction<Throwable, Void>() {
 				@Override

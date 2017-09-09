@@ -148,11 +148,12 @@ public interface TaskManagerGateway {
 	/**
 	 * Introduces a new {@link org.apache.flink.api.common.functions.FilterFunction} to the job.
 	 *
-	 * @param successorExecutionAttemptID AttemptID of the successor operators, whose input needs to be redirected.
+	 * @param successorExecutionAttemptID AttemptID of the successor operator, whose input needs to be redirected.
 	 * @param descriptor The TaskDeploymentDescriptor for the new operator.
+	 * @param operatorClassName The class name of the operator, that should be instantiated
 	 * @param timeout of the submit operation  @return Future acknowledge if the operator was successfully introduced
 	 */
-	Future<Acknowledge> introduceNewOperator(List<ExecutionAttemptID> successorExecutionAttemptID,
+	Future<Acknowledge> introduceNewOperator(ExecutionAttemptID successorExecutionAttemptID,
 											 TaskDeploymentDescriptor descriptor,
 											 Time timeout);
 

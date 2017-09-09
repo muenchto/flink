@@ -526,6 +526,7 @@ class TaskManager(
             log.debug(s"Cannot find task to resume for execution $executionID)")
             sender ! decorateMessage(Acknowledge.get())
           }
+
         case IntroduceNewOperator(executionAttemptID, taskDeploymentDescriptor) =>
           log.debug(s"Received message for introducing new operator for $executionAttemptID)")
 
@@ -534,19 +535,23 @@ class TaskManager(
       }
   }
 
-  private def introduceNewOperator(successorExecutionAttemptIDs: java.util.List[ExecutionAttemptID],
+  private def introduceNewOperator(mapOperatorExecutionAttemptID: ExecutionAttemptID,
                                    tdd: TaskDeploymentDescriptor): Unit = {
 
-    log.debug(s"Looking for ${successorExecutionAttemptIDs.size()} running executions")
+    log.debug(s"Looking for execution with id $mapOperatorExecutionAttemptID")
     for ((k,v) <- runningTasks.asScala) {
       log.debug(s"Found task $v for executionID $k")
     }
 
-    for (attemptID <- successorExecutionAttemptIDs.asScala) {
-      if (runningTasks.containsValue(attemptID)) {
-        handleError(new RuntimeException(s"Failed to find ExecutionAttemp for ID $attemptID"))
-        sender ! decorateMessage(Acknowledge.get())
-      }
+    val mapOperator = runningTasks.get(mapOperatorExecutionAttemptID)
+
+    if (mapOperator != null) {
+      log.debug(s"Found corresponding execution ${mapOperator.getTaskInfo.getTaskNameWithSubtasks} with id $mapOperatorExecutionAttemptID")
+      return
+    } else {
+      handleError(new RuntimeException(s"Failed to find ExecutionAttemp for ID $mapOperatorExecutionAttemptID"))
+      sender ! decorateMessage(Acknowledge.get())
+      return
     }
 
     // grab some handles and sanity check on the fly
@@ -635,27 +640,27 @@ class TaskManager(
     val icddArray = new Array[InputChannelDeploymentDescriptor](1)
     icddArray(0) = icdd
 
-    for (partition <- tdd.getProducedPartitions.asScala) {
-      log.info(s"Found $partition #Subpartitions: ${partition.getNumberOfSubpartitions}")
+//    for (partition <- tdd.getProducedPartitions.asScala) {
+//      log.info(s"Found $partition #Subpartitions: ${partition.getNumberOfSubpartitions}")
+//
+//      partition.setNumberOfSubpartitions(mapOperatorExecutionAttemptID.size())
+//    }
+//
+//    for (attemptID <- mapOperatorExecutionAttemptID.asScala) {
+//      val executionToChange = runningTasks.asScala.get(attemptID)
+//      val task = executionToChange.get
+//
+//      // TODO Masterthesis consumedSubpartitionIndex
+//      val igdd = new InputGateDeploymentDescriptor(
+//        firstResultPartition.getResultId,
+//        ResultPartitionType.PIPELINED,
+//        task.getTaskInfo.getIndexOfThisSubtask, // For identifying the IntermediateResult
+//        icddArray)
+//
+//      task.connectToNewInputAfterModification(network, igdd)
+//    }
 
-      partition.setNumberOfSubpartitions(successorExecutionAttemptIDs.size())
-    }
-
-    for (attemptID <- successorExecutionAttemptIDs.asScala) {
-      val executionToChange = runningTasks.asScala.get(attemptID)
-      val task = executionToChange.get
-
-      // TODO Masterthesis consumedSubpartitionIndex
-      val igdd = new InputGateDeploymentDescriptor(
-        firstResultPartition.getResultId,
-        ResultPartitionType.PIPELINED,
-        task.getTaskInfo.getIndexOfThisSubtask, // For identifying the IntermediateResult
-        icddArray)
-
-      task.connectToNewInputAfterModification(network, igdd)
-    }
-
-    val taskWithConfig = runningTasks.asScala.get(successorExecutionAttemptIDs.get(0))
+    val taskWithConfig = runningTasks.asScala.get(mapOperatorExecutionAttemptID)
     val streamConfig = new StreamConfig(taskWithConfig.get.getTaskConfiguration)
 
     // TODO Unregister upon pausing from old resultpartition

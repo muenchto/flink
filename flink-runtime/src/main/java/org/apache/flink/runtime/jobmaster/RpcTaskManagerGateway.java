@@ -120,7 +120,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public Future<Acknowledge> introduceNewOperator(List<ExecutionAttemptID> successorExecutionAttemptID,
+	public Future<Acknowledge> introduceNewOperator(ExecutionAttemptID successorExecutionAttemptID,
 													TaskDeploymentDescriptor descriptor,
 													Time timeout) {
 		throw new UnsupportedOperationException();
