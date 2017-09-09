@@ -811,7 +811,6 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 
 			List<List<ExecutionEdge>> consumers = partition.getConsumers();
 
-			// TODO Manually connect the Input and outputs
 			if (consumers.isEmpty()) {
 				//TODO this case only exists for test, currently there has to be exactly one consumer in real jobs!
 				producedPartitions.add(ResultPartitionDeploymentDescriptor.from(
@@ -822,8 +821,8 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 //				Preconditions.checkState(1 == consumers.size(),
 //					"Only one consumer supported in the current implementation! Found: " + consumers.size());
 
-				if (1 == consumers.size()) {
-					LOG.info("IGNORING: Only one consumer supported in the current implementation! Found: "
+				if (1 != consumers.size()) {
+					LOG.info("Masterthesis - IGNORING: Only one consumer supported in the current implementation! Found: "
 						+ consumers.size());
 				}
 
@@ -887,5 +886,28 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 	@Override
 	public ArchivedExecutionVertex archive() {
 		return new ArchivedExecutionVertex(this);
+	}
+
+	public ExecutionAttemptID getSuccessorOperator(SimpleSlot targetSlot) throws ExecutionGraphException {
+
+		ExecutionJobVertex map = getExecutionGraph().getModificationCoordinator().findMap();
+		ExecutionAttemptID attemptIDOnSameTaskManager = null;
+
+		for (ExecutionVertex vertex : map.getTaskVertices()) {
+			if (vertex.getCurrentAssignedResource().getTaskManagerID() == targetSlot.getTaskManagerID()) {
+				attemptIDOnSameTaskManager = vertex.currentExecution.getAttemptId();
+			}
+		}
+
+		if (attemptIDOnSameTaskManager != null) {
+			return attemptIDOnSameTaskManager;
+		} else {
+			LOG.error("Failed to find map on same TaskManager {} for {}.",
+				targetSlot.getTaskManagerLocation(), currentExecution.getAttemptId());
+			throw new IllegalStateException("Failed to find map on same TaskManager " +
+				targetSlot.getTaskManagerLocation() + "  for " + currentExecution.getAttemptId());
+		}
+
+		// TODO Masterthesis. Otherwise, check InputChannelDeploymentDescriptor.fromEdges
 	}
 }

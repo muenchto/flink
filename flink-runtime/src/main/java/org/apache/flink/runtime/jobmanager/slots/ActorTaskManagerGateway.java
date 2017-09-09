@@ -193,7 +193,9 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public Future<Acknowledge> introduceNewOperator(List<ExecutionAttemptID> successorExecutionAttemptID, TaskDeploymentDescriptor descriptor, Time timeout) {
+	public Future<Acknowledge> introduceNewOperator(ExecutionAttemptID successorExecutionAttemptID,
+													TaskDeploymentDescriptor descriptor,
+													Time timeout) {
 		Preconditions.checkNotNull(successorExecutionAttemptID);
 		Preconditions.checkNotNull(timeout);
 
