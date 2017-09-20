@@ -383,6 +383,8 @@ public class Task implements Runnable, TaskActions {
 			++counter;
 		}
 
+		LOG.info("{} Setting IGDD: {}", taskNameWithSubtaskAndId, inputGateDeploymentDescriptors);
+
 		// Consumed intermediate result partitions
 		this.inputGates = new SingleInputGate[inputGateDeploymentDescriptors.size()];
 		this.inputGatesById = new HashMap<>();
@@ -405,7 +407,10 @@ public class Task implements Runnable, TaskActions {
 			++counter;
 		}
 
-		LOG.info("Current input gates: " + Arrays.toString(inputGates));
+		LOG.info("{} IGDD size: {} Current input gates: {}",
+			inputGateDeploymentDescriptors.size(),
+			taskNameWithSubtask,
+			Arrays.toString(inputGates));
 
 		invokableHasBeenCanceled = new AtomicBoolean(false);
 
@@ -416,7 +421,11 @@ public class Task implements Runnable, TaskActions {
 	public void connectToNewInputAfterModification(NetworkEnvironment networkEnvironment,
 								  InputGateDeploymentDescriptor inputGateDeploymentDescriptor) {
 
-		final String taskNameWithSubtaskAndId = taskNameWithSubtask + " (" + executionId + ')';
+		// TODO Masterthesis Fix here
+
+		final String taskNameWithSubtaskAndId = " Modified - " + taskNameWithSubtask + " (" + executionId + ')';
+		LOG.info("{} Modifying with new IGDD: {}", taskNameWithSubtaskAndId, inputGateDeploymentDescriptor);
+		LOG.info("{} Before Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
 
 		// Omitted single case for multiple input
 
@@ -429,12 +438,10 @@ public class Task implements Runnable, TaskActions {
 			this,
 			taskMetricGroup.getIOMetricGroup());
 
-		LOG.info(taskNameWithSubtaskAndId + "Before Current input gates: " + Arrays.toString(inputGates));
-
 		inputGates[0] = gate;
 		inputGatesById.put(gate.getConsumedResultId(), gate);
 
-		LOG.info(taskNameWithSubtaskAndId + "After Current input gates: " + Arrays.toString(inputGates));
+		LOG.info("{} After Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
 	}
 
 	public void resetTask() {

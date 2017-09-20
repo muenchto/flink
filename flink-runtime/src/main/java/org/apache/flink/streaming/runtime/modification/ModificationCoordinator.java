@@ -3,6 +3,7 @@ package org.apache.flink.streaming.runtime.modification;
 import com.google.common.base.Joiner;
 import org.apache.commons.lang.StringUtils;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.executiongraph.*;
@@ -10,6 +11,8 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
+import org.apache.flink.streaming.api.graph.StreamConfig;
+import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.runtime.modification.exceptions.OperatorNotFoundException;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.Preconditions;
@@ -159,6 +162,26 @@ public class ModificationCoordinator {
 		for (ExecutionVertex executionVertex : filterExecutionJobVertex.getTaskVertices()) {
 			LOG.debug("Found ExecutionVertex {} with location {}", executionVertex, executionVertex.getCurrentAssignedResourceLocation());
 		}
+
+		Configuration sourceConfiguration = sourceOperator.getJobVertex().getConfiguration();
+		StreamConfig sourceStreamConfig = new StreamConfig(sourceConfiguration);
+		List<StreamEdge> outEdges = sourceStreamConfig.getOutEdges(executionGraph.getUserClassLoader());
+
+		LOG.debug("Found outEdges for SourceNode: {}", Joiner.on(",").join(outEdges));
+
+		Configuration configuration = filterExecutionJobVertex.getJobVertex().getConfiguration();
+		StreamConfig filterStreamConfig = new StreamConfig(configuration);
+
+		filterStreamConfig.setNonChainedOutputs(sourceStreamConfig.getNonChainedOutputs(executionGraph.getUserClassLoader()));
+		filterStreamConfig.setOutEdges(sourceStreamConfig.getOutEdges(executionGraph.getUserClassLoader()));
+		filterStreamConfig.setVertexID(42);
+		filterStreamConfig.setTypeSerializerIn1(sourceStreamConfig.getTypeSerializerIn1(executionGraph.getUserClassLoader()));
+		filterStreamConfig.setTypeSerializerOut(sourceStreamConfig.getTypeSerializerOut(executionGraph.getUserClassLoader()));
+		filterStreamConfig.setNumberOfInputs(1);
+		filterStreamConfig.setNumberOfOutputs(1);
+		filterStreamConfig.setTransitiveChainedTaskConfigs(sourceStreamConfig.getTransitiveChainedTaskConfigs(executionGraph.getUserClassLoader()));
+		filterStreamConfig.setOutEdgesInOrder(sourceStreamConfig.getOutEdgesInOrder(executionGraph.getUserClassLoader()));
+		filterStreamConfig.setChainedOutputs(sourceStreamConfig.getChainedOutputs(executionGraph.getUserClassLoader()));
 
 		for (ExecutionVertex executionVertex : filterExecutionJobVertex.getTaskVertices()) {
 			boolean successful = executionVertex.getCurrentExecutionAttempt()

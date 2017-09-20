@@ -538,16 +538,14 @@ class TaskManager(
   private def introduceNewOperator(mapOperatorExecutionAttemptID: ExecutionAttemptID,
                                    tdd: TaskDeploymentDescriptor): Unit = {
 
-    log.debug(s"Looking for execution with id $mapOperatorExecutionAttemptID")
-    for ((k,v) <- runningTasks.asScala) {
-      log.debug(s"Found task $v for executionID $k")
+    for ((executionAttempt, task) <- runningTasks.asScala) {
+      log.debug(s"Found task ${task.getTaskInfo.getTaskNameWithSubtasks} for executionID $executionAttempt")
     }
 
-    val mapOperator = runningTasks.get(mapOperatorExecutionAttemptID)
+    val pausedMapTask = runningTasks.get(mapOperatorExecutionAttemptID)
 
-    if (mapOperator != null) {
-      log.debug(s"Found corresponding execution ${mapOperator.getTaskInfo.getTaskNameWithSubtasks} with id $mapOperatorExecutionAttemptID")
-      return
+    if (pausedMapTask != null) {
+      log.debug(s"Found corresponding execution ${pausedMapTask.getTaskInfo.getTaskNameWithSubtasks} with id $mapOperatorExecutionAttemptID")
     } else {
       handleError(new RuntimeException(s"Failed to find ExecutionAttemp for ID $mapOperatorExecutionAttemptID"))
       sender ! decorateMessage(Acknowledge.get())
@@ -617,51 +615,38 @@ class TaskManager(
         config.getTimeout().getSize(),
         config.getTimeout().getUnit()))
 
+    // TODO Masterthesis: Move create of TaskInformation to ModificationManager / Executiongraph
+    // TODO MAsterthesis: Currently set it manually as it otherwise has been set by StreamingJobGraphGenerator
     taskInformation.setNumberOfInputs(1)
     taskInformation.setTypeSerializerOne(StringSerializer.INSTANCE)
     val filterFunction = new FilterFunction[String]() {
       def filter(value: String): Boolean = {
-        value.startsWith("A")
+        value.toLong % 5 == 0
       }
     }
-
-    // TODO Masterthesis Move create of TaskInformation to ModificationManager / Executiongraph
     taskInformation.setOperator(new StreamFilter(filterFunction))
     taskInformation.setOperatorName(taskInformation.getTaskName)
 
-    val producedPartitions = new util.ArrayList(makeCollection(tdd.getProducedPartitions.asScala))
+    // Assert, that we only produce one
+    assert(tdd.getProducedPartitions.size() == 1)
+    val firstResultPartition = tdd.getProducedPartitions.asScala.head
 
-    val firstResultPartition = producedPartitions.get(0)
-
-    // Connect Map to this ResultPartition
+    // Connect currently paused Map operator to the output of the Filter operator
     val consumedPartitionId = new ResultPartitionID(firstResultPartition.getPartitionId, tdd.getExecutionAttemptId)
 
     val icdd = new InputChannelDeploymentDescriptor(consumedPartitionId, ResultPartitionLocation.createLocal())
     val icddArray = new Array[InputChannelDeploymentDescriptor](1)
     icddArray(0) = icdd
 
-//    for (partition <- tdd.getProducedPartitions.asScala) {
-//      log.info(s"Found $partition #Subpartitions: ${partition.getNumberOfSubpartitions}")
-//
-//      partition.setNumberOfSubpartitions(mapOperatorExecutionAttemptID.size())
-//    }
-//
-//    for (attemptID <- mapOperatorExecutionAttemptID.asScala) {
-//      val executionToChange = runningTasks.asScala.get(attemptID)
-//      val task = executionToChange.get
-//
-//      // TODO Masterthesis consumedSubpartitionIndex
-//      val igdd = new InputGateDeploymentDescriptor(
-//        firstResultPartition.getResultId,
-//        ResultPartitionType.PIPELINED,
-//        task.getTaskInfo.getIndexOfThisSubtask, // For identifying the IntermediateResult
-//        icddArray)
-//
-//      task.connectToNewInputAfterModification(network, igdd)
-//    }
+    // TODO Masterthesis consumedSubpartitionIndex is 0 since the map operator distributes the data and
+    // there is only one subpartition per ResultPartition
+    val igdd = new InputGateDeploymentDescriptor(
+      firstResultPartition.getResultId,
+      ResultPartitionType.PIPELINED,
+      0, // For identifying the IntermediateResult
+      icddArray)
 
-    val taskWithConfig = runningTasks.asScala.get(mapOperatorExecutionAttemptID)
-    val streamConfig = new StreamConfig(taskWithConfig.get.getTaskConfiguration)
+    pausedMapTask.connectToNewInputAfterModification(network, igdd)
 
     // TODO Unregister upon pausing from old resultpartition
 
