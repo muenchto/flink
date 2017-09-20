@@ -647,7 +647,8 @@ public class SingleInputGate implements InputGate {
 			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i]);
 		}
 
-		LOG.debug("Created {} input channels (local: {}, remote: {}, unknown: {}).",
+		LOG.debug("Task {} created {} input channels (local: {}, remote: {}, unknown: {}).",
+			owningTaskName,
 			inputChannels.length,
 			numLocalChannels,
 			numRemoteChannels,
@@ -658,7 +659,7 @@ public class SingleInputGate implements InputGate {
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName() + " - " + owningTaskName + "IDSID: " + consumedResultId +
+		return "InputGate for '" + owningTaskName + "' for IDSID: " + consumedResultId +
 			" SubPartitionIndex: " + consumedSubpartitionIndex;
 	}
 }
