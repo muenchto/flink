@@ -158,6 +158,17 @@ public interface TaskManagerGateway {
 											 Time timeout);
 
 	/**
+	 * Stop the given task for migration.
+	 *
+	 * @param executionAttemptID identifying the task
+	 * @param timeout of the submit operation
+	 * @return Future acknowledge if the task is successfully stopped
+	 */
+	Future<Acknowledge> stopTaskForMigration(
+		ExecutionAttemptID executionAttemptID,
+		Time timeout);
+
+	/**
 	 * Update the task where the given partitions can be found.
 	 *
 	 * @param executionAttemptID identifying the task

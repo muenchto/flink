@@ -531,6 +531,18 @@ class TaskManager(
           log.debug(s"Received message for introducing new operator for $executionAttemptID)")
 
           introduceNewOperator(executionAttemptID, taskDeploymentDescriptor)
+
+        case StopTaskForMigration(executionAttemptID) =>
+          val task = runningTasks.get(executionAttemptID)
+          if (task != null) {
+
+            task.stopForMigration()
+
+            sender ! decorateMessage(Acknowledge.get())
+          } else {
+            log.debug(s"Cannot find task to stop for migration for execution $executionAttemptID)")
+            sender ! decorateMessage(Acknowledge.get())
+          }
       }
       }
   }

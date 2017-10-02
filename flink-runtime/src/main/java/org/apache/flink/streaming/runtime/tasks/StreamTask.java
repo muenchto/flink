@@ -175,7 +175,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	/** Flag to mark this task as canceled. */
 	private volatile boolean canceled;
 
-	protected volatile boolean pausedForModification = false;
+	volatile boolean pausedForModification = false;
 
 	/** Thread pool for async snapshot workers. */
 	private ExecutorService asyncOperationsThreadPool;
@@ -327,6 +327,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			disposed = true;
 		}
 		finally {
+
+			LOG.debug("Cleanup for task {} from modification {}", getName(), pausedForModification);
+
 			// clean up everything we initialized
 			isRunning = false;
 
@@ -353,11 +356,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 			// Do not perform cleanup, if pausing for modification
 			if (!pausedForModification) {
+
+				LOG.debug("Closing Operators for task {} from modification {}", getName(), pausedForModification);
+
 				// we must! perform this cleanup
 				try {
 					cleanup();
-				}
-				catch (Throwable t) {
+				} catch (Throwable t) {
 					// catch and log the exception to not replace the original exception
 					LOG.error("Error during cleanup of stream task", t);
 				}
@@ -371,6 +376,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				if (operatorChain != null) {
 					operatorChain.releaseOutputs();
 				}
+			} else {
+				LOG.debug("Skipping closing of operators for task {} from modification {}", getName(), pausedForModification);
 			}
 		}
 	}

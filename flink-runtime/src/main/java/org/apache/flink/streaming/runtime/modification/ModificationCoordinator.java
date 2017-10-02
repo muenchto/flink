@@ -6,6 +6,7 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.executiongraph.*;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
@@ -47,6 +48,33 @@ public class ModificationCoordinator {
 		}
 	}
 
+	private ExecutionVertex getExecutionVertexToStop(ResourceID taskManagerId) {
+		ExecutionJobVertex map = findMap();
+
+		ExecutionVertex[] taskVertices = map.getTaskVertices();
+
+		for (ExecutionVertex executionVertex : taskVertices) {
+			if (executionVertex.getCurrentAssignedResource().getTaskManagerID().equals(taskManagerId)) {
+				return executionVertex;
+			}
+		}
+
+		return null;
+	}
+
+	public void startMigration(ResourceID taskManagerID) throws OperatorNotFoundException {
+		ExecutionVertex operatorInstanceToStop = getExecutionVertexToStop(taskManagerID);
+
+		if (operatorInstanceToStop == null) {
+			throw new OperatorNotFoundException("Map", executionGraph.getJobID(), taskManagerID);
+		}
+
+		// TODO Masterthesis Store ExecutionAttemptID for new operator to identify existing ResultPartition
+		ExecutionAttemptID attemptId = operatorInstanceToStop.getCurrentExecutionAttempt().getAttemptId();
+
+		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
+	}
+
 	public boolean receiveDeclineMessage(DeclineModification declineModification) {
 		if (declineModification.getModificationID() == DUMMY_MODIFICATION_ID) {
 			LOG.debug("Received successful decline modification message");
@@ -65,6 +93,37 @@ public class ModificationCoordinator {
 		this.blobKeys.addAll(blobKeys);
 	}
 
+	public void pauseSink() {
+		ExecutionJobVertex source = findSource();
+
+		ExecutionJobVertex sink = findSink();
+
+		List<JobVertexID> vertexIDS = Collections.singletonList(sink.getJobVertexId());
+
+		for (ExecutionVertex executionVertex : source.getTaskVertices()) {
+			Execution currentExecutionAttempt = executionVertex.getCurrentExecutionAttempt();
+
+			currentExecutionAttempt.triggerModification(
+				DUMMY_MODIFICATION_ID,
+				System.currentTimeMillis(),
+				vertexIDS);
+		}
+	}
+
+	public void resumeSink() {
+		ExecutionJobVertex source = findSink();
+
+		ExecutionVertex[] taskVertices = source.getTaskVertices();
+
+		for (ExecutionVertex vertex : taskVertices) {
+			Execution execution = vertex.getCurrentExecutionAttempt();
+
+			execution.getAssignedResource()
+				.getTaskManagerGateway()
+				.resumeTask(execution.getAttemptId(), rpcCallTimeout);
+		}
+	}
+
 	public void pauseJob() {
 		ExecutionJobVertex source = findSource();
 
@@ -79,21 +138,6 @@ public class ModificationCoordinator {
 				DUMMY_MODIFICATION_ID,
 				System.currentTimeMillis(),
 				vertexIDS);
-		}
-	}
-
-	public void pauseMapOperator() {
-
-		ExecutionJobVertex source = findMap();
-
-		ExecutionVertex[] taskVertices = source.getTaskVertices();
-
-		for (ExecutionVertex vertex : taskVertices) {
-			Execution execution = vertex.getCurrentExecutionAttempt();
-
-			execution.getAssignedResource()
-				.getTaskManagerGateway()
-				.pauseTask(execution.getAttemptId(), rpcCallTimeout);
 		}
 	}
 
@@ -295,6 +339,24 @@ public class ModificationCoordinator {
 		}
 
 		return executionJobVertex;
+	}
+
+	public ExecutionJobVertex findSink() {
+
+		ExecutionJobVertex sink = null;
+
+		for (ExecutionJobVertex ejv : executionGraph.getVerticesInCreationOrder()) {
+			if (ejv.getJobVertex().getName().toLowerCase().contains("sink")) {
+				sink = ejv;
+			}
+		}
+
+		if (sink == null) {
+			executionGraph.failGlobal(new ExecutionGraphException("Could not find map"));
+			return null;
+		} else {
+			return sink;
+		}
 	}
 
 	private ExecutionJobVertex buildFilterExecutionJobVertex(ExecutionJobVertex source, ExecutionJobVertex map) {

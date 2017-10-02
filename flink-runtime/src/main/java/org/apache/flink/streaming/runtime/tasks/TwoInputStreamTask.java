@@ -114,6 +114,6 @@ public class TwoInputStreamTask<IN1, IN2, OUT> extends StreamTask<OUT, TwoInputS
 	@Override
 	protected boolean pauseInputs() {
 		pausedForModification = true;
-		return false;
+		return true;
 	}
 }

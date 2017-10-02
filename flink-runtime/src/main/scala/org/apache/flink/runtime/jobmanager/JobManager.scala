@@ -945,10 +945,16 @@ class JobManager(
           val modificationCoordinator = executionGraph.getModificationCoordinator
 
           val result = command match {
-            case "pause" => modificationCoordinator.pauseJob()
+            case "pauseMap" => modificationCoordinator.pauseJob()
+              (true, "Pausing submitted")
+
+            case "pauseSink" => modificationCoordinator.pauseSink()
               (true, "Pausing submitted")
 
             case "resume" => modificationCoordinator.resumeMapOperator()
+              (true, "Resuming submitted")
+
+            case "resumeSink" => modificationCoordinator.resumeSink()
               (true, "Resuming submitted")
 
             case "details" => val details = modificationCoordinator.getDetails()
@@ -956,6 +962,9 @@ class JobManager(
 
             case "start" => modificationCoordinator.startFilterOperator()
               (true, "Starting new operator submitted")
+
+            case "migrate" => modificationCoordinator.startMigration(ResourceID.generate())
+              (true, "Starting migration submitted")
 
             case "jar" =>
               (false, s"Jar command $command")
