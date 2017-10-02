@@ -1331,4 +1331,31 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	public ArchivedExecution archive() {
 		return new ArchivedExecution(this);
 	}
+
+	public void stopForMigration() {
+		final SimpleSlot slot = assignedResource;
+
+		if (slot != null) {
+			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
+
+			Future<Acknowledge> stopResultFuture = FutureUtils.retry(
+				new Callable<Future<Acknowledge>>() {
+
+					@Override
+					public Future<Acknowledge> call() throws Exception {
+						return taskManagerGateway.stopTaskForMigration(attemptId, timeout);
+					}
+				},
+				NUM_STOP_CALL_TRIES,
+				executor);
+
+			stopResultFuture.exceptionally(new ApplyFunction<Throwable, Void>() {
+				@Override
+				public Void apply(Throwable failure) {
+					LOG.info("Stopping task was not successful.", failure);
+					return null;
+				}
+			});
+		}
+	}
 }

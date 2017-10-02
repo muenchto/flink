@@ -781,6 +781,8 @@ public class Task implements Runnable, TaskActions {
 				// let the task code create its readers and writers
 				invokable.setEnvironment(env);
 
+				this.invokable = invokable;
+
 				// switch to the RUNNING state, if that fails, we have been canceled/failed in the meantime
 				if (!transitionState(ExecutionState.RESUMING, ExecutionState.RUNNING)) {
 					throw new CancelTaskException();
@@ -796,24 +798,28 @@ public class Task implements Runnable, TaskActions {
 			this.invokable.invoke();
 
 			// Check if Task has been paused for modification
-			if (invokable instanceof StreamTask) {
+			if (this.invokable instanceof StreamTask) {
 
-				StreamTask statefulTask = (StreamTask) invokable;
+				StreamTask statefulTask = (StreamTask) this.invokable;
 
 				boolean fromModification = statefulTask.getPausedForModification();
 
 				if (fromModification) {
 					if (transitionState(ExecutionState.RUNNING, ExecutionState.MODIFICATION)) {
-						LOG.info("Task {} successfully entered new state ", taskNameWithSubtask, ExecutionState.MODIFICATION);
+						LOG.info("StreamTask {} successfully entered new state {}", taskNameWithSubtask, ExecutionState.MODIFICATION);
 
 						notifyObservers(ExecutionState.MODIFICATION, null);
 
 						// Do not finish the partitions
 						return;
 					} else {
-						LOG.info("Task {} could not enter new state ", taskNameWithSubtask, ExecutionState.MODIFICATION);
+						LOG.info("StreamTask {} could not enter new state {}", taskNameWithSubtask, ExecutionState.MODIFICATION);
 					}
+				} else {
+					LOG.info("StreamTask {} stopped but not for {}", taskNameWithSubtask, ExecutionState.MODIFICATION);
 				}
+			} else {
+				LOG.info("Task {} is not a StreamTask", taskNameWithSubtask);
 			}
 
 			// make sure, we enter the catch block if the task leaves the invoke() method due
@@ -1136,10 +1142,15 @@ public class Task implements Runnable, TaskActions {
 
 		LOG.info("Triggering resuming of task code {} ({}).", taskNameWithSubtask, executionId);
 
+		// Can not restart stopped thread. Thread must be recreated
 		resetTask();
 		getExecutingThread().start();
 
 		// all good, we kick off the task, which performs its own initialization
+	}
+
+	public void stopForMigration() {
+		// TODO Masterthesis Remove all currently allocated resources
 	}
 
 	private void changeRuntimeState(ExecutionState targetState) {

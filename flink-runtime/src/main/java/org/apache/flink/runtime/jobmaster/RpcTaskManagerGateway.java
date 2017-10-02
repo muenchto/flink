@@ -132,6 +132,11 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public Future<Acknowledge> stopTaskForMigration(ExecutionAttemptID executionAttemptID, Time timeout) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public void failPartition(ExecutionAttemptID executionAttemptID) {
 		taskExecutorGateway.failPartition(executionAttemptID);
 	}
