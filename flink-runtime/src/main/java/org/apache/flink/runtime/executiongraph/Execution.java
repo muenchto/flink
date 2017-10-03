@@ -37,8 +37,6 @@ import org.apache.flink.runtime.instance.SimpleSlot;
 import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
-import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
-import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationConstraint;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
@@ -52,6 +50,7 @@ import org.apache.flink.util.ExceptionUtils;
 
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -345,6 +344,10 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	}
 
 	public boolean scheduleForRuntimeExecution(SlotProvider slotProvider, boolean queued) {
+		return scheduleForRuntimeExecution(slotProvider, queued, null);
+	}
+
+	private boolean scheduleForRuntimeExecution(SlotProvider slotProvider, boolean queued, @Nullable final ExecutionAttemptID stoppedMapExecutionAttemptID) {
 
 		try {
 			final Future<SimpleSlot> slotAllocationFuture = allocateSlotForExecution(slotProvider, queued);
@@ -359,7 +362,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 						try {
 							LOG.info("Try deploying to slot");
 
-							deployToSlotRuntime(simpleSlot);
+							deployToSlotRuntime(simpleSlot, stoppedMapExecutionAttemptID);
 						} catch (Throwable t) {
 							try {
 								simpleSlot.releaseSlot();
@@ -388,6 +391,10 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	}
 
 	public void deployToSlotRuntime(final SimpleSlot slot) throws JobException {
+		deployToSlotRuntime(slot, null);
+	}
+
+	private void deployToSlotRuntime(final SimpleSlot slot, @Nullable ExecutionAttemptID stoppedMapExecutionAttemptID) throws JobException {
 		checkNotNull(slot);
 
 		// Check if the TaskManager died in the meantime
@@ -430,18 +437,38 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 					attemptNumber, getAssignedResourceLocation()));
 			}
 
-			ExecutionAttemptID executionAttemptID = vertex.getSuccessorOperator(slot);
+			TaskDeploymentDescriptor deployment;
 
-			final TaskDeploymentDescriptor deployment = vertex.createRuntimeDeploymentDescriptor(
-				attemptId,
-				slot,
-				taskState,
-				attemptNumber);
+			if (stoppedMapExecutionAttemptID == null) {
+				deployment = vertex.createRuntimeDeploymentDescriptor(
+					attemptId,
+					slot,
+					taskState,
+					attemptNumber);
+			} else {
+				deployment = vertex.createRuntimeDeploymentDescriptor(
+					attemptId,
+					slot,
+					taskState,
+					attemptNumber,
+					stoppedMapExecutionAttemptID);
+			}
 
 			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
-			final Future<Acknowledge> submitResultFuture = taskManagerGateway
-				.introduceNewOperator(executionAttemptID, deployment, timeout);
+			Future<Acknowledge> submitResultFuture;
+
+			if (stoppedMapExecutionAttemptID == null) {
+
+				ExecutionAttemptID executionAttemptID = vertex.getSubsequentMapOperatorExecutionAttemptID(slot);
+
+				submitResultFuture = taskManagerGateway
+					.introduceNewOperator(executionAttemptID, deployment, timeout);
+			} else {
+
+				submitResultFuture = taskManagerGateway
+					.startTaskFromMigration(stoppedMapExecutionAttemptID, deployment, timeout);
+			}
 
 			submitResultFuture.exceptionallyAsync(new ApplyFunction<Throwable, Void>() {
 				@Override
@@ -1357,5 +1384,9 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 				}
 			});
 		}
+	}
+
+	public void scheduleForMigration(SlotProvider slotProvider, boolean queuedSchedulingAllowed, ExecutionAttemptID stoppedMapExecutionAttemptID) {
+		scheduleForRuntimeExecution(slotProvider, queuedSchedulingAllowed, stoppedMapExecutionAttemptID);
 	}
 }

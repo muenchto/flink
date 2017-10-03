@@ -960,11 +960,34 @@ class JobManager(
             case "details" => val details = modificationCoordinator.getDetails()
               (true, details)
 
+            case "jobmanagerIDs" =>
+
+              val details = modificationCoordinator.getTMDetails()
+
+              (true, details)
+
             case "start" => modificationCoordinator.startFilterOperator()
               (true, "Starting new operator submitted")
 
-            case "migrate" => modificationCoordinator.startMigration(ResourceID.generate())
-              (true, "Starting migration submitted")
+            case msg if msg.startsWith("stopMapInstance") =>
+
+              val m = msg.split(":")
+
+              if (m.length != 2) {
+                (false, s"Jar command $command")
+
+              } else {
+
+                val taskmanagerID: ResourceID = new ResourceID(m(1))
+
+                log.info(s"Attempting to stop map for id '$taskmanagerID'")
+
+                modificationCoordinator.stopMapInstance(taskmanagerID)
+                (true, "Stopping map submitted")
+              }
+
+            case "restartMapInstance" => modificationCoordinator.restartMapInstance()
+              (true, "Starting new operator submitted")
 
             case "jar" =>
               (false, s"Jar command $command")

@@ -63,6 +63,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.flink.runtime.execution.ExecutionState.FINISHED;
+import static org.apache.flink.runtime.execution.ExecutionState.MODIFICATION;
 
 /**
  * The ExecutionVertex is a parallel subtask of the execution. It may be executed once, or several times, each of
@@ -592,6 +593,53 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		}
 	}
 
+	public Execution resetForNewExecutionModification(final long timestamp, final long originatingGlobalModVersion)
+		throws GlobalModVersionMismatch {
+
+		LOG.debug("Resetting execution vertex {} for new execution.", getTaskNameWithSubtaskIndex());
+
+		synchronized (priorExecutions) {
+			// check if another global modification has been triggered since the
+			// action that originally caused this reset/restart happened
+			final long actualModVersion = getExecutionGraph().getGlobalModVersion();
+			if (actualModVersion > originatingGlobalModVersion) {
+				// global change happened since, reject this action
+				throw new GlobalModVersionMismatch(originatingGlobalModVersion, actualModVersion);
+			}
+
+			final Execution oldExecution = currentExecution;
+			final ExecutionState oldState = oldExecution.getState();
+
+			priorExecutions.add(oldExecution);
+
+			final Execution newExecution = new Execution(
+				getExecutionGraph().getFutureExecutor(),
+				this,
+				oldExecution.getAttemptNumber() + 1,
+				originatingGlobalModVersion,
+				timestamp,
+				timeout);
+
+			this.currentExecution = newExecution;
+
+			CoLocationGroup grp = jobVertex.getCoLocationGroup();
+			if (grp != null) {
+				this.locationConstraint = grp.getLocationConstraint(subTaskIndex);
+			}
+
+			// register this execution at the execution graph, to receive call backs
+			getExecutionGraph().registerExecution(newExecution);
+
+			// if the execution was 'FINISHED' before, tell the ExecutionGraph that
+			// we take one step back on the road to reaching global FINISHED
+			if (oldState == FINISHED) {
+				getExecutionGraph().vertexUnFinished();
+			}
+
+			return newExecution;
+		}
+	}
+
 	public boolean scheduleForExecution(SlotProvider slotProvider, boolean queued) {
 		return this.currentExecution.scheduleForExecution(slotProvider, queued);
 	}
@@ -799,6 +847,14 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		TaskStateHandles taskStateHandles,
 		int attemptNumber) throws ExecutionGraphException {
 
+		return createRuntimeDeploymentDescriptor(executionId, targetSlot, taskStateHandles, attemptNumber, null);
+	}
+
+	TaskDeploymentDescriptor createRuntimeDeploymentDescriptor(ExecutionAttemptID executionId,
+																	  SimpleSlot targetSlot,
+																	  TaskStateHandles taskStateHandles,
+																	  int attemptNumber,
+																	  ExecutionAttemptID stoppedMapExecutionAttemptID) throws ExecutionGraphException {
 		// Produced intermediate results
 		List<ResultPartitionDeploymentDescriptor> producedPartitions = new ArrayList<>(resultPartitions.size());
 
@@ -835,7 +891,7 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 
 		for (ExecutionEdge[] edges : inputEdges) {
 			InputChannelDeploymentDescriptor[] partitions = InputChannelDeploymentDescriptor
-				.fromEdges(edges, targetSlot, lazyScheduling);
+				.fromEdges(edges, targetSlot, lazyScheduling, stoppedMapExecutionAttemptID);
 
 			// If the produced partition has multiple consumers registered, we
 			// need to request the one matching our sub task index.
@@ -888,7 +944,7 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		return new ArchivedExecutionVertex(this);
 	}
 
-	public ExecutionAttemptID getSuccessorOperator(SimpleSlot targetSlot) throws ExecutionGraphException {
+	public ExecutionAttemptID getSubsequentMapOperatorExecutionAttemptID(SimpleSlot targetSlot) throws ExecutionGraphException {
 
 		ExecutionJobVertex map = getExecutionGraph().getModificationCoordinator().findMap();
 		ExecutionAttemptID attemptIDOnSameTaskManager = null;
