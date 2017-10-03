@@ -220,6 +220,22 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public Future<Acknowledge> startTaskFromMigration(ExecutionAttemptID stoppedMapExecutionAttemptID,
+													  TaskDeploymentDescriptor deployment,
+													  Time timeout){
+		Preconditions.checkNotNull(stoppedMapExecutionAttemptID);
+		Preconditions.checkNotNull(deployment);
+		Preconditions.checkNotNull(timeout);
+
+		scala.concurrent.Future<Acknowledge> stopResult = actorGateway.ask(
+			new TaskMessages.ResumeTaskFromMigration(deployment, stoppedMapExecutionAttemptID),
+			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+
+		return new FlinkFuture<>(stopResult);
+	}
+
+	@Override
 	public Future<Acknowledge> updatePartitions(ExecutionAttemptID executionAttemptID, Iterable<PartitionInfo> partitionInfos, Time timeout) {
 		Preconditions.checkNotNull(executionAttemptID);
 		Preconditions.checkNotNull(partitionInfos);

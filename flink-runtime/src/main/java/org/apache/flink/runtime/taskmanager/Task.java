@@ -1151,6 +1151,8 @@ public class Task implements Runnable, TaskActions {
 
 	public void stopForMigration() {
 		// TODO Masterthesis Remove all currently allocated resources
+
+		LOG.info("Stopped task {} for migration to different task manager ({}).", taskNameWithSubtask, executionId);
 	}
 
 	private void changeRuntimeState(ExecutionState targetState) {

@@ -31,6 +31,7 @@ public class ModificationCoordinator {
 	private final ExecutionGraph executionGraph;
 	private final Time rpcCallTimeout;
 	private final Collection<BlobKey> blobKeys;
+	private ExecutionAttemptID stoppedMapExecutionAttemptID;
 
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
@@ -48,7 +49,21 @@ public class ModificationCoordinator {
 		}
 	}
 
-	private ExecutionVertex getExecutionVertexToStop(ResourceID taskManagerId) {
+	public String getTMDetails() {
+
+		String details = "";
+
+		for (ExecutionVertex executionVertex : executionGraph.getAllExecutionVertices()) {
+			details += "\nAttemptID: " + executionVertex.getCurrentExecutionAttempt().getAttemptId() +
+				" - TM ID: " + executionVertex.getCurrentAssignedResource().getTaskManagerID() +
+				" - TM Location: " + executionVertex.getCurrentAssignedResource().getTaskManagerLocation() +
+				" - Name: " + executionVertex.getJobVertex().getName();
+		}
+
+		return details;
+	}
+
+	private ExecutionVertex getMapExecutionVertexToStop(ResourceID taskManagerId) {
 		ExecutionJobVertex map = findMap();
 
 		ExecutionVertex[] taskVertices = map.getTaskVertices();
@@ -62,17 +77,49 @@ public class ModificationCoordinator {
 		return null;
 	}
 
-	public void startMigration(ResourceID taskManagerID) throws OperatorNotFoundException {
-		ExecutionVertex operatorInstanceToStop = getExecutionVertexToStop(taskManagerID);
+	public void stopMapInstance(ResourceID taskManagerID) throws OperatorNotFoundException {
+		ExecutionVertex operatorInstanceToStop = getMapExecutionVertexToStop(taskManagerID);
 
 		if (operatorInstanceToStop == null) {
 			throw new OperatorNotFoundException("Map", executionGraph.getJobID(), taskManagerID);
 		}
 
-		// TODO Masterthesis Store ExecutionAttemptID for new operator to identify existing ResultPartition
-		ExecutionAttemptID attemptId = operatorInstanceToStop.getCurrentExecutionAttempt().getAttemptId();
+		stoppedMapExecutionAttemptID = operatorInstanceToStop.getCurrentExecutionAttempt().getAttemptId();
 
 		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
+	}
+
+	public void restartMapInstance() {
+		ExecutionJobVertex map = findMap();
+
+		ExecutionVertex stoppedExecutionVertex = null;
+
+		for (ExecutionVertex executionVertex : map.getTaskVertices()) {
+			if (executionVertex.getCurrentExecutionAttempt().getAttemptId().equals(stoppedMapExecutionAttemptID)) {
+				stoppedExecutionVertex = executionVertex;
+				break;
+			}
+		}
+
+		if (stoppedExecutionVertex == null) {
+			executionGraph.failGlobal(new RuntimeException("Could not find stopped Map executionVertex"));
+			return;
+		}
+
+		try {
+			stoppedExecutionVertex.resetForNewExecutionModification(System.currentTimeMillis(), executionGraph.getGlobalModVersion());
+
+			stoppedExecutionVertex
+				.getCurrentExecutionAttempt()
+				.scheduleForMigration(
+					executionGraph.getSlotProvider(),
+					executionGraph.isQueuedSchedulingAllowed(),
+					stoppedMapExecutionAttemptID);
+
+		} catch (GlobalModVersionMismatch globalModVersionMismatch) {
+			executionGraph.failGlobal(globalModVersionMismatch);
+			globalModVersionMismatch.printStackTrace();
+		}
 	}
 
 	public boolean receiveDeclineMessage(DeclineModification declineModification) {

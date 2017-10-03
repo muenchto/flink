@@ -20,10 +20,7 @@ package org.apache.flink.runtime.deployment;
 
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.execution.ExecutionState;
-import org.apache.flink.runtime.executiongraph.Execution;
-import org.apache.flink.runtime.executiongraph.ExecutionEdge;
-import org.apache.flink.runtime.executiongraph.ExecutionGraphException;
-import org.apache.flink.runtime.executiongraph.IntermediateResultPartition;
+import org.apache.flink.runtime.executiongraph.*;
 import org.apache.flink.runtime.instance.SimpleSlot;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
@@ -34,13 +31,14 @@ import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.io.Serializable;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Deployment descriptor for a single input channel instance.
- *
+ * <p>
  * <p> Each input channel consumes a single subpartition. The index of the subpartition to consume
  * is part of the {@link InputGateDeploymentDescriptor} as it is the same for each input channel of
  * the respective input gate.
@@ -88,10 +86,16 @@ public class InputChannelDeploymentDescriptor implements Serializable {
 	 * Creates an input channel deployment descriptor for each partition.
 	 */
 	public static InputChannelDeploymentDescriptor[] fromEdges(
-			ExecutionEdge[] edges,
-			SimpleSlot consumerSlot,
-			boolean allowLazyDeployment) throws ExecutionGraphException {
+		ExecutionEdge[] edges,
+		SimpleSlot consumerSlot,
+		boolean allowLazyDeployment) throws ExecutionGraphException {
+		return fromEdges(edges, consumerSlot, allowLazyDeployment, null);
+	}
 
+	public static InputChannelDeploymentDescriptor[] fromEdges(ExecutionEdge[] edges,
+															   SimpleSlot consumerSlot,
+															   boolean allowLazyDeployment,
+															   @Nullable ExecutionAttemptID stoppedMapExecutionAttemptID) throws ExecutionGraphException {
 		final ResourceID consumerTaskManager = consumerSlot.getTaskManagerID();
 		final InputChannelDeploymentDescriptor[] icdd = new InputChannelDeploymentDescriptor[edges.length];
 
@@ -107,49 +111,51 @@ public class InputChannelDeploymentDescriptor implements Serializable {
 
 			// The producing task needs to be RUNNING or already FINISHED
 			if (consumedPartition.isConsumable() && producerSlot != null &&
-					(producerState == ExecutionState.RUNNING ||
-						producerState == ExecutionState.FINISHED ||
-						producerState == ExecutionState.SCHEDULED ||
-						producerState == ExecutionState.DEPLOYING)) {
-				
+				(producerState == ExecutionState.RUNNING ||
+					producerState == ExecutionState.FINISHED ||
+					producerState == ExecutionState.SCHEDULED ||
+					producerState == ExecutionState.DEPLOYING)) {
+
 				final TaskManagerLocation partitionTaskManagerLocation = producerSlot.getTaskManagerLocation();
 				final ResourceID partitionTaskManager = partitionTaskManagerLocation.getResourceID();
 
 				if (partitionTaskManager.equals(consumerTaskManager)) {
 					// Consuming task is deployed to the same TaskManager as the partition => local
 					partitionLocation = ResultPartitionLocation.createLocal();
-				}
-				else {
+				} else {
 					// Different instances => remote
 					final ConnectionID connectionId = new ConnectionID(
-							partitionTaskManagerLocation,
-							consumedPartition.getIntermediateResult().getConnectionIndex());
+						partitionTaskManagerLocation,
+						consumedPartition.getIntermediateResult().getConnectionIndex());
 
 					partitionLocation = ResultPartitionLocation.createRemote(connectionId);
 				}
-			}
-			else if (allowLazyDeployment) {
+			} else if (allowLazyDeployment) {
 				// The producing task might not have registered the partition yet
 				partitionLocation = ResultPartitionLocation.createUnknown();
-			}
-			else if (producerState == ExecutionState.CANCELING
-						|| producerState == ExecutionState.CANCELED
-						|| producerState == ExecutionState.FAILED) {
+			} else if (producerState == ExecutionState.CANCELING
+				|| producerState == ExecutionState.CANCELED
+				|| producerState == ExecutionState.FAILED) {
 				String msg = "Trying to schedule a task whose inputs were canceled or failed. " +
 					"The producer is in state " + producerState + ".";
 				throw new ExecutionGraphException(msg);
-			}
-			else {
+			} else {
 				String msg = String.format("Trying to eagerly schedule a task whose inputs " +
-					"are not ready (partition consumable? %s, producer state: %s, producer slot: %s).",
-						consumedPartition.isConsumable(),
-						producerState,
-						producerSlot);
+						"are not ready (partition consumable? %s, producer state: %s, producer slot: %s).",
+					consumedPartition.isConsumable(),
+					producerState,
+					producerSlot);
 				throw new ExecutionGraphException(msg);
 			}
 
-			final ResultPartitionID consumedPartitionId = new ResultPartitionID(
-					consumedPartition.getPartitionId(), producer.getAttemptId());
+			ResultPartitionID consumedPartitionId;
+
+			// If we have a previous executionID, reuse that ResultPartitionID to consume the existing partition
+			if (stoppedMapExecutionAttemptID == null) {
+				consumedPartitionId = new ResultPartitionID(consumedPartition.getPartitionId(), producer.getAttemptId());
+			} else {
+				consumedPartitionId = new ResultPartitionID(consumedPartition.getPartitionId(), stoppedMapExecutionAttemptID);
+			}
 
 			icdd[i] = new InputChannelDeploymentDescriptor(consumedPartitionId, partitionLocation);
 		}
