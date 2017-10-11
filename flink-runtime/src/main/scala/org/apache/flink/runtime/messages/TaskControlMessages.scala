@@ -101,7 +101,7 @@ object TaskMessages {
     *
     * @param attemptID The execution attempt ID of the source operator
     */
-  case class ResumeTaskFromMigration(taskDeploymentDescriptor: TaskDeploymentDescriptor, attemptID: ExecutionAttemptID)
+  case class ResumeTaskFromMigration(taskDeploymentDescriptor: TaskDeploymentDescriptor)
     extends TaskMessage with RequiresLeaderSessionID
 
   /**

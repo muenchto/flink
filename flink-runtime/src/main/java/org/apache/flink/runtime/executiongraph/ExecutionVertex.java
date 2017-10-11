@@ -841,20 +841,10 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 			consumedPartitions);
 	}
 
-	TaskDeploymentDescriptor createRuntimeDeploymentDescriptor(
-		ExecutionAttemptID executionId,
-		SimpleSlot targetSlot,
-		TaskStateHandles taskStateHandles,
-		int attemptNumber) throws ExecutionGraphException {
-
-		return createRuntimeDeploymentDescriptor(executionId, targetSlot, taskStateHandles, attemptNumber, null);
-	}
-
 	TaskDeploymentDescriptor createRuntimeDeploymentDescriptor(ExecutionAttemptID executionId,
 																	  SimpleSlot targetSlot,
 																	  TaskStateHandles taskStateHandles,
-																	  int attemptNumber,
-																	  ExecutionAttemptID stoppedMapExecutionAttemptID) throws ExecutionGraphException {
+																	  int attemptNumber) throws ExecutionGraphException {
 		// Produced intermediate results
 		List<ResultPartitionDeploymentDescriptor> producedPartitions = new ArrayList<>(resultPartitions.size());
 
@@ -891,7 +881,7 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 
 		for (ExecutionEdge[] edges : inputEdges) {
 			InputChannelDeploymentDescriptor[] partitions = InputChannelDeploymentDescriptor
-				.fromEdges(edges, targetSlot, lazyScheduling, stoppedMapExecutionAttemptID);
+				.fromEdges(edges, targetSlot, lazyScheduling);
 
 			// If the produced partition has multiple consumers registered, we
 			// need to request the one matching our sub task index.

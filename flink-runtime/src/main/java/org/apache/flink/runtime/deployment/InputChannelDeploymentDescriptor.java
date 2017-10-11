@@ -85,17 +85,9 @@ public class InputChannelDeploymentDescriptor implements Serializable {
 	/**
 	 * Creates an input channel deployment descriptor for each partition.
 	 */
-	public static InputChannelDeploymentDescriptor[] fromEdges(
-		ExecutionEdge[] edges,
-		SimpleSlot consumerSlot,
-		boolean allowLazyDeployment) throws ExecutionGraphException {
-		return fromEdges(edges, consumerSlot, allowLazyDeployment, null);
-	}
-
 	public static InputChannelDeploymentDescriptor[] fromEdges(ExecutionEdge[] edges,
 															   SimpleSlot consumerSlot,
-															   boolean allowLazyDeployment,
-															   @Nullable ExecutionAttemptID stoppedMapExecutionAttemptID) throws ExecutionGraphException {
+															   boolean allowLazyDeployment) throws ExecutionGraphException {
 		final ResourceID consumerTaskManager = consumerSlot.getTaskManagerID();
 		final InputChannelDeploymentDescriptor[] icdd = new InputChannelDeploymentDescriptor[edges.length];
 
@@ -148,14 +140,8 @@ public class InputChannelDeploymentDescriptor implements Serializable {
 				throw new ExecutionGraphException(msg);
 			}
 
-			ResultPartitionID consumedPartitionId;
-
-			// If we have a previous executionID, reuse that ResultPartitionID to consume the existing partition
-			if (stoppedMapExecutionAttemptID == null) {
-				consumedPartitionId = new ResultPartitionID(consumedPartition.getPartitionId(), producer.getAttemptId());
-			} else {
-				consumedPartitionId = new ResultPartitionID(consumedPartition.getPartitionId(), stoppedMapExecutionAttemptID);
-			}
+			ResultPartitionID consumedPartitionId =
+				new ResultPartitionID(consumedPartition.getPartitionId(), producer.getAttemptId());
 
 			icdd[i] = new InputChannelDeploymentDescriptor(consumedPartitionId, partitionLocation);
 		}

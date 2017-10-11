@@ -220,15 +220,13 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public Future<Acknowledge> startTaskFromMigration(ExecutionAttemptID stoppedMapExecutionAttemptID,
-													  TaskDeploymentDescriptor deployment,
+	public Future<Acknowledge> startTaskFromMigration(TaskDeploymentDescriptor deployment,
 													  Time timeout){
-		Preconditions.checkNotNull(stoppedMapExecutionAttemptID);
 		Preconditions.checkNotNull(deployment);
 		Preconditions.checkNotNull(timeout);
 
 		scala.concurrent.Future<Acknowledge> stopResult = actorGateway.ask(
-			new TaskMessages.ResumeTaskFromMigration(deployment, stoppedMapExecutionAttemptID),
+			new TaskMessages.ResumeTaskFromMigration(deployment),
 			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
 			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
 

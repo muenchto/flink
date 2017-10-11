@@ -171,12 +171,10 @@ public interface TaskManagerGateway {
 	/**
 	 * Stop the given task for migration.
 	 *
-	 * @param stoppedMapExecutionAttemptID identifies the task, that has been stopped
 	 * @param timeout of the submit operation
 	 * @return Future acknowledge if the task is successfully stopped
 	 */
-	Future<Acknowledge> startTaskFromMigration(ExecutionAttemptID stoppedMapExecutionAttemptID,
-											   TaskDeploymentDescriptor deployment,
+	Future<Acknowledge> startTaskFromMigration(TaskDeploymentDescriptor deployment,
 											   Time timeout);
 
 	/**

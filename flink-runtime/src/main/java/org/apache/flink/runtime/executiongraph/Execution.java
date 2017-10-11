@@ -344,13 +344,16 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	}
 
 	public boolean scheduleForRuntimeExecution(SlotProvider slotProvider, boolean queued) {
-		return scheduleForRuntimeExecution(slotProvider, queued, null);
+		return scheduleForRuntimeExecution(slotProvider, queued, null, false);
 	}
 
-	private boolean scheduleForRuntimeExecution(SlotProvider slotProvider, boolean queued, @Nullable final ExecutionAttemptID stoppedMapExecutionAttemptID) {
+	private boolean scheduleForRuntimeExecution(SlotProvider slotProvider,
+												boolean queued,
+												@Nullable final ResourceID desiredTaskmanagerID,
+												final boolean startMigration) {
 
 		try {
-			final Future<SimpleSlot> slotAllocationFuture = allocateSlotForExecution(slotProvider, queued);
+			final Future<SimpleSlot> slotAllocationFuture = allocateSlotForExecution(slotProvider, queued, desiredTaskmanagerID);
 
 			// IMPORTANT: We have to use the synchronous handle operation (direct executor) here so
 			// that we directly deploy the tasks if the slot allocation future is completed. This is
@@ -362,7 +365,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 						try {
 							LOG.info("Try deploying to slot");
 
-							deployToSlotRuntime(simpleSlot, stoppedMapExecutionAttemptID);
+							deployToSlotRuntime(simpleSlot, startMigration);
 						} catch (Throwable t) {
 							try {
 								simpleSlot.releaseSlot();
@@ -384,17 +387,12 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			}
 
 			return true;
-		}
-		catch (IllegalExecutionStateException e) {
+		} catch (IllegalExecutionStateException e) {
 			return false;
 		}
 	}
 
-	public void deployToSlotRuntime(final SimpleSlot slot) throws JobException {
-		deployToSlotRuntime(slot, null);
-	}
-
-	private void deployToSlotRuntime(final SimpleSlot slot, @Nullable ExecutionAttemptID stoppedMapExecutionAttemptID) throws JobException {
+	private void deployToSlotRuntime(final SimpleSlot slot, boolean startMigration) throws JobException {
 		checkNotNull(slot);
 
 		// Check if the TaskManager died in the meantime
@@ -437,28 +435,15 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 					attemptNumber, getAssignedResourceLocation()));
 			}
 
-			TaskDeploymentDescriptor deployment;
+			TaskDeploymentDescriptor deployment =
+				vertex.createRuntimeDeploymentDescriptor(attemptId, slot, taskState, attemptNumber);
 
-			if (stoppedMapExecutionAttemptID == null) {
-				deployment = vertex.createRuntimeDeploymentDescriptor(
-					attemptId,
-					slot,
-					taskState,
-					attemptNumber);
-			} else {
-				deployment = vertex.createRuntimeDeploymentDescriptor(
-					attemptId,
-					slot,
-					taskState,
-					attemptNumber,
-					stoppedMapExecutionAttemptID);
-			}
 
 			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
 			Future<Acknowledge> submitResultFuture;
 
-			if (stoppedMapExecutionAttemptID == null) {
+			if (!startMigration) {
 
 				ExecutionAttemptID executionAttemptID = vertex.getSubsequentMapOperatorExecutionAttemptID(slot);
 
@@ -467,7 +452,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			} else {
 
 				submitResultFuture = taskManagerGateway
-					.startTaskFromMigration(stoppedMapExecutionAttemptID, deployment, timeout);
+					.startTaskFromMigration(deployment, timeout);
 			}
 
 			submitResultFuture.exceptionallyAsync(new ApplyFunction<Throwable, Void>() {
@@ -493,7 +478,11 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		}
 	}
 
-	public Future<SimpleSlot> allocateSlotForExecution(SlotProvider slotProvider, boolean queued)
+	public Future<SimpleSlot> allocateSlotForExecution(SlotProvider slotProvider, boolean queued) {
+		return allocateSlotForExecution(slotProvider, queued, null);
+	}
+
+	public Future<SimpleSlot> allocateSlotForExecution(SlotProvider slotProvider, boolean queued, @Nullable ResourceID taskmanagerID)
 			throws IllegalExecutionStateException {
 
 		checkNotNull(slotProvider);
@@ -514,7 +503,12 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 					new ScheduledUnit(this, sharingGroup) :
 					new ScheduledUnit(this, sharingGroup, locationConstraint);
 
-			return slotProvider.allocateSlot(toSchedule, queued);
+			if (taskmanagerID == null) {
+				return slotProvider.allocateSlot(toSchedule, queued);
+			} else {
+				return slotProvider.allocateSlotOnTaskmanager(toSchedule, queued, taskmanagerID);
+			}
+
 		}
 		else {
 			// call race, already deployed, or already done
@@ -1386,7 +1380,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		}
 	}
 
-	public void scheduleForMigration(SlotProvider slotProvider, boolean queuedSchedulingAllowed, ExecutionAttemptID stoppedMapExecutionAttemptID) {
-		scheduleForRuntimeExecution(slotProvider, queuedSchedulingAllowed, stoppedMapExecutionAttemptID);
+	public void scheduleForMigration(SlotProvider slotProvider, boolean queuedSchedulingAllowed, ResourceID taskmanagerID) {
+		scheduleForRuntimeExecution(slotProvider, queuedSchedulingAllowed, taskmanagerID, true);
 	}
 }

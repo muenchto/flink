@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.executiongraph.utils;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
@@ -88,6 +89,11 @@ public class SimpleSlotProvider implements SlotProvider, SlotOwner {
 		else {
 			return FlinkCompletableFuture.completedExceptionally(new NoResourceAvailableException());
 		}
+	}
+
+	@Override
+	public Future<SimpleSlot> allocateSlotOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
+		throw new NotImplementedException();
 	}
 
 	@Override
