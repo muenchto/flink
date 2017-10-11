@@ -103,7 +103,7 @@ public class SingleInputGate implements InputGate {
 	private final Object requestLock = new Object();
 
 	/** The name of the owning task, for logging purposes. */
-	private final String owningTaskName;
+	final String owningTaskName;
 
 	/** The job ID of the owning task. */
 	private final JobID jobId;

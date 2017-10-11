@@ -152,6 +152,8 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 		synchronized (requestLock) {
 			checkState(subpartitionView == null, "already requested partition");
 
+			LOG.info("retriggerSubpartitionRequest for resultPartitionID {} from {}", partitionId, inputGate.owningTaskName);
+
 			timer.schedule(new TimerTask() {
 				@Override
 				public void run() {

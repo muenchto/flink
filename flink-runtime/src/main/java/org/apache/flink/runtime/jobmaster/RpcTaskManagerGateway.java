@@ -137,8 +137,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public Future<Acknowledge> startTaskFromMigration(ExecutionAttemptID stoppedMapExecutionAttemptID,
-											   TaskDeploymentDescriptor deployment,
+	public Future<Acknowledge> startTaskFromMigration(TaskDeploymentDescriptor deployment,
 											   Time timeout){
 		throw new UnsupportedOperationException();
 	}

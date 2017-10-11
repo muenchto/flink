@@ -18,12 +18,13 @@
 
 package org.apache.flink.runtime.instance;
 
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
 
 /**
  * The slot provider is responsible for preparing slots for ready-to-run tasks.
- * 
+ *
  * <p>It supports two allocating modes:
  * <ul>
  *     <li>Immediate allocating: A request for a task slot immediately gets satisfied, we can call
@@ -42,4 +43,14 @@ public interface SlotProvider {
 	 * @return The future of the allocation
 	 */
 	Future<SimpleSlot> allocateSlot(ScheduledUnit task, boolean allowQueued);
+
+	/**
+	 * Allocating slot with specific requirement on specific task manager.
+	 *
+	 * @param task         The task to allocate the slot for
+	 * @param allowQueued  Whether allow the task be queued if we do not have enough resource
+	 * @param taskManagerID The id of the taskmanager, on where this task should be scheduled
+	 * @return The future of the allocation
+	 */
+	Future<SimpleSlot> allocateSlotOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID);
 }

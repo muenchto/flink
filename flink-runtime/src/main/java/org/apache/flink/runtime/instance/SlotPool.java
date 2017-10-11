@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.instance;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
@@ -987,6 +988,11 @@ public class SlotPool extends RpcEndpoint<SlotPoolGateway> {
 					task.getTaskToExecute().getVertex().getPreferredLocations();
 
 			return gateway.allocateSlot(task, ResourceProfile.UNKNOWN, locationPreferences, timeout);
+		}
+
+		@Override
+		public Future<SimpleSlot> allocateSlotOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
+			throw new NotImplementedException();
 		}
 	}
 

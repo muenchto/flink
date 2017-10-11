@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.executiongraph;
 
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.instance.SimpleSlot;
 import org.apache.flink.runtime.instance.SlotProvider;
@@ -83,5 +85,10 @@ class ProgrammedSlotProvider implements SlotProvider {
 		}
 
 		throw new IllegalArgumentException("No registered slot future for task " + vertexId + " (" + subtask + ')');
+	}
+
+	@Override
+	public Future<SimpleSlot> allocateSlotOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
+		throw new NotImplementedException();
 	}
 }

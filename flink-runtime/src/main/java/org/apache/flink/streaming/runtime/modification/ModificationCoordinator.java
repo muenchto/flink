@@ -89,7 +89,7 @@ public class ModificationCoordinator {
 		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
 	}
 
-	public void restartMapInstance() {
+	public void restartMapInstance(ResourceID taskmanagerID) {
 		ExecutionJobVertex map = findMap();
 
 		ExecutionVertex stoppedExecutionVertex = null;
@@ -114,7 +114,7 @@ public class ModificationCoordinator {
 				.scheduleForMigration(
 					executionGraph.getSlotProvider(),
 					executionGraph.isQueuedSchedulingAllowed(),
-					stoppedMapExecutionAttemptID);
+					taskmanagerID);
 
 		} catch (GlobalModVersionMismatch globalModVersionMismatch) {
 			executionGraph.failGlobal(globalModVersionMismatch);
@@ -195,6 +195,13 @@ public class ModificationCoordinator {
 
 		for (ExecutionVertex vertex : taskVertices) {
 			Execution execution = vertex.getCurrentExecutionAttempt();
+
+			// TODO Masterthesis: Unnecessary, as getCurrentExecutionAttempt simply returns the last execution.
+			// TODO Masterthesis: Therefore, the old attempt never gets resumed
+			if (execution.getAttemptId().equals(stoppedMapExecutionAttemptID)) {
+				LOG.info("Skipping resuming of map operator for ExecutionAttemptID {}");
+				continue;
+			}
 
 			execution.getAssignedResource()
 				.getTaskManagerGateway()

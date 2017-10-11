@@ -546,7 +546,7 @@ class TaskManager(
             sender ! decorateMessage(Acknowledge.get())
           }
 
-        case ResumeTaskFromMigration(taskDeploymentDescriptor, executionAttemptID) =>
+        case ResumeTaskFromMigration(taskDeploymentDescriptor) =>
           // TODO Masterthesis Not necessary to write custom start method?
           // Simply change creation tdd on JobManager to incorporate executionAttemptID in tdd
           // startTaskFromMigration(taskDeploymentDescriptor, executionAttemptID)
