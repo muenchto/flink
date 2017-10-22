@@ -632,8 +632,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	public boolean triggerModification(ModificationMetaData metaData, List<JobVertexID> jobVertexIDs) throws Exception {
 		try {
 
-			LOG.info("Starting modification ({}) for {} on task {}",
-				metaData.getModificationID(), StringUtils.join(jobVertexIDs, ","), getName());
+			LOG.info("Starting modification ({}) for '{}' on task {} with jobVertexID {}",
+				metaData.getModificationID(),
+				StringUtils.join(jobVertexIDs, ","),
+				getName(),
+				getEnvironment().getJobVertexId());
 
 			synchronized (lock) {
 				if (isRunning) {

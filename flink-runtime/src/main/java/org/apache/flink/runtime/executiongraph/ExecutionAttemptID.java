@@ -20,6 +20,8 @@ package org.apache.flink.runtime.executiongraph;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.flink.util.AbstractID;
+import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.StringUtils;
 
 /**
  * Unique identifier for the attempt to execute a tasks. Multiple attempts happen
@@ -30,6 +32,11 @@ public class ExecutionAttemptID extends AbstractID {
 	private static final long serialVersionUID = -1169683445778281344L;
 
 	public ExecutionAttemptID() {
+		super();
+	}
+
+	private ExecutionAttemptID(byte[] bytes) {
+		super(bytes);
 	}
 
 	public ExecutionAttemptID(long lowerPart, long upperPart) {
@@ -45,5 +52,12 @@ public class ExecutionAttemptID extends AbstractID {
 		long lower = buf.readLong();
 		long upper = buf.readLong();
 		return new ExecutionAttemptID(lower, upper);
+	}
+
+	public static ExecutionAttemptID fromString(String stringRepresentation) {
+		Preconditions.checkNotNull(stringRepresentation);
+		Preconditions.checkArgument(stringRepresentation.length() == 32);
+
+		return new ExecutionAttemptID(StringUtils.hexStringToByte(stringRepresentation));
 	}
 }

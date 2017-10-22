@@ -23,6 +23,7 @@ import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.concurrent.Future;
+import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
@@ -33,6 +34,7 @@ import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTrace;
 import org.apache.flink.runtime.messages.StackTraceSampleResponse;
 import org.apache.flink.runtime.taskexecutor.TaskExecutorGateway;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.util.Preconditions;
 
 import java.util.List;
@@ -177,6 +179,15 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	@Override
 	public Future<BlobKey> requestTaskManagerStdout(Time timeout) {
 //		return taskExecutorGateway.requestTaskManagerStdout(timeout);
+		throw new UnsupportedOperationException("Operation is not yet supported.");
+	}
+
+	@Override
+	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
+																	 ExecutionAttemptID currentSinkAttempt,
+																	 ExecutionAttemptID newOperatorExecutionAttemptID,
+																	 TaskManagerLocation tmLocation,
+																	 int subTaskIndex) {
 		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
 }

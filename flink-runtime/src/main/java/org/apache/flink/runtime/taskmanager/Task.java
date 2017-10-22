@@ -187,6 +187,8 @@ public class Task implements Runnable, TaskActions {
 	private final ResultPartitionWriter[] writers;
 	private final TaskMetricGroup taskMetricGroup;
 
+	private final InputGateDeploymentDescriptor[] inputGateDeploymentDescriptor;
+
 	private SingleInputGate[] inputGates;
 
 	private final Map<IntermediateDataSetID, SingleInputGate> inputGatesById;
@@ -385,6 +387,9 @@ public class Task implements Runnable, TaskActions {
 
 		LOG.info("{} Setting IGDD: {}", taskNameWithSubtaskAndId, inputGateDeploymentDescriptors);
 
+		this.inputGateDeploymentDescriptor =
+			inputGateDeploymentDescriptors.toArray(new InputGateDeploymentDescriptor[inputGateDeploymentDescriptors.size()]);
+
 		// Consumed intermediate result partitions
 		this.inputGates = new SingleInputGate[inputGateDeploymentDescriptors.size()];
 		this.inputGatesById = new HashMap<>();
@@ -421,8 +426,6 @@ public class Task implements Runnable, TaskActions {
 	public void connectToNewInputAfterModification(NetworkEnvironment networkEnvironment,
 								  InputGateDeploymentDescriptor inputGateDeploymentDescriptor) {
 
-		// TODO Masterthesis Fix here
-
 		final String taskNameWithSubtaskAndId = " Modified - " + taskNameWithSubtask + " (" + executionId + ')';
 		LOG.info("{} Modifying with new IGDD: {}", taskNameWithSubtaskAndId, inputGateDeploymentDescriptor);
 		LOG.info("{} Before Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
@@ -437,6 +440,37 @@ public class Task implements Runnable, TaskActions {
 			networkEnvironment,
 			this,
 			taskMetricGroup.getIOMetricGroup());
+
+		inputGates[0] = gate;
+		inputGatesById.put(gate.getConsumedResultId(), gate);
+
+		LOG.info("{} After Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
+	}
+
+	public void connectToNewInputAfterMigration(NetworkEnvironment networkEnvironment,
+												ExecutionAttemptID migratedMapTask,
+												TaskManagerLocation taskManagerLocation,
+												int changedIndex) {
+
+		Preconditions.checkArgument(inputGateDeploymentDescriptor.length == 1);
+
+		final String taskNameWithSubtaskAndId = " Modified - " + taskNameWithSubtask + " (" + executionId + ')';
+		LOG.info("{} Modifying with new IGDD: {}", taskNameWithSubtaskAndId, inputGateDeploymentDescriptor);
+		LOG.info("{} Before Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
+
+		// Omitted single case for multiple input
+
+		SingleInputGate gate = SingleInputGate.createModified(
+			taskNameWithSubtaskAndId,
+			jobId,
+			executionId,
+			inputGateDeploymentDescriptor[0],
+			networkEnvironment,
+			this,
+			taskMetricGroup.getIOMetricGroup(),
+			migratedMapTask,
+			taskManagerLocation,
+			changedIndex);
 
 		inputGates[0] = gate;
 		inputGatesById.put(gate.getConsumedResultId(), gate);
