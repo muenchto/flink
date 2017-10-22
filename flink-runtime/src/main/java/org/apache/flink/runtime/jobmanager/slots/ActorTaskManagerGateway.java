@@ -42,6 +42,7 @@ import org.apache.flink.runtime.messages.TaskMessages;
 import org.apache.flink.runtime.messages.checkpoint.NotifyCheckpointComplete;
 import org.apache.flink.runtime.messages.checkpoint.TriggerCheckpoint;
 import org.apache.flink.runtime.messages.modification.TriggerModification;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -304,6 +305,26 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	@Override
 	public Future<BlobKey> requestTaskManagerStdout(Time timeout) {
 		return requestTaskManagerLog((TaskManagerMessages.RequestTaskManagerLog) TaskManagerMessages.getRequestTaskManagerStdout(), timeout);
+	}
+
+	@Override
+	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
+																	 ExecutionAttemptID currentSinkAttempt,
+																	 ExecutionAttemptID newOperatorExecutionAttemptID,
+																	 TaskManagerLocation tmLocation,
+																	 int subTaskIndex) {
+		Preconditions.checkNotNull(timeout);
+		Preconditions.checkNotNull(newOperatorExecutionAttemptID);
+
+		scala.concurrent.Future<Acknowledge> resumeResult = actorGateway.ask(
+			new TaskMessages.ResumeWithDifferentInputs(currentSinkAttempt,
+				newOperatorExecutionAttemptID,
+				tmLocation,
+				subTaskIndex),
+			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+
+		return new FlinkFuture<>(resumeResult);
 	}
 
 	private Future<BlobKey> requestTaskManagerLog(TaskManagerMessages.RequestTaskManagerLog request, Time timeout) {

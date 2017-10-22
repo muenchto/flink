@@ -407,9 +407,8 @@ public class ResultPartition implements BufferPoolOwner {
 
 	@Override
 	public String toString() {
-		return "ResultPartition " + partitionId.toString() + " [" + partitionType + ", "
-				+ subpartitions.length + " subpartitions, "
-				+ pendingReferences + " pending references]";
+		return "ResultPartition with id '" + partitionId + "' Type: [" + partitionType + ", "
+				+ subpartitions.length + " subpartitions, ]";
 	}
 
 	// ------------------------------------------------------------------------

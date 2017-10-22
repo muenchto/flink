@@ -384,6 +384,12 @@ class TaskManager(
     throw error
   }
 
+  def reconfigureInputs(task: Task, executionAttemptID: ExecutionAttemptID,
+                        tmLocation: TaskManagerLocation,
+                        changedSubIndex: Int): Unit = {
+    task.connectToNewInputAfterMigration(network, executionAttemptID, tmLocation, changedSubIndex)
+  }
+
   /**
    * Handler for messages concerning the deployment and status updates of
    * tasks.
@@ -551,6 +557,20 @@ class TaskManager(
           // Simply change creation tdd on JobManager to incorporate executionAttemptID in tdd
           // startTaskFromMigration(taskDeploymentDescriptor, executionAttemptID)
           submitTask(taskDeploymentDescriptor)
+
+        case ResumeWithDifferentInputs(currentSinkAttempt, executionAttemptID, tmLocation, subTaskIndex) =>
+          val task = runningTasks.get(currentSinkAttempt)
+          if (task != null) {
+
+            log.debug(s"Attempting to change inputs for sink $executionAttemptID")
+
+            reconfigureInputs(task, executionAttemptID, tmLocation, subTaskIndex)
+
+            sender ! decorateMessage(Acknowledge.get())
+          } else {
+            log.debug(s"Cannot find task to resume with different inputs for execution $executionAttemptID)")
+            sender ! decorateMessage(Acknowledge.get())
+          }
       }
       }
   }

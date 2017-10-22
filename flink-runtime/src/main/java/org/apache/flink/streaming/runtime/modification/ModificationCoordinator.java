@@ -1,6 +1,7 @@
 package org.apache.flink.streaming.runtime.modification;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
 import org.apache.commons.lang.StringUtils;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
@@ -32,6 +33,7 @@ public class ModificationCoordinator {
 	private final Time rpcCallTimeout;
 	private final Collection<BlobKey> blobKeys;
 	private ExecutionAttemptID stoppedMapExecutionAttemptID;
+	private int parallelSubTaskIndex;
 
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
@@ -57,7 +59,7 @@ public class ModificationCoordinator {
 			details += "\nAttemptID: " + executionVertex.getCurrentExecutionAttempt().getAttemptId() +
 				" - TM ID: " + executionVertex.getCurrentAssignedResource().getTaskManagerID() +
 				" - TM Location: " + executionVertex.getCurrentAssignedResource().getTaskManagerLocation() +
-				" - Name: " + executionVertex.getJobVertex().getName();
+				" - Name: " + executionVertex.getTaskNameWithSubtaskIndex();
 		}
 
 		return details;
@@ -85,6 +87,7 @@ public class ModificationCoordinator {
 		}
 
 		stoppedMapExecutionAttemptID = operatorInstanceToStop.getCurrentExecutionAttempt().getAttemptId();
+		parallelSubTaskIndex = operatorInstanceToStop.getCurrentExecutionAttempt().getParallelSubtaskIndex();
 
 		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
 	}
@@ -155,6 +158,20 @@ public class ModificationCoordinator {
 				System.currentTimeMillis(),
 				vertexIDS);
 		}
+	}
+
+	public void modifySinkInstance(ExecutionAttemptID newOperatorExecutionAttemptID) {
+		ExecutionJobVertex sink = findSink();
+
+		Preconditions.checkNotNull(sink);
+		Preconditions.checkArgument(sink.getTaskVertices().length == 1);
+
+		ExecutionVertex executionVertex = sink.getTaskVertices()[0];
+		executionVertex.getCurrentExecutionAttempt()
+			.triggerResumeWithDifferentInputs(
+				rpcCallTimeout,
+				newOperatorExecutionAttemptID,
+				parallelSubTaskIndex);
 	}
 
 	public void resumeSink() {

@@ -1383,4 +1383,29 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	public void scheduleForMigration(SlotProvider slotProvider, boolean queuedSchedulingAllowed, ResourceID taskmanagerID) {
 		scheduleForRuntimeExecution(slotProvider, queuedSchedulingAllowed, taskmanagerID, true);
 	}
+
+	public void triggerResumeWithDifferentInputs(Time timestamp,
+												 ExecutionAttemptID newOperatorExecutionAttemptID,
+												 int parallelSubTaskIndex) {
+		FlinkFuture<Acknowledge> acknowledgeFlinkFuture = getAssignedResource()
+			.getTaskManagerGateway()
+			.triggerResumeWithDifferentInputs(
+				timestamp,
+				getAttemptId(),
+				newOperatorExecutionAttemptID,
+				getAssignedResourceLocation(),
+				parallelSubTaskIndex);
+
+		acknowledgeFlinkFuture.handle(new BiFunction<Acknowledge, Throwable, Object>() {
+			@Override
+			public Object apply(Acknowledge acknowledge, Throwable throwable) {
+				if (acknowledge != null) {
+					LOG.info("Successfully submitted triggering resume with different inputs");
+				} else {
+					LOG.info("Successfully submitted triggering resume with different inputs");
+				}
+				return null;
+			}
+		});
+	}
 }

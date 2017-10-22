@@ -25,6 +25,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.impl.FlinkCompletableFuture;
+import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
@@ -34,6 +35,7 @@ import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTrace;
 import org.apache.flink.runtime.messages.StackTraceSampleResponse;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 import java.util.List;
 import java.util.UUID;
@@ -151,5 +153,14 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 	@Override
 	public Future<BlobKey> requestTaskManagerStdout(Time timeout) {
 		return FlinkCompletableFuture.completedExceptionally(new UnsupportedOperationException());
+	}
+
+	@Override
+	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
+																	 ExecutionAttemptID currentSinkAttempt,
+																	 ExecutionAttemptID newOperatorExecutionAttemptID,
+																	 TaskManagerLocation tmLocation,
+																	 int subTaskIndex) {
+		throw new UnsupportedOperationException();
 	}
 }

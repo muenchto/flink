@@ -24,7 +24,7 @@ import org.apache.flink.runtime.clusterframework.types.AllocationID
 import org.apache.flink.runtime.deployment.{InputChannelDeploymentDescriptor, TaskDeploymentDescriptor}
 import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, PartitionInfo}
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID
-import org.apache.flink.runtime.taskmanager.TaskExecutionState
+import org.apache.flink.runtime.taskmanager.{TaskExecutionState, TaskManagerLocation}
 
 /**
  * A set of messages that control the deployment and the state of Tasks executed
@@ -102,6 +102,12 @@ object TaskMessages {
     * @param attemptID The execution attempt ID of the source operator
     */
   case class ResumeTaskFromMigration(taskDeploymentDescriptor: TaskDeploymentDescriptor)
+    extends TaskMessage with RequiresLeaderSessionID
+
+  case class ResumeWithDifferentInputs(sinkExecutionAttemptID: ExecutionAttemptID,
+                                       newInput: ExecutionAttemptID,
+                                       taskManagerLocation: TaskManagerLocation,
+                                       subTaskIndex: Int)
     extends TaskMessage with RequiresLeaderSessionID
 
   /**

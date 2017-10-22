@@ -809,7 +809,7 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 			// TODO Refactor after removing the consumers from the intermediate result partitions
 			int numConsumerEdges = edges[0].getSource().getConsumers().get(0).size();
 
-			int queueToRequest = subTaskIndex % numConsumerEdges;
+			int queueToRequest = subTaskIndex % numConsumerEdges; // TODO Masterthesis What?
 
 			IntermediateResult consumedIntermediateResult = edges[0].getSource().getIntermediateResult();
 			final IntermediateDataSetID resultId = consumedIntermediateResult.getId();

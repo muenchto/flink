@@ -68,6 +68,9 @@ public class ResultPartitionManager implements ResultPartitionProvider {
 			BufferAvailabilityListener availabilityListener) throws IOException {
 
 		synchronized (registeredPartitions) {
+
+			logAllAvailablePartitions(partitionId, subpartitionIndex);
+
 			final ResultPartition partition = registeredPartitions.get(partitionId.getProducerId(),
 					partitionId.getPartitionId());
 
@@ -78,6 +81,18 @@ public class ResultPartitionManager implements ResultPartitionProvider {
 			LOG.debug("Requesting subpartition {} of {}.", subpartitionIndex, partition);
 
 			return partition.createSubpartitionView(subpartitionIndex, availabilityListener);
+		}
+	}
+
+	private void logAllAvailablePartitions(ResultPartitionID partitionId, int subpartitionIndex) {
+
+		LOG.debug("Requesting Partition for producer {} and id {} with subpartitionIndex {}",
+			partitionId.getProducerId(), partitionId.getPartitionId(), subpartitionIndex);
+		LOG.debug("All available partitions are:");
+
+		for (Table.Cell<ExecutionAttemptID, IntermediateResultPartitionID, ResultPartition> cell : registeredPartitions.cellSet()) {
+			LOG.debug("ExecutionAttemptID {} IntermediateReulstPartitionID {} ResultPartition {}.",
+				cell.getRowKey(), cell.getColumnKey(), cell.getValue());
 		}
 	}
 
