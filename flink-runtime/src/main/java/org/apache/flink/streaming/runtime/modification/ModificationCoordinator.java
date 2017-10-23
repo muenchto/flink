@@ -188,6 +188,23 @@ public class ModificationCoordinator {
 		}
 	}
 
+	public void pauseFilter() {
+		ExecutionJobVertex source = findSource();
+
+		ExecutionJobVertex map = findFilter();
+
+		List<JobVertexID> vertexIDS = Collections.singletonList(map.getJobVertexId());
+
+		for (ExecutionVertex executionVertex : source.getTaskVertices()) {
+			Execution currentExecutionAttempt = executionVertex.getCurrentExecutionAttempt();
+
+			currentExecutionAttempt.triggerModification(
+				DUMMY_MODIFICATION_ID,
+				System.currentTimeMillis(),
+				vertexIDS);
+		}
+	}
+
 	public void pauseJob() {
 		ExecutionJobVertex source = findSource();
 
@@ -363,6 +380,25 @@ public class ModificationCoordinator {
 		currentPlan.append("finishedVertices: ").append(executionGraph.getVerticesFinished());
 
 		return currentPlan.toString();
+	}
+
+	public ExecutionJobVertex findFilter() {
+
+		ExecutionJobVertex executionJobVertex = null;
+
+		for (ExecutionJobVertex ejv : executionGraph.getVerticesInCreationOrder()) {
+			// TODO Masterthesis Currently hardcoded
+			if (ejv.getJobVertex().getName().toLowerCase().contains("amazing")) {
+				executionJobVertex = ejv;
+			}
+		}
+
+		if (executionJobVertex == null) {
+			executionGraph.failGlobal(new ExecutionGraphException("Could not find filter"));
+			throw new RuntimeException("Could not find filter");
+		} else {
+			return executionJobVertex;
+		}
 	}
 
 	public ExecutionJobVertex findSource() {

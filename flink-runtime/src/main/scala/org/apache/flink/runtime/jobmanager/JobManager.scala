@@ -945,17 +945,20 @@ class JobManager(
           val modificationCoordinator = executionGraph.getModificationCoordinator
 
           val result = command match {
+            case "pauseFilter" => modificationCoordinator.pauseFilter()
+              (true, "Pausing Filter submitted")
+
             case "pauseMap" => modificationCoordinator.pauseJob()
-              (true, "Pausing submitted")
+              (true, "Pausing Map submitted")
 
             case "pauseSink" => modificationCoordinator.pauseSink()
-              (true, "Pausing submitted")
+              (true, "Pausing Sink submitted")
 
             case "resume" => modificationCoordinator.resumeMapOperator()
-              (true, "Resuming submitted")
+              (true, "Resuming Map submitted")
 
             case "resumeSink" => modificationCoordinator.resumeSink()
-              (true, "Resuming submitted")
+              (true, "Resuming Sink submitted")
 
             case "details" => val details = modificationCoordinator.getDetails()
               (true, details)
