@@ -95,14 +95,17 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 	 * The ID's are in the same order as {@link ExecutionJobVertex#operatorIDs}.
 	 */
 	private final List<OperatorID> userDefinedOperatorIds;
-	
-	private final ExecutionVertex[] taskVertices;
+
+	/**
+	 * Not final anymore, as may change due to runtime modifications.
+	 */
+	private ExecutionVertex[] taskVertices;
 
 	private final IntermediateResult[] producedDataSets;
 
 	private final List<IntermediateResult> inputs;
 
-	private final int parallelism;
+	private int parallelism;
 
 	private final SlotSharingGroup slotSharingGroup;
 
@@ -246,6 +249,46 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 		catch (Throwable t) {
 			throw new JobException("Creating the input splits caused an error: " + t.getMessage(), t);
 		}
+	}
+
+	public ExecutionVertex increaseDegreeOfParallelism(Time timeout,
+													   long initialGlobalModVersion,
+													   long createTimestamp) {
+
+		Configuration jobConfiguration = graph.getJobConfiguration();
+		int maxPriorAttemptsHistoryLength = jobConfiguration != null ?
+			jobConfiguration.getInteger(JobManagerOptions.MAX_ATTEMPTS_HISTORY_SIZE) :
+			JobManagerOptions.MAX_ATTEMPTS_HISTORY_SIZE.defaultValue();
+
+		int newParallelism = this.parallelism + 1;
+
+		this.parallelism = newParallelism;
+		ExecutionVertex[] newTaskVertices = new ExecutionVertex[newParallelism];
+
+		System.arraycopy(taskVertices, 0, newTaskVertices, 0, this.taskVertices.length);
+
+		ExecutionVertex vertex = new ExecutionVertex(
+			this,
+			newParallelism,
+			producedDataSets,
+			timeout,
+			initialGlobalModVersion,
+			createTimestamp,
+			maxPriorAttemptsHistoryLength);
+
+		newTaskVertices[newParallelism] = vertex;
+
+		IntermediateResult[] producedDataSets = getProducedDataSets();
+
+		assert producedDataSets.length == 1;
+
+		producedDataSets[0].increaseDegreeOfParallelism(newParallelism);
+
+		this.taskVertices = newTaskVertices;
+
+		LOG.debug("Increased DoP for {} by creating a new ExecutionVertex {}", this, vertex);
+
+		return vertex;
 	}
 
 	/**

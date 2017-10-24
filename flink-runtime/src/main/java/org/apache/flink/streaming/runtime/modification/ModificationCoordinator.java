@@ -92,6 +92,22 @@ public class ModificationCoordinator {
 		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
 	}
 
+	public void increaseDOPOfFilter() {
+		ExecutionJobVertex filter = findFilter();
+
+		filter.increaseDegreeOfParallelism(rpcCallTimeout, executionGraph.getGlobalModVersion(), System.currentTimeMillis());
+
+		assert filter.getParallelism() == 3;
+
+		ExecutionVertex[] taskVertices = filter.getTaskVertices();
+
+		assert taskVertices.length == 3;
+
+		ExecutionVertex taskVertex = taskVertices[2];
+
+		taskVertex.scheduleForExecution(executionGraph.getSlotProvider(), executionGraph.isQueuedSchedulingAllowed());
+	}
+
 	public void restartMapInstance(ResourceID taskmanagerID) {
 		ExecutionJobVertex map = findMap();
 
