@@ -90,7 +90,7 @@ public class ResultPartition implements BufferPoolOwner {
 	private final ResultPartitionType partitionType;
 
 	/** The subpartitions of this partition. At least one. */
-	private final ResultSubpartition[] subpartitions;
+	private ResultSubpartition[] subpartitions;
 
 	private final ResultPartitionManager partitionManager;
 
@@ -475,5 +475,16 @@ public class ResultPartition implements BufferPoolOwner {
 
 			hasNotifiedPipelinedConsumers = true;
 		}
+	}
+
+	public void addResultSubPartitionForNewConsumer() {
+
+		ResultSubpartition[] resultSubpartitions = new ResultSubpartition[subpartitions.length + 1];
+
+		System.arraycopy(subpartitions, 0, resultSubpartitions, 0, subpartitions.length);
+
+		resultSubpartitions[subpartitions.length] = new PipelinedSubpartition(subpartitions.length, this, owningTaskName);
+
+		this.subpartitions = resultSubpartitions;
 	}
 }

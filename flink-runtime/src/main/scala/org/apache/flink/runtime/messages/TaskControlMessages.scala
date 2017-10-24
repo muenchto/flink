@@ -20,6 +20,7 @@ package org.apache.flink.runtime.messages
 
 import java.util
 
+import org.apache.flink.api.common.JobID
 import org.apache.flink.runtime.clusterframework.types.AllocationID
 import org.apache.flink.runtime.deployment.{InputChannelDeploymentDescriptor, TaskDeploymentDescriptor}
 import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, PartitionInfo}
@@ -93,6 +94,14 @@ object TaskMessages {
     * @param attemptID The execution attempt ID of the source operator
     */
   case class StopTaskForMigration(attemptID: ExecutionAttemptID)
+    extends TaskMessage with RequiresLeaderSessionID
+
+  /**
+    * Informs the stopped task, that it should prepare itself for a new consumer.
+    *
+    * @param attemptID The execution attempt ID of the source operator
+    */
+  case class PrepareForNewConsumer(jobID: JobID, attemptID: ExecutionAttemptID)
     extends TaskMessage with RequiresLeaderSessionID
 
   /**

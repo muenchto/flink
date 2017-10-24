@@ -267,4 +267,6 @@ public interface TaskManagerGateway {
 															  ExecutionAttemptID newOperatorExecutionAttemptID,
 															  TaskManagerLocation tmLocation,
 															  int subTaskIndex);
+
+	void addNewConsumer(ExecutionAttemptID attemptId, JobID jobId);
 }

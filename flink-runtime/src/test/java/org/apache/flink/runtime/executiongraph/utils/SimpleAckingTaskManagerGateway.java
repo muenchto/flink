@@ -156,6 +156,11 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public void addNewConsumer(ExecutionAttemptID attemptId, JobID jobId) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 																	 ExecutionAttemptID currentSinkAttempt,
 																	 ExecutionAttemptID newOperatorExecutionAttemptID,

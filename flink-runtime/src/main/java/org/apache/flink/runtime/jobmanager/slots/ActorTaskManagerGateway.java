@@ -298,6 +298,14 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public void addNewConsumer(ExecutionAttemptID attemptId, JobID jobId) {
+		Preconditions.checkNotNull(attemptId);
+		Preconditions.checkNotNull(jobId);
+
+		actorGateway.tell(new TaskMessages.PrepareForNewConsumer(jobId, attemptId));
+	}
+
+	@Override
 	public Future<BlobKey> requestTaskManagerLog(Time timeout) {
 		return requestTaskManagerLog((TaskManagerMessages.RequestTaskManagerLog) TaskManagerMessages.getRequestTaskManagerLog(), timeout);
 	}

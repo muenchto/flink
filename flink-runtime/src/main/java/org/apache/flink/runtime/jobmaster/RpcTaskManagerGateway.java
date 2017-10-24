@@ -190,4 +190,9 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 																	 int subTaskIndex) {
 		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
+
+	@Override
+	public void addNewConsumer(ExecutionAttemptID attemptId, JobID jobId) {
+		throw new UnsupportedOperationException();
+	}
 }
