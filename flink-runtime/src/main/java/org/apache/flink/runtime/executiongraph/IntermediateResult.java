@@ -34,7 +34,7 @@ public class IntermediateResult {
 
 	private final ExecutionJobVertex producer;
 
-	private final IntermediateResultPartition[] partitions;
+	private IntermediateResultPartition[] partitions;
 
 	/**
 	 * Maps intermediate result partition IDs to a partition index. This is
@@ -44,7 +44,7 @@ public class IntermediateResult {
 	 */
 	private final HashMap<IntermediateResultPartitionID, Integer> partitionLookupHelper = new HashMap<>();
 
-	private final int numParallelProducers;
+	private int numParallelProducers;
 
 	private final AtomicInteger numberOfRunningProducers;
 
@@ -94,6 +94,17 @@ public class IntermediateResult {
 		partitions[partitionNumber] = partition;
 		partitionLookupHelper.put(partition.getPartitionId(), partitionNumber);
 		partitionsAssigned++;
+	}
+
+	public void increaseDegreeOfParallelism(int newDegreeOfParallelism) {
+		checkArgument(newDegreeOfParallelism >= 1);
+		this.numParallelProducers = newDegreeOfParallelism;
+
+		IntermediateResultPartition[] partitions = new IntermediateResultPartition[newDegreeOfParallelism];
+
+		System.arraycopy(this.partitions, 0, partitions, 0, partitions.length);
+
+		this.partitions = partitions;
 	}
 
 	public IntermediateDataSetID getId() {
