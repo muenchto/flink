@@ -1408,4 +1408,17 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			}
 		});
 	}
+
+	public void addNewConsumer() {
+		final SimpleSlot slot = assignedResource;
+
+		if (slot != null) {
+			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
+
+			taskManagerGateway.addNewConsumer(attemptId, getVertex().getJobId());
+		} else {
+			LOG.debug("The execution has no slot assigned. This indicates that the execution is " +
+				"no longer running.");
+		}
+	}
 }

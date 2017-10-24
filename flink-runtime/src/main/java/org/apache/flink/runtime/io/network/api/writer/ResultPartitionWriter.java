@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.io.network.api.writer;
 
+import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.runtime.event.TaskEvent;
 import org.apache.flink.runtime.io.network.api.TaskEventHandler;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
@@ -25,6 +26,8 @@ import org.apache.flink.runtime.io.network.buffer.BufferProvider;
 import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.util.event.EventListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -36,9 +39,13 @@ import java.io.IOException;
  */
 public class ResultPartitionWriter implements EventListener<TaskEvent> {
 
+	protected static final Logger LOG = LoggerFactory.getLogger(ResultPartitionWriter.class);
+
 	private final ResultPartition partition;
 
 	private final TaskEventHandler taskEventHandler = new TaskEventHandler();
+
+	private boolean shouldReconfigureRecordWriterForNewProducer;
 
 	public ResultPartitionWriter(ResultPartition partition) {
 		this.partition = partition;
@@ -111,5 +118,24 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 	@Override
 	public void onEvent(TaskEvent event) {
 		taskEventHandler.publish(event);
+	}
+
+	public void reconfigureKeySelectorForNewConsumer() {
+		LOG.debug("Setup trigger for ResultPartitionWriter '{}' to increase DoP", this);
+
+		// TODO Masterthesis: Find better solution without ugly toggle
+		shouldReconfigureRecordWriterForNewProducer = true;
+	}
+
+	public void setResponsibleRecordWriter(RecordWriter responsibleRecordWriter) {
+
+		if (shouldReconfigureRecordWriterForNewProducer) {
+			ChannelSelector channelSelector = responsibleRecordWriter.getChannelSelector();
+
+			LOG.debug("Encountered ChannelSelector '{}' with #outputChannels: {} for ResultPartitionWriter '{}'",
+				channelSelector, responsibleRecordWriter.getNumChannels(), this);
+
+			responsibleRecordWriter.setNumChannels(responsibleRecordWriter.getNumChannels() + 1);
+		}
 	}
 }

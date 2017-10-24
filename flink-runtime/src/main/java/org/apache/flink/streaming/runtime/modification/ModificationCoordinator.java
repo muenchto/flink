@@ -1,7 +1,6 @@
 package org.apache.flink.streaming.runtime.modification;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Predicate;
 import org.apache.commons.lang.StringUtils;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
@@ -90,6 +89,14 @@ public class ModificationCoordinator {
 		parallelSubTaskIndex = operatorInstanceToStop.getCurrentExecutionAttempt().getParallelSubtaskIndex();
 
 		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
+	}
+
+	public void increaseDOPOfMap() {
+		ExecutionJobVertex map = findMap();
+
+		for (ExecutionVertex executionVertex : map.getTaskVertices()) {
+			executionVertex.getCurrentExecutionAttempt().addNewConsumer();
+		}
 	}
 
 	public void increaseDOPOfFilter() {

@@ -56,9 +56,9 @@ public class RecordWriter<T extends IOReadableWritable> {
 
 	protected final ResultPartitionWriter targetPartition;
 
-	private final ChannelSelector<T> channelSelector;
+	private ChannelSelector<T> channelSelector;
 
-	private final int numChannels;
+	private int numChannels;
 
 	/** {@link RecordSerializer} per outgoing channel */
 	private final RecordSerializer<T>[] serializers;
@@ -75,6 +75,8 @@ public class RecordWriter<T extends IOReadableWritable> {
 	public RecordWriter(ResultPartitionWriter writer, ChannelSelector<T> channelSelector) {
 		this.targetPartition = writer;
 		this.channelSelector = channelSelector;
+
+		writer.setResponsibleRecordWriter(this);
 
 		this.numChannels = writer.getNumberOfOutputChannels();
 
@@ -94,6 +96,22 @@ public class RecordWriter<T extends IOReadableWritable> {
 		for (int targetChannel : channelSelector.selectChannels(record, numChannels)) {
 			sendToTarget(record, targetChannel);
 		}
+	}
+
+	public ChannelSelector<T> getChannelSelector() {
+		return channelSelector;
+	}
+
+	public void setNumChannels(int numChannels) {
+		this.numChannels = numChannels;
+	}
+
+	public int getNumChannels() {
+		return numChannels;
+	}
+
+	public void setChannelSelector(ChannelSelector<T> channelSelector) {
+		this.channelSelector = channelSelector;
 	}
 
 	/**

@@ -571,8 +571,28 @@ class TaskManager(
             log.debug(s"Cannot find task to resume with different inputs for execution $executionAttemptID)")
             sender ! decorateMessage(Acknowledge.get())
           }
+
+        case PrepareForNewConsumer(jobID, executionAttemptID) =>
+          val task = runningTasks.get(executionAttemptID)
+          if (task != null) {
+
+            log.debug(s"Attempting to change output for map $executionAttemptID")
+
+            reconfigureOutputs(task)
+
+            sender ! decorateMessage(Acknowledge.get())
+          } else {
+            log.debug(s"Cannot find task to modify output for new consumer: $executionAttemptID)")
+            sender ! decorateMessage(Acknowledge.get())
+          }
       }
       }
+  }
+
+  private def reconfigureOutputs(task: Task) : Unit = {
+
+    // TODO Masterthesis Check if Task is in correct state
+    task.reconfigureForNewOutput()
   }
 
   private def introduceNewOperator(mapOperatorExecutionAttemptID: ExecutionAttemptID,

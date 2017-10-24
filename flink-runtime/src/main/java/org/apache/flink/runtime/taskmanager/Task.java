@@ -1183,6 +1183,16 @@ public class Task implements Runnable, TaskActions {
 		// all good, we kick off the task, which performs its own initialization
 	}
 
+	public void reconfigureForNewOutput() {
+		assert producedPartitions.length == 1;
+
+		producedPartitions[0].addResultSubPartitionForNewConsumer();
+
+		assert writers.length == 1;
+
+		writers[0].reconfigureKeySelectorForNewConsumer();
+	}
+
 	public void stopForMigration() {
 		// TODO Masterthesis Remove all currently allocated resources
 
