@@ -108,8 +108,8 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 			checkState(!isReleased, "LocalInputChannel has been released already");
 
 			if (subpartitionView == null) {
-				LOG.debug("{}: Requesting LOCAL subpartition {} of partition {}.",
-					this, subpartitionIndex, partitionId);
+				LOG.debug("{}: Requesting LOCAL subpartition {} of partition {} for task {}.",
+					this, subpartitionIndex, partitionId, inputGate.owningTaskName);
 
 				try {
 					ResultSubpartitionView subpartitionView = partitionManager.createSubpartitionView(
@@ -189,8 +189,8 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 			} else {
 				// This means there is a bug in the buffer availability
 				// notifications.
-				throw new IllegalStateException("Consumed partition has no buffers available. " +
-					"Number of received buffer notifications is " + numBuffersAvailable + ".");
+				throw new IllegalStateException("Consumed partition has no buffers available for task "
+					+ inputGate.owningTaskName + ". Number of received buffer notifications is " + numBuffersAvailable + ".");
 			}
 		}
 

@@ -132,8 +132,8 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 		if (shouldReconfigureRecordWriterForNewProducer) {
 			ChannelSelector channelSelector = responsibleRecordWriter.getChannelSelector();
 
-			LOG.debug("Encountered ChannelSelector '{}' with #outputChannels: {} for ResultPartitionWriter '{}'",
-				channelSelector, responsibleRecordWriter.getNumChannels(), this);
+			LOG.debug("Encountered ChannelSelector '{}' with #outputChannels: {} for ResultPartitionWriter '{}' for {}",
+				channelSelector, responsibleRecordWriter.getNumChannels(), this, partition.owningTaskName);
 
 			responsibleRecordWriter.setNumChannels(responsibleRecordWriter.getNumChannels() + 1);
 		}
