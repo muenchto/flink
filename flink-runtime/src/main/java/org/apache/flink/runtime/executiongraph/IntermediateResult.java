@@ -102,7 +102,7 @@ public class IntermediateResult {
 
 		IntermediateResultPartition[] partitions = new IntermediateResultPartition[newDegreeOfParallelism];
 
-		System.arraycopy(this.partitions, 0, partitions, 0, partitions.length);
+		System.arraycopy(this.partitions, 0, partitions, 0, this.partitions.length);
 
 		this.partitions = partitions;
 	}

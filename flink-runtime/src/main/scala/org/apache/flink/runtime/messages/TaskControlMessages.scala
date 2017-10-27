@@ -24,7 +24,7 @@ import org.apache.flink.api.common.JobID
 import org.apache.flink.runtime.clusterframework.types.AllocationID
 import org.apache.flink.runtime.deployment.{InputChannelDeploymentDescriptor, TaskDeploymentDescriptor}
 import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, PartitionInfo}
-import org.apache.flink.runtime.jobgraph.IntermediateDataSetID
+import org.apache.flink.runtime.jobgraph.{IntermediateDataSetID, IntermediateResultPartitionID}
 import org.apache.flink.runtime.taskmanager.{TaskExecutionState, TaskManagerLocation}
 
 /**
@@ -117,6 +117,14 @@ object TaskMessages {
                                        newInput: ExecutionAttemptID,
                                        taskManagerLocation: TaskManagerLocation,
                                        subTaskIndex: Int)
+    extends TaskMessage with RequiresLeaderSessionID
+
+  case class ResumeWithIncreasedDoP(sinkExecutionAttemptID: ExecutionAttemptID,
+                                    newInput: ExecutionAttemptID,
+                                    irpid: IntermediateResultPartitionID,
+                                    taskManagerLocation: TaskManagerLocation,
+                                    connectionIndex: Int,
+                                    subTaskIndex: Int)
     extends TaskMessage with RequiresLeaderSessionID
 
   /**

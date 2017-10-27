@@ -59,6 +59,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionMetrics;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGateMetrics;
 import org.apache.flink.runtime.io.network.partition.consumer.SingleInputGate;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
+import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
@@ -471,6 +472,45 @@ public class Task implements Runnable, TaskActions {
 			migratedMapTask,
 			taskManagerLocation,
 			changedIndex);
+
+		inputGates[0] = gate;
+		inputGatesById.put(gate.getConsumedResultId(), gate);
+
+		LOG.info("{} After Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
+	}
+
+	public void reconfigureForNewInputAfterChangedDoP(NetworkEnvironment networkEnvironment,
+													  ExecutionAttemptID migratedMapTask,
+													  IntermediateResultPartitionID newPartitionID,
+													  TaskManagerLocation filterTMLocation,
+													  TaskManagerLocation currentTMLocation,
+													  int changedIndex,
+													  int connectionIndex) {
+
+		Preconditions.checkArgument(inputGateDeploymentDescriptor.length == 1);
+
+		final String taskNameWithSubtaskAndId = " Modified - " + taskNameWithSubtask + " (" + executionId + ')';
+		LOG.info("{} Modifying with new IGDD: {}", taskNameWithSubtaskAndId, inputGateDeploymentDescriptor);
+		LOG.info("{} Before Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
+
+		// Omitted single case for multiple input
+
+		boolean local = currentTMLocation.equals(filterTMLocation);
+
+		SingleInputGate gate = SingleInputGate.createIncreasedDoP(
+			taskNameWithSubtaskAndId,
+			jobId,
+			executionId,
+			inputGateDeploymentDescriptor[0],
+			networkEnvironment,
+			this,
+			taskMetricGroup.getIOMetricGroup(),
+			migratedMapTask,
+			local,
+			filterTMLocation,
+			newPartitionID,
+			changedIndex,
+			connectionIndex);
 
 		inputGates[0] = gate;
 		inputGatesById.put(gate.getConsumedResultId(), gate);

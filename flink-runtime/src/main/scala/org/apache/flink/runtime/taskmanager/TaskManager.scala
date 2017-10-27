@@ -384,12 +384,6 @@ class TaskManager(
     throw error
   }
 
-  def reconfigureInputs(task: Task, executionAttemptID: ExecutionAttemptID,
-                        tmLocation: TaskManagerLocation,
-                        changedSubIndex: Int): Unit = {
-    task.connectToNewInputAfterMigration(network, executionAttemptID, tmLocation, changedSubIndex)
-  }
-
   /**
    * Handler for messages concerning the deployment and status updates of
    * tasks.
@@ -564,7 +558,21 @@ class TaskManager(
 
             log.debug(s"Attempting to change inputs for sink $executionAttemptID")
 
-            reconfigureInputs(task, executionAttemptID, tmLocation, subTaskIndex)
+            task.connectToNewInputAfterMigration(network, executionAttemptID, tmLocation, subTaskIndex)
+
+            sender ! decorateMessage(Acknowledge.get())
+          } else {
+            log.debug(s"Cannot find task to resume with different inputs for execution $executionAttemptID)")
+            sender ! decorateMessage(Acknowledge.get())
+          }
+
+        case ResumeWithIncreasedDoP(currentSinkAttempt, executionAttemptID, irpid, tmLocation, connectionIndex, subTaskIndex) =>
+          val task = runningTasks.get(currentSinkAttempt)
+          if (task != null) {
+
+            log.debug(s"Attempting to change inputs for sink for increase dop for $executionAttemptID")
+
+            task.reconfigureForNewInputAfterChangedDoP(network, executionAttemptID, irpid, tmLocation, location, subTaskIndex, connectionIndex)
 
             sender ! decorateMessage(Acknowledge.get())
           } else {

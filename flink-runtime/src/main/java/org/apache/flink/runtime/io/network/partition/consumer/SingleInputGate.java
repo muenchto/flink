@@ -627,7 +627,8 @@ public class SingleInputGate implements InputGate {
 					networkEnvironment.getConnectionManager(),
 					networkEnvironment.getPartitionRequestInitialBackoff(),
 					networkEnvironment.getPartitionRequestMaxBackoff(),
-					metrics
+					metrics,
+					owningTaskName
 				);
 
 				numRemoteChannels++;
@@ -722,7 +723,8 @@ public class SingleInputGate implements InputGate {
 					networkEnvironment.getConnectionManager(),
 					networkEnvironment.getPartitionRequestInitialBackoff(),
 					networkEnvironment.getPartitionRequestMaxBackoff(),
-					metrics
+					metrics,
+					owningTaskName
 				);
 
 				numRemoteChannels++;
@@ -744,7 +746,8 @@ public class SingleInputGate implements InputGate {
 					networkEnvironment.getConnectionManager(),
 					networkEnvironment.getPartitionRequestInitialBackoff(),
 					networkEnvironment.getPartitionRequestMaxBackoff(),
-					metrics
+					metrics,
+					owningTaskName
 				);
 
 				numRemoteChannels++;
@@ -767,6 +770,139 @@ public class SingleInputGate implements InputGate {
 
 			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i]);
 		}
+
+		LOG.debug("Task {} created {} input channels (local: {}, remote: {}, unknown: {}).",
+			owningTaskName,
+			inputChannels.length,
+			numLocalChannels,
+			numRemoteChannels,
+			numUnknownChannels);
+
+		return inputGate;
+	}
+
+	/**
+	 * Creates an input gate and all of its input channels.
+	 */
+	public static SingleInputGate createIncreasedDoP(
+		String owningTaskName,
+		JobID jobId,
+		ExecutionAttemptID executionId,
+		InputGateDeploymentDescriptor igdd,
+		NetworkEnvironment networkEnvironment,
+		TaskActions taskActions,
+		TaskIOMetricGroup metrics,
+		ExecutionAttemptID newlyStarteFilterTask,
+		boolean local,
+		TaskManagerLocation filterTMLocation,
+		IntermediateResultPartitionID newPartitionID,
+		int mapSubtaskIndex,
+		int connectionIndex) {
+
+		LOG.debug("Task {} creates modified input with location {} and index {}.", owningTaskName, filterTMLocation, mapSubtaskIndex);
+
+		final IntermediateDataSetID consumedResultId = checkNotNull(igdd.getConsumedResultId());
+		final ResultPartitionType consumedPartitionType = checkNotNull(igdd.getConsumedPartitionType());
+
+		final int consumedSubpartitionIndex = igdd.getConsumedSubpartitionIndex();
+		checkArgument(consumedSubpartitionIndex >= 0);
+
+		final InputChannelDeploymentDescriptor[] icdd = checkNotNull(igdd.getInputChannelDeploymentDescriptors());
+
+		final SingleInputGate inputGate = new SingleInputGate(
+			owningTaskName, jobId, consumedResultId, consumedPartitionType, consumedSubpartitionIndex,
+			icdd.length + 1, taskActions, metrics);
+
+		// TODO Masterthesis InputChannel
+		// Create the input channels. There is one input channel for each consumed partition.
+		final InputChannel[] inputChannels = new InputChannel[icdd.length + 1];
+
+		int numLocalChannels = 0;
+		int numRemoteChannels = 0;
+		int numUnknownChannels = 0;
+
+		for (int i = 0; i < inputChannels.length - 1; i++) {
+			final ResultPartitionID partitionId = icdd[i].getConsumedPartitionId();
+			final ResultPartitionLocation partitionLocation = icdd[i].getConsumedPartitionLocation();
+
+			LOG.debug("Task {} creating input channel {} with partition location.", owningTaskName, i, partitionLocation);
+
+			if (partitionLocation.isLocal()) {
+				inputChannels[i] = new LocalInputChannel(inputGate, i, partitionId,
+					networkEnvironment.getResultPartitionManager(),
+					networkEnvironment.getTaskEventDispatcher(),
+					networkEnvironment.getPartitionRequestInitialBackoff(),
+					networkEnvironment.getPartitionRequestMaxBackoff(),
+					metrics
+				);
+
+				numLocalChannels++;
+			}
+			else if (partitionLocation.isRemote()) {
+				inputChannels[i] = new RemoteInputChannel(inputGate, i, partitionId,
+					partitionLocation.getConnectionId(),
+					networkEnvironment.getConnectionManager(),
+					networkEnvironment.getPartitionRequestInitialBackoff(),
+					networkEnvironment.getPartitionRequestMaxBackoff(),
+					metrics,
+					owningTaskName
+				);
+
+				numRemoteChannels++;
+			}
+			else if (partitionLocation.isUnknown()) {
+				inputChannels[i] = new UnknownInputChannel(inputGate, i, partitionId,
+					networkEnvironment.getResultPartitionManager(),
+					networkEnvironment.getTaskEventDispatcher(),
+					networkEnvironment.getConnectionManager(),
+					networkEnvironment.getPartitionRequestInitialBackoff(),
+					networkEnvironment.getPartitionRequestMaxBackoff(),
+					metrics
+				);
+
+				numUnknownChannels++;
+			}
+			else {
+				throw new IllegalStateException("Unexpected partition location.");
+			}
+
+			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i]);
+		}
+
+//		final ResultPartitionID partitionId = icdd[0].getConsumedPartitionId();
+//		final ResultPartitionID changedPartitionId = new ResultPartitionID(partitionId.getPartitionId(), newlyStarteFilterTask);
+		final ResultPartitionID changedPartitionId = new ResultPartitionID(newPartitionID, newlyStarteFilterTask);
+		final ResultPartitionLocation partitionLocation = icdd[0].getConsumedPartitionLocation();
+
+		LOG.debug("Modified ResultPartitionID {}", changedPartitionId);
+
+		// TODO Masterthesis - Differentiate between local and remote input gate
+
+		if (local) {
+			inputChannels[inputChannels.length - 1] = new LocalInputChannel(inputGate, 2, changedPartitionId,
+				networkEnvironment.getResultPartitionManager(),
+				networkEnvironment.getTaskEventDispatcher(),
+				networkEnvironment.getPartitionRequestInitialBackoff(),
+				networkEnvironment.getPartitionRequestMaxBackoff(),
+				metrics
+			);
+		} else {
+			final ConnectionID connectionID =
+				new ConnectionID(filterTMLocation, connectionIndex);
+
+			inputChannels[inputChannels.length - 1] = new RemoteInputChannel(inputGate, 2, changedPartitionId,
+				connectionID,
+				networkEnvironment.getConnectionManager(),
+				networkEnvironment.getPartitionRequestInitialBackoff(),
+				networkEnvironment.getPartitionRequestMaxBackoff(),
+				metrics,
+				owningTaskName
+			);
+		}
+
+		numRemoteChannels++;
+
+		inputGate.setInputChannel(newPartitionID, inputChannels[inputChannels.length - 1]);
 
 		LOG.debug("Task {} created {} input channels (local: {}, remote: {}, unknown: {}).",
 			owningTaskName,

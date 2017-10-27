@@ -37,6 +37,7 @@ import org.apache.flink.runtime.instance.SimpleSlot;
 import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
+import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationConstraint;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
@@ -1420,5 +1421,20 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			LOG.debug("The execution has no slot assigned. This indicates that the execution is " +
 				"no longer running.");
 		}
+	}
+
+	public void consumeNewProducer(Time timestamp, ExecutionAttemptID attemptId,
+								   IntermediateResultPartitionID irpidOfThirdFilterOperator,
+								   TaskManagerLocation taskManagerLocation, int connectionIndex, int parallelSubTaskIndex) {
+		FlinkFuture<Acknowledge> acknowledgeFlinkFuture = getAssignedResource()
+			.getTaskManagerGateway()
+			.triggerResumeWithIncreaseDoP(
+				timestamp,
+				getAttemptId(),
+				attemptId,
+				irpidOfThirdFilterOperator,
+				taskManagerLocation,
+				connectionIndex,
+				parallelSubTaskIndex);
 	}
 }

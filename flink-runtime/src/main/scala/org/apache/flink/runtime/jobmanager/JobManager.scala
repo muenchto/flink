@@ -945,11 +945,12 @@ class JobManager(
           val modificationCoordinator = executionGraph.getModificationCoordinator
 
           val result = command match {
-            case "pauseFilter" => modificationCoordinator.pauseFilter()
-              (true, "Pausing Filter submitted")
+
+            case "increaseDoPForSink" => modificationCoordinator.increaseDOPOfSink()
+              (true, "Increasing DoPForSink submitted")
 
             case "increaseDoPForMap" => modificationCoordinator.increaseDOPOfMap()
-              (true, "Pausing Filter submitted")
+              (true, "Increasing DoPForMap submitted")
 
             case "increaseDoPForFilter" => modificationCoordinator.increaseDOPOfFilter()
               (true, "Pausing Filter submitted")
@@ -957,14 +958,20 @@ class JobManager(
             case "pauseMap" => modificationCoordinator.pauseJob()
               (true, "Pausing Map submitted")
 
+            case "pauseFilter" => modificationCoordinator.pauseFilter()
+              (true, "Pausing Filter submitted")
+
             case "pauseSink" => modificationCoordinator.pauseSink()
               (true, "Pausing Sink submitted")
 
-            case "resume" => modificationCoordinator.resumeMapOperator()
+            case "resumeMap" => modificationCoordinator.resumeMapOperator()
               (true, "Resuming Map submitted")
 
             case "resumeSink" => modificationCoordinator.resumeSink()
               (true, "Resuming Sink submitted")
+
+            case "resumeFilter" => modificationCoordinator.resumeFilter()
+              (true, "Resuming Filter submitted")
 
             case "details" => val details = modificationCoordinator.getDetails()
               (true, details)
