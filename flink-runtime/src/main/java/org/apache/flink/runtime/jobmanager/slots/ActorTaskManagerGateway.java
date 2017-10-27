@@ -31,6 +31,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.instance.InstanceID;
+import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.Messages;
@@ -181,7 +182,8 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public Future<Acknowledge> resumeTask(ExecutionAttemptID executionAttemptID, Time timeout) {
+	public Future<Acknowledge> resumeTask(ExecutionAttemptID executionAttemptID,
+										  Time timeout) {
 		Preconditions.checkNotNull(executionAttemptID);
 		Preconditions.checkNotNull(timeout);
 
@@ -328,6 +330,31 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 			new TaskMessages.ResumeWithDifferentInputs(currentSinkAttempt,
 				newOperatorExecutionAttemptID,
 				tmLocation,
+				subTaskIndex),
+			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+
+		return new FlinkFuture<>(resumeResult);
+	}
+
+	@Override
+	public FlinkFuture<Acknowledge> triggerResumeWithIncreaseDoP(Time timeout,
+																 ExecutionAttemptID currentSinkAttempt,
+																 ExecutionAttemptID newOperatorExecutionAttemptID,
+																 IntermediateResultPartitionID irpidOfThirdFilterOperator,
+																 TaskManagerLocation tmLocation,
+																 int connectionIndex, int subTaskIndex) {
+		Preconditions.checkNotNull(timeout);
+		Preconditions.checkNotNull(tmLocation);
+		Preconditions.checkNotNull(currentSinkAttempt);
+		Preconditions.checkNotNull(newOperatorExecutionAttemptID);
+
+		scala.concurrent.Future<Acknowledge> resumeResult = actorGateway.ask(
+			new TaskMessages.ResumeWithIncreasedDoP(currentSinkAttempt,
+				newOperatorExecutionAttemptID,
+				irpidOfThirdFilterOperator,
+				tmLocation,
+				connectionIndex,
 				subTaskIndex),
 			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
 			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));

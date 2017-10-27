@@ -253,7 +253,8 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 
 	public ExecutionVertex increaseDegreeOfParallelism(Time timeout,
 													   long initialGlobalModVersion,
-													   long createTimestamp) {
+													   long createTimestamp,
+													   Map<IntermediateDataSetID, IntermediateResult> allIntermediateResults) {
 
 		Configuration jobConfiguration = graph.getJobConfiguration();
 		int maxPriorAttemptsHistoryLength = jobConfiguration != null ?
@@ -262,21 +263,7 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 
 		int newParallelism = this.parallelism + 1;
 
-		this.parallelism = newParallelism;
-		ExecutionVertex[] newTaskVertices = new ExecutionVertex[newParallelism];
-
-		System.arraycopy(taskVertices, 0, newTaskVertices, 0, this.taskVertices.length);
-
-		ExecutionVertex vertex = new ExecutionVertex(
-			this,
-			newParallelism,
-			producedDataSets,
-			timeout,
-			initialGlobalModVersion,
-			createTimestamp,
-			maxPriorAttemptsHistoryLength);
-
-		newTaskVertices[newParallelism] = vertex;
+		LOG.debug("Increasing DoP for {} to {}", this, newParallelism);
 
 		IntermediateResult[] producedDataSets = getProducedDataSets();
 
@@ -284,7 +271,30 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 
 		producedDataSets[0].increaseDegreeOfParallelism(newParallelism);
 
+		this.parallelism = newParallelism;
+		ExecutionVertex[] newTaskVertices = new ExecutionVertex[newParallelism];
+
+		System.arraycopy(taskVertices, 0, newTaskVertices, 0, this.taskVertices.length);
+
+		ExecutionVertex vertex = new ExecutionVertex(
+			this,
+			newParallelism - 1,
+			producedDataSets,
+			timeout,
+			initialGlobalModVersion,
+			createTimestamp,
+			maxPriorAttemptsHistoryLength);
+
+		newTaskVertices[newParallelism - 1] = vertex;
+
 		this.taskVertices = newTaskVertices;
+
+		try {
+			connectToPredecessorsRuntime(allIntermediateResults);
+		} catch (JobException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Failed to connect to intermediate results");
+		}
 
 		LOG.debug("Increased DoP for {} by creating a new ExecutionVertex {}", this, vertex);
 
@@ -394,7 +404,8 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 
 	public SerializedValue<TaskInformation> getSerializedTaskInformation() throws IOException {
 
-		if (null == serializedTaskInformation) {
+		// TODO Masterthesis Find better solution
+//		if (null == serializedTaskInformation) {
 
 			int parallelism = getParallelism();
 			int maxParallelism = getMaxParallelism();
@@ -411,7 +422,7 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 							maxParallelism,
 							jobVertex.getInvokableClassName(),
 							jobVertex.getConfiguration()));
-		}
+//		}
 
 		return serializedTaskInformation;
 	}

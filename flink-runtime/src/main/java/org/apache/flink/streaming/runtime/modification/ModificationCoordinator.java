@@ -12,6 +12,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.runtime.modification.exceptions.OperatorNotFoundException;
@@ -91,6 +92,34 @@ public class ModificationCoordinator {
 		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
 	}
 
+	public void increaseDOPOfSink() {
+		ExecutionJobVertex sink = findSink();
+
+		ExecutionJobVertex filter = findFilter();
+		ExecutionVertex[] taskVertices = filter.getTaskVertices();
+
+		assert taskVertices.length == 3;
+
+		ExecutionVertex taskVertex = taskVertices[2];
+
+		Map<IntermediateResultPartitionID, IntermediateResultPartition> producedPartitions = taskVertex.getProducedPartitions();
+		assert producedPartitions.size() == 1;
+		IntermediateResultPartitionID irpidOfThirdFilterOperator = producedPartitions.keySet().iterator().next();
+
+		IntermediateResultPartition next = producedPartitions.values().iterator().next();
+		int connectionIndex = next.getIntermediateResult().getConnectionIndex();
+
+		TaskManagerLocation filterTMLocation = taskVertex.getCurrentAssignedResource().getTaskManagerLocation();
+
+		sink.getTaskVertices()[0].getCurrentExecutionAttempt().consumeNewProducer(
+			rpcCallTimeout,
+			taskVertex.getCurrentExecutionAttempt().getAttemptId(),
+			irpidOfThirdFilterOperator,
+			filterTMLocation,
+			connectionIndex,
+			2);
+	}
+
 	public void increaseDOPOfMap() {
 		ExecutionJobVertex map = findMap();
 
@@ -102,7 +131,11 @@ public class ModificationCoordinator {
 	public void increaseDOPOfFilter() {
 		ExecutionJobVertex filter = findFilter();
 
-		filter.increaseDegreeOfParallelism(rpcCallTimeout, executionGraph.getGlobalModVersion(), System.currentTimeMillis());
+		ExecutionVertex executionVertex = filter.increaseDegreeOfParallelism(
+			rpcCallTimeout,
+			executionGraph.getGlobalModVersion(),
+			System.currentTimeMillis(),
+			executionGraph.getAllIntermediateResults());
 
 		assert filter.getParallelism() == 3;
 
@@ -199,6 +232,20 @@ public class ModificationCoordinator {
 
 	public void resumeSink() {
 		ExecutionJobVertex source = findSink();
+
+		ExecutionVertex[] taskVertices = source.getTaskVertices();
+
+		for (ExecutionVertex vertex : taskVertices) {
+			Execution execution = vertex.getCurrentExecutionAttempt();
+
+			execution.getAssignedResource()
+				.getTaskManagerGateway()
+				.resumeTask(execution.getAttemptId(), rpcCallTimeout);
+		}
+	}
+
+	public void resumeFilter() {
+		ExecutionJobVertex source = findFilter();
 
 		ExecutionVertex[] taskVertices = source.getTaskVertices();
 
@@ -411,7 +458,7 @@ public class ModificationCoordinator {
 
 		for (ExecutionJobVertex ejv : executionGraph.getVerticesInCreationOrder()) {
 			// TODO Masterthesis Currently hardcoded
-			if (ejv.getJobVertex().getName().toLowerCase().contains("amazing")) {
+			if (ejv.getJobVertex().getName().toLowerCase().contains("filter")) {
 				executionJobVertex = ejv;
 			}
 		}

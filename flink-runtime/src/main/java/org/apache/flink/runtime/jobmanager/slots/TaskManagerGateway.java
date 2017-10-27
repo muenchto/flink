@@ -29,6 +29,7 @@ import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.InstanceID;
+import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTrace;
@@ -139,8 +140,7 @@ public interface TaskManagerGateway {
 	/**
 	 * Resumes the given task
 	 * @param executionAttemptID identifying the task
-	 * @param timeout of the submit operation
-	 * @return Future acknowledge if the task is successfully resumed
+	 * @param timeout of the submit operation  @return Future acknowledge if the task is successfully resumed
 	 */
 	Future<Acknowledge> resumeTask(
 		ExecutionAttemptID executionAttemptID,
@@ -267,6 +267,12 @@ public interface TaskManagerGateway {
 															  ExecutionAttemptID newOperatorExecutionAttemptID,
 															  TaskManagerLocation tmLocation,
 															  int subTaskIndex);
+
+	FlinkFuture<Acknowledge>  triggerResumeWithIncreaseDoP(Time timeout,
+														   ExecutionAttemptID currentSinkAttempt,
+														   ExecutionAttemptID newOperatorExecutionAttemptID,
+														   IntermediateResultPartitionID irpidOfThirdFilterOperator, TaskManagerLocation tmLocation,
+														   int connectionIndex, int subTaskIndex);
 
 	void addNewConsumer(ExecutionAttemptID attemptId, JobID jobId);
 }
