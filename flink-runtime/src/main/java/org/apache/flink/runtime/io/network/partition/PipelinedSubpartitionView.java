@@ -31,22 +31,22 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 class PipelinedSubpartitionView implements ResultSubpartitionView {
 
 	/** The subpartition this view belongs to. */
-	private final PipelinedSubpartition parent;
+	private final PipelinedSubpartition subpartition;
 
 	private final BufferAvailabilityListener availabilityListener;
 
 	/** Flag indicating whether this view has been released. */
 	private final AtomicBoolean isReleased;
 
-	PipelinedSubpartitionView(PipelinedSubpartition parent, BufferAvailabilityListener listener) {
-		this.parent = checkNotNull(parent);
+	PipelinedSubpartitionView(PipelinedSubpartition subpartition, BufferAvailabilityListener listener) {
+		this.subpartition = checkNotNull(subpartition);
 		this.availabilityListener = checkNotNull(listener);
 		this.isReleased = new AtomicBoolean();
 	}
 
 	@Override
 	public Buffer getNextBuffer() {
-		return parent.pollBuffer();
+		return subpartition.pollBuffer();
 	}
 
 	@Override
@@ -64,24 +64,24 @@ class PipelinedSubpartitionView implements ResultSubpartitionView {
 		if (isReleased.compareAndSet(false, true)) {
 			// The view doesn't hold any resources and the parent cannot be restarted. Therefore,
 			// it's OK to notify about consumption as well.
-			parent.onConsumedSubpartition();
+			subpartition.onConsumedSubpartition();
 		}
 	}
 
 	@Override
 	public boolean isReleased() {
-		return isReleased.get() || parent.isReleased();
+		return isReleased.get() || subpartition.isReleased();
 	}
 
 	@Override
 	public Throwable getFailureCause() {
-		return parent.getFailureCause();
+		return subpartition.getFailureCause();
 	}
 
 	@Override
 	public String toString() {
 		return String.format("PipelinedSubpartitionView(index: %d) of ResultPartition %s",
-				parent.index,
-				parent.parent.getPartitionId());
+				subpartition.index,
+				subpartition.parent.getPartitionId());
 	}
 }

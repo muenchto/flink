@@ -49,6 +49,8 @@ public class RemoteInputChannel extends InputChannel {
 	/** The connection manager to use connect to the remote partition provider. */
 	private final ConnectionManager connectionManager;
 
+	private final String owningTaskName;
+
 	/**
 	 * The received buffers. Received buffers are enqueued by the network I/O thread and the queue
 	 * is consumed by the receiving task thread.
@@ -78,7 +80,7 @@ public class RemoteInputChannel extends InputChannel {
 		ConnectionManager connectionManager,
 		TaskIOMetricGroup metrics) {
 
-		this(inputGate, channelIndex, partitionId, connectionId, connectionManager, 0, 0, metrics);
+		this(inputGate, channelIndex, partitionId, connectionId, connectionManager, 0, 0, metrics, "TestRemoteInputChannel");
 	}
 
 	public RemoteInputChannel(
@@ -89,12 +91,14 @@ public class RemoteInputChannel extends InputChannel {
 		ConnectionManager connectionManager,
 		int initialBackOff,
 		int maxBackoff,
-		TaskIOMetricGroup metrics) {
+		TaskIOMetricGroup metrics,
+		String owningTaskName) {
 
 		super(inputGate, channelIndex, partitionId, initialBackOff, maxBackoff, metrics.getNumBytesInRemoteCounter());
 
 		this.connectionId = checkNotNull(connectionId);
 		this.connectionManager = checkNotNull(connectionManager);
+		this.owningTaskName = owningTaskName;
 	}
 
 	// ------------------------------------------------------------------------
@@ -252,7 +256,7 @@ public class RemoteInputChannel extends InputChannel {
 
 						success = true;
 					} else {
-						onError(new BufferReorderingException(expectedSequenceNumber, sequenceNumber));
+						onError(new BufferReorderingException(expectedSequenceNumber, sequenceNumber, owningTaskName));
 					}
 				}
 			}
@@ -269,7 +273,7 @@ public class RemoteInputChannel extends InputChannel {
 				if (expectedSequenceNumber == sequenceNumber) {
 					expectedSequenceNumber++;
 				} else {
-					onError(new BufferReorderingException(expectedSequenceNumber, sequenceNumber));
+					onError(new BufferReorderingException(expectedSequenceNumber, sequenceNumber, owningTaskName));
 				}
 			}
 		}
@@ -291,15 +295,18 @@ public class RemoteInputChannel extends InputChannel {
 
 		private final int actualSequenceNumber;
 
-		BufferReorderingException(int expectedSequenceNumber, int actualSequenceNumber) {
+		private final String taskName;
+
+		BufferReorderingException(int expectedSequenceNumber, int actualSequenceNumber, String taskName) {
 			this.expectedSequenceNumber = expectedSequenceNumber;
 			this.actualSequenceNumber = actualSequenceNumber;
+			this.taskName = taskName;
 		}
 
 		@Override
 		public String getMessage() {
-			return String.format("Buffer re-ordering: expected buffer with sequence number %d, but received %d.",
-				expectedSequenceNumber, actualSequenceNumber);
+			return String.format("Buffer re-ordering: expected buffer with sequence number %d, but received %d for %s.",
+				expectedSequenceNumber, actualSequenceNumber, taskName);
 		}
 	}
 }

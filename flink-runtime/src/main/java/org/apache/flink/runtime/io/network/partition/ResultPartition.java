@@ -78,7 +78,7 @@ public class ResultPartition implements BufferPoolOwner {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ResultPartition.class);
 	
-	private final String owningTaskName;
+	public final String owningTaskName;
 
 	private final TaskActions taskActions;
 
