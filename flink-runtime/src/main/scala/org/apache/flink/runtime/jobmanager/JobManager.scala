@@ -979,7 +979,7 @@ class JobManager(
             case "increaseDoPForFilter" => modificationCoordinator.increaseDOPOfFilter()
               (true, "Pausing Filter submitted")
 
-            case "pauseMap" => modificationCoordinator.pauseJob()
+            case "pauseMap" => modificationCoordinator.pauseMap()
               (true, "Pausing Map submitted")
 
             case "pauseFilter" => modificationCoordinator.pauseFilter()
