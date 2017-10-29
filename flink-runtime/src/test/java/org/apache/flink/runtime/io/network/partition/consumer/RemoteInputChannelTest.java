@@ -306,6 +306,6 @@ public class RemoteInputChannelTest {
 			connectionManager,
 			initialAndMaxRequestBackoff._1(),
 			initialAndMaxRequestBackoff._2(),
-			new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup());
+			new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup(), "TestRemoteInputChannel");
 	}
 }
