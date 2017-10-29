@@ -201,7 +201,7 @@ public class InputGateFairnessTest {
 		for (int i = 0; i < numChannels; i++) {
 			RemoteInputChannel channel = new RemoteInputChannel(
 					gate, i, new ResultPartitionID(), mock(ConnectionID.class), 
-					connManager, 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup());
+					connManager, 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup(), "TestRemoteInputChannel");
 
 			channels[i] = channel;
 			
@@ -257,7 +257,7 @@ public class InputGateFairnessTest {
 		for (int i = 0; i < numChannels; i++) {
 			RemoteInputChannel channel = new RemoteInputChannel(
 					gate, i, new ResultPartitionID(), mock(ConnectionID.class),
-					connManager, 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup());
+					connManager, 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup(), "TestRemoteInputChannel");
 
 			channels[i] = channel;
 			gate.setInputChannel(new IntermediateResultPartitionID(), channel);

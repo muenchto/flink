@@ -104,7 +104,7 @@ public class InputGateConcurrentTest {
 		for (int i = 0; i < numChannels; i++) {
 			RemoteInputChannel channel = new RemoteInputChannel(
 					gate, i, new ResultPartitionID(), mock(ConnectionID.class),
-					connManager, 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup());
+					connManager, 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup(), "TestRemoteInputChannel");
 			gate.setInputChannel(new IntermediateResultPartitionID(), channel);
 
 			sources[i] = new RemoteChannelSource(channel);
@@ -165,7 +165,7 @@ public class InputGateConcurrentTest {
 				//remote channel
 				RemoteInputChannel channel = new RemoteInputChannel(
 						gate, i, new ResultPartitionID(), mock(ConnectionID.class),
-						connManager, 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup());
+						connManager, 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup(), "TestRemoteInputChannel");
 				gate.setInputChannel(new IntermediateResultPartitionID(), channel);
 
 				sources[i] = new RemoteChannelSource(channel);
