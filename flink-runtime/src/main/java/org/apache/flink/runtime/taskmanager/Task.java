@@ -70,6 +70,7 @@ import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateHandles;
+import org.apache.flink.streaming.runtime.modification.ModificationHandler;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.streaming.runtime.modification.exceptions.TaskNotStatefulModificationException;
@@ -205,6 +206,8 @@ public class Task implements Runnable, TaskActions {
 
 	/** Modification notifier used to communicate with the ModificationCoordinator */
 	private final ModificationResponder modificationResponder;
+
+	private final ModificationHandler modificationHandler = new ModificationHandler();
 
 	/** All listener that want to be notified about changes in the task's execution state */
 	private final List<TaskExecutionStateListener> taskExecutionStateListeners;
@@ -796,7 +799,8 @@ public class Task implements Runnable, TaskActions {
 					memoryManager, ioManager, broadcastVariableManager,
 					accumulatorRegistry, kvStateRegistry, inputSplitProvider,
 					distributedCacheEntries, writers, inputGates,
-					checkpointResponder, modificationResponder, taskManagerConfig, metrics, this);
+					checkpointResponder, modificationResponder, modificationHandler,
+					taskManagerConfig, metrics, this);
 
 				// let the task code create its readers and writers
 				invokable.setEnvironment(env);
@@ -850,7 +854,7 @@ public class Task implements Runnable, TaskActions {
 					memoryManager, ioManager, broadcastVariableManager,
 					accumulatorRegistry, kvStateRegistry, inputSplitProvider,
 					distributedCacheEntries, writers, inputGates,
-					checkpointResponder, modificationResponder, taskManagerConfig, metrics, this);
+					checkpointResponder, modificationResponder, modificationHandler, taskManagerConfig, metrics, this);
 
 				// let the task code create its readers and writers
 				invokable.setEnvironment(env);

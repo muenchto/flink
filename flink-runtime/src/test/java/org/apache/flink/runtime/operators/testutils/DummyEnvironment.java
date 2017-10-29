@@ -40,6 +40,8 @@ import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.taskmanager.TaskManagerRuntimeInfo;
 import org.apache.flink.runtime.util.TestingTaskManagerRuntimeInfo;
+import org.apache.flink.streaming.runtime.modification.ModificationHandler;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Collections;
 import java.util.Map;
@@ -165,14 +167,15 @@ public class DummyEnvironment implements Environment {
 	}
 
 	@Override
-	public void acknowledgeModification(long modificationID) {
-		throw new UnsupportedOperationException("DummyEnvironment does not support external task failure.");
-	}
+	public void acknowledgeModification(long modificationID) {}
 
 	@Override
-	public void declineModification(long modificationID, Throwable cause) {
-		throw new UnsupportedOperationException("DummyEnvironment does not support external task failure.");
-	}
+	public void declineModification(long modificationID, Throwable cause) {}
+
+	@Override
+	public void ignoreModification(long modificationID) {}
+
+	public ModificationHandler getModificationHandler() { throw new NotImplementedException(); }
 
 	@Override
 	public void failExternally(Throwable cause) {

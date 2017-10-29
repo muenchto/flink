@@ -12,6 +12,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
+import org.apache.flink.runtime.messages.modification.IgnoreModification;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
@@ -187,6 +188,16 @@ public class ModificationCoordinator {
 			return true;
 		} else {
 			LOG.debug("Received wrong decline modification message: {}", declineModification);
+			return false;
+		}
+	}
+
+	public boolean receiveIgnoreMessage(IgnoreModification ignoreModification) {
+		if (ignoreModification.getModificationID() == DUMMY_MODIFICATION_ID) {
+			LOG.debug("Received successful ignore modification message");
+			return true;
+		} else {
+			LOG.debug("Received wrong ignore modification message: {}", ignoreModification);
 			return false;
 		}
 	}

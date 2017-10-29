@@ -22,4 +22,9 @@ public class RpcModificationResponder implements ModificationResponder {
 	public void declineModification(JobID jobID, ExecutionAttemptID executionAttemptID, long checkpointId, Throwable cause) {
 		throw new UnsupportedOperationException();
 	}
+
+	@Override
+	public void ignoreModification(JobID jobId, ExecutionAttemptID executionId, long modificationID) {
+		throw new UnsupportedOperationException();
+	}
 }

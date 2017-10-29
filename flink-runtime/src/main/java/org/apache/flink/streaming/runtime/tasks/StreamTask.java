@@ -29,6 +29,7 @@ import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Joiner;
 import org.apache.commons.lang.StringUtils;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.accumulators.Accumulator;
@@ -644,10 +645,15 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					// we can do a modification
 
 					if (jobVertexIDs.contains(getEnvironment().getJobVertexId())) {
-						LOG.info("Found {} in vertices for {}, that should be modified. Attempting to pause operator",
-							getEnvironment().getJobVertexId(), getName());
-
-						if (pauseInputs()) {
+						LOG.info("Found {} in vertices for {}, that should be modified. Past modifications: {}",
+							getEnvironment().getJobVertexId(), getName(), Joiner.on(",").join(getEnvironment().getModificationHandler().getHandledModifications()));
+						
+						if (getEnvironment().getModificationHandler().getHandledModifications().contains(metaData.getModificationID())) {
+							LOG.info("Operator {} has already reacted to modification {}. Ignoring modification.",
+								getName(), getEnvironment().getJobVertexId());
+						} else if (pauseInputs()) {
+							LOG.info("Operator {} successfully paused inputs for modification {}.",
+								getName(), getEnvironment().getJobVertexId());
 							getEnvironment().acknowledgeModification(metaData.getModificationID());
 						} else {
 							getEnvironment().declineModification(metaData.getModificationID(),
@@ -655,6 +661,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						}
 
 					} else {
+						getEnvironment().ignoreModification(metaData.getModificationID());
 						LOG.info("Could not find {} in vertices for {}, that should be modified. Not attempting to pause operator",
 							getEnvironment().getJobVertexId(), getName());
 					}

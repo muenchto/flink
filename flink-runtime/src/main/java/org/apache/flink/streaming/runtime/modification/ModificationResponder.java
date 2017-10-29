@@ -36,4 +36,14 @@ public interface ModificationResponder {
 		ExecutionAttemptID executionAttemptID,
 		long checkpointId,
 		Throwable cause);
+
+	/**
+	 * Ignores a certain modification identified by the modification id
+	 * as the modification is not relevant for this operator.
+	 *
+	 * @param jobId Job ID of the running job
+	 * @param executionId Execution attempt ID of the running task
+	 * @param modificationID The ID of the ignored modification
+	 */
+	void ignoreModification(JobID jobId, ExecutionAttemptID executionId, long modificationID);
 }
