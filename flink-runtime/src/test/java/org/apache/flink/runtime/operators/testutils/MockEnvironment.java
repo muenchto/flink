@@ -48,11 +48,13 @@ import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.taskmanager.TaskManagerRuntimeInfo;
 import org.apache.flink.runtime.util.TestingTaskManagerRuntimeInfo;
+import org.apache.flink.streaming.runtime.modification.ModificationHandler;
 import org.apache.flink.types.Record;
 import org.apache.flink.util.MutableObjectIterator;
 
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Collections;
 import java.util.LinkedList;
@@ -325,14 +327,16 @@ public class MockEnvironment implements Environment {
 	}
 
 	@Override
-	public void acknowledgeModification(long modificationID) {
-
-	}
+	public void acknowledgeModification(long modificationID) { }
 
 	@Override
-	public void declineModification(long modificationID, Throwable cause) {
+	public void declineModification(long modificationID, Throwable cause) { }
 
-	}
+	@Override
+	public void ignoreModification(long modificationID) { }
+
+	@Override
+	public ModificationHandler getModificationHandler() { throw new NotImplementedException(); }
 
 	@Override
 	public void failExternally(Throwable cause) {

@@ -40,6 +40,7 @@ import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.internal.InternalKvState;
 import org.apache.flink.runtime.taskmanager.TaskManagerRuntimeInfo;
+import org.apache.flink.streaming.runtime.modification.ModificationHandler;
 
 /**
  * The Environment gives the code executed in a task access to the task's properties
@@ -202,6 +203,14 @@ public interface Environment {
 	 * @param cause An optional reason why the checkpoint was declined.
 	 */
 	void declineModification(long modificationID, Throwable cause);
+
+	/**
+	 * Ignores a modification, because it is not relevant to the corresponding operator.
+	 * @param modificationID The id of the ignored modification.
+	 */
+	void ignoreModification(long modificationID);
+
+	ModificationHandler getModificationHandler();
 
 	/**
 	 * Marks task execution failed for an external reason (a reason other than the task code itself

@@ -5,6 +5,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
+import org.apache.flink.runtime.messages.modification.IgnoreModification;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.Preconditions;
 
@@ -28,5 +29,12 @@ public class ActorGatewayModificationResponder implements ModificationResponder 
 		DeclineModification decline = new DeclineModification(jobID, executionAttemptID, checkpointId, cause);
 
 		actorGateway.tell(decline);
+	}
+
+	@Override
+	public void ignoreModification(JobID jobId, ExecutionAttemptID executionId, long modificationID) {
+		IgnoreModification ignore = new IgnoreModification(jobId, executionId, modificationID);
+
+		actorGateway.tell(ignore);
 	}
 }

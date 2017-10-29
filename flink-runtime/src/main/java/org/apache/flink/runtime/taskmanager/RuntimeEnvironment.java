@@ -37,7 +37,9 @@ import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
+import org.apache.flink.streaming.runtime.modification.ModificationHandler;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -72,7 +74,9 @@ public class RuntimeEnvironment implements Environment {
 	private final InputGate[] inputGates;
 	
 	private final CheckpointResponder checkpointResponder;
+
 	private final ModificationResponder modificationResponder;
+	private final ModificationHandler modificationHandler;
 
 	private final AccumulatorRegistry accumulatorRegistry;
 
@@ -86,28 +90,29 @@ public class RuntimeEnvironment implements Environment {
 	// ------------------------------------------------------------------------
 
 	public RuntimeEnvironment(
-			JobID jobId,
-			JobVertexID jobVertexId,
-			ExecutionAttemptID executionId,
-			ExecutionConfig executionConfig,
-			TaskInfo taskInfo,
-			Configuration jobConfiguration,
-			Configuration taskConfiguration,
-			ClassLoader userCodeClassLoader,
-			MemoryManager memManager,
-			IOManager ioManager,
-			BroadcastVariableManager bcVarManager,
-			AccumulatorRegistry accumulatorRegistry,
-			TaskKvStateRegistry kvStateRegistry,
-			InputSplitProvider splitProvider,
-			Map<String, Future<Path>> distCacheEntries,
-			ResultPartitionWriter[] writers,
-			InputGate[] inputGates,
-			CheckpointResponder checkpointResponder,
-			ModificationResponder modificationResponder,
-			TaskManagerRuntimeInfo taskManagerInfo,
-			TaskMetricGroup metrics,
-			Task containingTask) {
+		JobID jobId,
+		JobVertexID jobVertexId,
+		ExecutionAttemptID executionId,
+		ExecutionConfig executionConfig,
+		TaskInfo taskInfo,
+		Configuration jobConfiguration,
+		Configuration taskConfiguration,
+		ClassLoader userCodeClassLoader,
+		MemoryManager memManager,
+		IOManager ioManager,
+		BroadcastVariableManager bcVarManager,
+		AccumulatorRegistry accumulatorRegistry,
+		TaskKvStateRegistry kvStateRegistry,
+		InputSplitProvider splitProvider,
+		Map<String, Future<Path>> distCacheEntries,
+		ResultPartitionWriter[] writers,
+		InputGate[] inputGates,
+		CheckpointResponder checkpointResponder,
+		ModificationResponder modificationResponder,
+		ModificationHandler modificationHandler,
+		TaskManagerRuntimeInfo taskManagerInfo,
+		TaskMetricGroup metrics,
+		Task containingTask) {
 
 		this.jobId = checkNotNull(jobId);
 		this.jobVertexId = checkNotNull(jobVertexId);
@@ -128,6 +133,7 @@ public class RuntimeEnvironment implements Environment {
 		this.inputGates = checkNotNull(inputGates);
 		this.checkpointResponder = checkNotNull(checkpointResponder);
 		this.modificationResponder = checkNotNull(modificationResponder);
+		this.modificationHandler = checkNotNull(modificationHandler);
 		this.taskManagerInfo = checkNotNull(taskManagerInfo);
 		this.containingTask = containingTask;
 		this.metrics = metrics;
@@ -263,12 +269,23 @@ public class RuntimeEnvironment implements Environment {
 
 	@Override
 	public void acknowledgeModification(long modificationID) {
+		modificationHandler.handledModification(modificationID);
 		modificationResponder.acknowledgeModification(jobId, executionId, modificationID);
 	}
 
 	@Override
 	public void declineModification(long modificationID, Throwable cause) {
 		modificationResponder.declineModification(jobId, executionId, modificationID, cause);
+	}
+
+	@Override
+	public void ignoreModification(long modificationID) {
+		modificationResponder.ignoreModification(jobId, executionId, modificationID);
+	}
+
+	@Override
+	public ModificationHandler getModificationHandler() {
+		return modificationHandler;
 	}
 
 	@Override
