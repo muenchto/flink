@@ -6,64 +6,357 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
+import org.apache.flink.runtime.checkpoint.*;
+import org.apache.flink.runtime.checkpoint.hooks.MasterHooks;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.executiongraph.*;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
+import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
 import org.apache.flink.runtime.messages.modification.IgnoreModification;
+import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.runtime.modification.exceptions.OperatorNotFoundException;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.Preconditions;
+import org.apache.http.annotation.GuardedBy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ModificationCoordinator {
 
+	private static final long MODIFICATION_TIMEOUT = 30000;
+
 	private static final Logger LOG = LoggerFactory.getLogger(ModificationCoordinator.class);
 
-	private static final long DUMMY_MODIFICATION_ID = 123;
+	private final Object lock = new Object();
+
+	private final Object triggerLock = new Object();
+
+	private final AtomicLong modificationIdCounter = new AtomicLong(1);
+
+	private final Map<Long, PendingModification> pendingModifications = new LinkedHashMap<>(16);
+
+	private final Map<Long, CompletedModification> completedModifications = new LinkedHashMap<>(16);
+
+	private final Map<Long, PendingModification> failedModifications = new LinkedHashMap<Long, PendingModification>(16);
 
 	private final ExecutionGraph executionGraph;
+
 	private final Time rpcCallTimeout;
+
 	private final Collection<BlobKey> blobKeys;
+
+	private final ScheduledThreadPoolExecutor timer;
+
 	private ExecutionAttemptID stoppedMapExecutionAttemptID;
+
 	private int parallelSubTaskIndex;
 
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
 		this.rpcCallTimeout = rpcCallTimeout;
 		this.blobKeys = new HashSet<>();
+
+		this.timer = new ScheduledThreadPoolExecutor(1,
+			new DispatcherThreadFactory(Thread.currentThread().getThreadGroup(), "Modification Timer"));
 	}
 
-	public boolean receiveAcknowledgeMessage(AcknowledgeModification acknowledgeModification) {
-		if (acknowledgeModification.getModificationID() == DUMMY_MODIFICATION_ID) {
-			LOG.debug("Received successful acknowledge modification message");
-			return true;
-		} else {
-			LOG.debug("Received wrong acknowledge modification message: {}", acknowledgeModification);
+	public boolean receiveAcknowledgeMessage(AcknowledgeModification message) {
+
+		if (message == null) {
 			return false;
+		}
+
+		if (message.getJob() != executionGraph.getJobID()) {
+			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJob(), message);
+		}
+
+		final long modificationID = message.getModificationID();
+
+		synchronized (lock) {
+
+			final PendingModification modification = pendingModifications.get(modificationID);
+
+			if (modification != null && !modification.isDiscarded()) {
+
+				switch (modification.acknowledgeTask(message.getTaskExecutionId())) {
+					case SUCCESS:
+						LOG.debug("Received acknowledge message for modification {} from task {} of job {}.",
+							modificationID, message.getTaskExecutionId(), message.getJob());
+
+						if (modification.isFullyAcknowledged()) {
+							completePendingCheckpoint(modification);
+						}
+						break;
+					case DUPLICATE:
+						LOG.debug("Received a duplicate acknowledge message for modification {}, task {}, job {}.",
+							message.getModificationID(), message.getTaskExecutionId(), message.getJob());
+						break;
+					case UNKNOWN:
+						LOG.warn("Could not acknowledge the modification {} for task {} of job {}, " +
+								"because the task's execution attempt id was unknown.",
+							message.getModificationID(), message.getTaskExecutionId(), message.getJob());
+
+						break;
+					case DISCARDED:
+						LOG.warn("Could not acknowledge the modification {} for task {} of job {}, " +
+								"because the pending modification had been discarded",
+							message.getModificationID(), message.getTaskExecutionId(), message.getJob());
+				}
+
+				return true;
+			} else if (modification != null) {
+				// this should not happen
+				throw new IllegalStateException(
+					"Received message for discarded but non-removed modification " + modificationID);
+			} else {
+				boolean wasPendingModification;
+
+				// message is for an unknown modification, or comes too late (modification disposed)
+				if (completedModifications.containsKey(modificationID)) {
+					wasPendingModification = true;
+					LOG.warn("Received late message for now expired modification attempt {} from " +
+						"{} of job {}.", modificationID, message.getTaskExecutionId(), message.getJob());
+				} else {
+					LOG.debug("Received message for an unknown modification {} from {} of job {}.",
+						modificationID, message.getTaskExecutionId(), message.getJob());
+					wasPendingModification = false;
+				}
+
+				return wasPendingModification;
+			}
+		}
+	}
+
+	/**
+	 * Try to complete the given pending modification.
+	 * <p>
+	 * Important: This method should only be called in the checkpoint lock scope.
+	 *
+	 * @param pendingModification to complete
+	 */
+	@GuardedBy("lock")
+	private void completePendingCheckpoint(PendingModification pendingModification) {
+
+		assert (Thread.holdsLock(lock));
+
+		final long checkpointId = pendingModification.getModificationId();
+
+		CompletedModification completedModification = pendingModification.finalizeCheckpoint();
+
+		pendingModifications.remove(pendingModification.getModificationId());
+
+		if (completedModification != null) {
+			Preconditions.checkState(pendingModification.isFullyAcknowledged());
+			completedModifications.put(pendingModification.getModificationId(), completedModification);
+
+			LOG.info("Completed modification {} in {} ms.", checkpointId, completedModification.getDuration());
+		} else {
+			failedModifications.put(pendingModification.getModificationId(), pendingModification);
+
+			LOG.info("Modification '{}' failed.", checkpointId, pendingModification.getModificationDescription());
+		}
+
+		// Maybe modify operators of completed modification
+	}
+
+	public void receiveDeclineMessage(DeclineModification message) {
+
+		if (message == null) {
+			return;
+		}
+
+		if (message.getJob() != executionGraph.getJobID()) {
+			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJob(), message);
+		}
+
+		final long modificationID = message.getModificationID();
+		final String reason = (message.getReason() != null ? message.getReason().getMessage() : "");
+
+		PendingModification pendingModification;
+
+		synchronized (lock) {
+
+			pendingModification = pendingModifications.get(modificationID);
+
+			if (pendingModification != null && !pendingModification.isDiscarded()) {
+				LOG.info("Discarding pendingModification {} because of modification decline from task {} : {}",
+					modificationID, message.getTaskExecutionId(), reason);
+
+				pendingModifications.remove(modificationID);
+				pendingModification.abortDeclined();
+				failedModifications.put(modificationID, pendingModification);
+			} else if (pendingModification != null) {
+				// this should not happen
+				throw new IllegalStateException(
+					"Received message for discarded but non-removed pendingModification " + modificationID);
+			} else {
+				if (failedModifications.containsKey(modificationID)) {
+					// message is for an unknown pendingModification, or comes too late (pendingModification disposed)
+					LOG.debug("Received another decline message for now expired pendingModification attempt {} : {}",
+						modificationID, reason);
+				} else {
+					// message is for an unknown pendingModification. might be so old that we don't even remember it any more
+					LOG.debug("Received decline message for unknown (too old?) pendingModification attempt {} : {}",
+						modificationID, reason);
+				}
+			}
+		}
+	}
+
+	public void receiveIgnoreMessage(IgnoreModification message) {
+
+		if (message == null) {
+			return;
+		}
+
+		if (message.getJob() != executionGraph.getJobID()) {
+			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJob(), message);
+		}
+
+		final long modificationID = message.getModificationID();
+
+		PendingModification pendingModification;
+
+		synchronized (lock) {
+
+			pendingModification = pendingModifications.get(modificationID);
+
+			if (pendingModification != null && !pendingModification.isDiscarded()) {
+				LOG.info("Received ignoring modification for {} from task {}",
+					modificationID, message.getTaskExecutionId());
+			} else if (pendingModification != null) {
+				// this should not happen
+				throw new IllegalStateException(
+					"Received message for discarded but non-removed pendingModification " + modificationID);
+			} else {
+				if (failedModifications.containsKey(modificationID)) {
+					// message is for an unknown pendingModification, or comes too late (pendingModification disposed)
+					LOG.debug("Received another ignore message for now expired pendingModification attempt {} : {}",
+						modificationID, message.getTaskExecutionId());
+				} else {
+					// message is for an unknown pendingModification. might be so old that we don't even remember it any more
+					LOG.debug("Received ignore message for unknown (too old?) pendingModification attempt {} : {}",
+						modificationID, message.getTaskExecutionId());
+				}
+			}
+		}
+	}
+
+	private void triggerModification(ExecutionJobVertex operatorToPause, String description) {
+
+		ExecutionVertex[] taskVertices = operatorToPause.getTaskVertices();
+
+		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>(taskVertices.length);
+
+		for (ExecutionVertex taskVertex : taskVertices) {
+			ackTasks.put(taskVertex.getCurrentExecutionAttempt().getAttemptId(), taskVertex);
+		}
+
+		// TODO Masterthesis Check if operator instances are running
+
+		synchronized (triggerLock) {
+
+			final long modificationId = modificationIdCounter.getAndIncrement();
+			final long timestamp = System.currentTimeMillis();
+
+			final PendingModification modification = new PendingModification(
+				executionGraph.getJobID(),
+				modificationId,
+				timestamp,
+				ackTasks,
+				description);
+
+			// schedule the timer that will clean up the expired checkpoints
+			final Runnable canceller = new Runnable() {
+				@Override
+				public void run() {
+					synchronized (lock) {
+
+						LOG.info("Checking if Modification " + modificationId + " is still onging.");
+
+						// only do the work if the modification is not discarded anyways
+						// note that modification completion discards the pending modification object
+						if (!modification.isDiscarded()) {
+							LOG.info("Modification " + modificationId + " expired before completing.");
+
+							modification.abortExpired();
+							pendingModifications.remove(modificationId);
+							failedModifications.remove(modificationId);
+						} else {
+							LOG.info("Modification " + modificationId + " already completed.");
+						}
+					}
+				}
+			};
+
+			try {
+				// re-acquire the coordinator-wide lock
+				synchronized (lock) {
+
+					LOG.info("Triggering modification " + modificationId + " @ " + timestamp);
+
+					pendingModifications.put(modificationId, modification);
+
+					ScheduledFuture<?> cancellerHandle = timer.schedule(
+						canceller,
+						MODIFICATION_TIMEOUT, TimeUnit.MILLISECONDS);
+
+					modification.setCancellerHandle(cancellerHandle);
+				}
+
+				ExecutionJobVertex source = findSource();
+
+				// send the messages to the tasks that trigger their modification
+				for (ExecutionVertex execution: source.getTaskVertices()) {
+					execution.getCurrentExecutionAttempt().triggerModification(
+						modificationId,
+						timestamp,
+						Collections.singletonList(operatorToPause.getJobVertexId()));
+				}
+
+			}
+			catch (Throwable t) {
+				// guard the map against concurrent modifications
+				synchronized (lock) {
+					pendingModifications.remove(modificationId);
+				}
+
+				if (!modification.isDiscarded()) {
+					modification.abortError(new Exception("Failed to trigger modification", t));
+				}
+			}
 		}
 	}
 
 	public String getTMDetails() {
 
-		String details = "";
+		StringBuilder details = new StringBuilder();
 
 		for (ExecutionVertex executionVertex : executionGraph.getAllExecutionVertices()) {
-			details += "\nAttemptID: " + executionVertex.getCurrentExecutionAttempt().getAttemptId() +
-				" - TM ID: " + executionVertex.getCurrentAssignedResource().getTaskManagerID() +
-				" - TM Location: " + executionVertex.getCurrentAssignedResource().getTaskManagerLocation() +
-				" - Name: " + executionVertex.getTaskNameWithSubtaskIndex();
+			details.append("\nAttemptID: ")
+				.append(executionVertex.getCurrentExecutionAttempt().getAttemptId())
+				.append(" - TM ID: ")
+				.append(executionVertex.getCurrentAssignedResource().getTaskManagerID())
+				.append(" - TM Location: ")
+				.append(executionVertex.getCurrentAssignedResource().getTaskManagerLocation())
+				.append(" - Name: ")
+				.append(executionVertex.getTaskNameWithSubtaskIndex());
 		}
 
-		return details;
+		return details.toString();
 	}
 
 	private ExecutionVertex getMapExecutionVertexToStop(ResourceID taskManagerId) {
@@ -182,26 +475,6 @@ public class ModificationCoordinator {
 		}
 	}
 
-	public boolean receiveDeclineMessage(DeclineModification declineModification) {
-		if (declineModification.getModificationID() == DUMMY_MODIFICATION_ID) {
-			LOG.debug("Received successful decline modification message");
-			return true;
-		} else {
-			LOG.debug("Received wrong decline modification message: {}", declineModification);
-			return false;
-		}
-	}
-
-	public boolean receiveIgnoreMessage(IgnoreModification ignoreModification) {
-		if (ignoreModification.getModificationID() == DUMMY_MODIFICATION_ID) {
-			LOG.debug("Received successful ignore modification message");
-			return true;
-		} else {
-			LOG.debug("Received wrong ignore modification message: {}", ignoreModification);
-			return false;
-		}
-	}
-
 	public void addedNewOperatorJar(Collection<BlobKey> blobKeys) {
 		LOG.debug("Adding BlobKeys {} for executionGraph {}.",
 			StringUtils.join(blobKeys, ","),
@@ -211,20 +484,9 @@ public class ModificationCoordinator {
 	}
 
 	public void pauseSink() {
-		ExecutionJobVertex source = findSource();
-
 		ExecutionJobVertex sink = findSink();
 
-		List<JobVertexID> vertexIDS = Collections.singletonList(sink.getJobVertexId());
-
-		for (ExecutionVertex executionVertex : source.getTaskVertices()) {
-			Execution currentExecutionAttempt = executionVertex.getCurrentExecutionAttempt();
-
-			currentExecutionAttempt.triggerModification(
-				DUMMY_MODIFICATION_ID,
-				System.currentTimeMillis(),
-				vertexIDS);
-		}
+		triggerModification(sink, "Pause Sink");
 	}
 
 	public void modifySinkInstance(ExecutionAttemptID newOperatorExecutionAttemptID) {
@@ -270,37 +532,15 @@ public class ModificationCoordinator {
 	}
 
 	public void pauseFilter() {
-		ExecutionJobVertex source = findSource();
+		ExecutionJobVertex filter = findFilter();
 
-		ExecutionJobVertex map = findFilter();
-
-		List<JobVertexID> vertexIDS = Collections.singletonList(map.getJobVertexId());
-
-		for (ExecutionVertex executionVertex : source.getTaskVertices()) {
-			Execution currentExecutionAttempt = executionVertex.getCurrentExecutionAttempt();
-
-			currentExecutionAttempt.triggerModification(
-				DUMMY_MODIFICATION_ID,
-				System.currentTimeMillis(),
-				vertexIDS);
-		}
+		triggerModification(filter, "Pause Filter");
 	}
 
-	public void pauseJob() {
-		ExecutionJobVertex source = findSource();
-
+	public void pauseMap() {
 		ExecutionJobVertex map = findMap();
 
-		List<JobVertexID> vertexIDS = Collections.singletonList(map.getJobVertexId());
-
-		for (ExecutionVertex executionVertex : source.getTaskVertices()) {
-			Execution currentExecutionAttempt = executionVertex.getCurrentExecutionAttempt();
-
-			currentExecutionAttempt.triggerModification(
-				DUMMY_MODIFICATION_ID,
-				System.currentTimeMillis(),
-				vertexIDS);
-		}
+		triggerModification(map, "Pause map");
 	}
 
 	public void resumeMapOperator() {
@@ -609,8 +849,6 @@ public class ModificationCoordinator {
 
 			executionGraph.getVerticesInCreationOrder().add(vertex);
 			executionGraph.addNumVertices(vertex.getParallelism());
-
-			// TODO Add to failover strategy
 
 			return vertex;
 		} catch (JobException jobException) {
