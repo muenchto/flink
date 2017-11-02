@@ -19,10 +19,7 @@ package org.apache.flink.streaming.runtime.tasks;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RunnableFuture;
@@ -69,6 +66,7 @@ import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
+import org.apache.flink.streaming.runtime.modification.statemigration.StateMigrationMetaData;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 import org.apache.flink.util.CollectionUtil;
@@ -293,6 +291,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 				// Paused this StreamTask for modification, do not attempt to clean up
 				if (pausedForModification) {
+
+					triggerStateMigration();
+
 					LOG.debug("Paused task {} for migration", getName());
 					return;
 				} else {
@@ -600,6 +601,30 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
+	private void triggerStateMigration() throws Exception {
+
+		StateMigrationMetaData stateMigrationMetaData =
+			new StateMigrationMetaData(new Random().nextLong(), System.currentTimeMillis());
+
+		// No alignment if we inject a checkpoint
+		CheckpointMetrics checkpointMetrics = new CheckpointMetrics()
+			.setBytesBufferedInAlignment(0L)
+			.setAlignmentDurationNanos(0L);
+
+		try {
+			performStateTransferToJobManager(stateMigrationMetaData, checkpointMetrics);
+		}
+		catch (CancelTaskException e) {
+			LOG.info("Operator {} was cancelled while performing state migration {}.",
+				getName(), stateMigrationMetaData.getStateMigrationId());
+			throw e;
+		}
+		catch (Exception e) {
+			throw new Exception("Could not perform state migration " + stateMigrationMetaData.getStateMigrationId() + " for operator " +
+				getName() + '.', e);
+		}
+	}
+
 	@Override
 	public void abortCheckpointOnBarrier(long checkpointId, Throwable cause) throws Exception {
 		LOG.debug("Aborting checkpoint via cancel-barrier {} for task {}", checkpointId, getName());
@@ -765,6 +790,39 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				return false;
 			}
 		}
+	}
+
+	private boolean performStateTransferToJobManager(StateMigrationMetaData stateMigrationMetaData,
+													 CheckpointMetrics checkpointMetrics) throws Exception {
+		LOG.debug("Starting state migration ({}) on task {}",
+			stateMigrationMetaData.getStateMigrationId(), getName());
+
+		synchronized (lock) {
+			if (isRunning) {
+				// we can do a state migration
+
+				checkpointStateForMigration(stateMigrationMetaData, checkpointMetrics);
+				return true;
+			}
+			else {
+				LOG.debug("Failed state migration ({}) on task {} as it is not running",
+					stateMigrationMetaData.getStateMigrationId(), getName());
+
+				return false;
+			}
+		}
+	}
+
+	private void checkpointStateForMigration(StateMigrationMetaData stateMigrationMetaData,
+											 CheckpointMetrics checkpointMetrics) throws Exception {
+
+		SynchronousCheckpointingOperation synchronousCheckpointingOperation = new SynchronousCheckpointingOperation(
+			this,
+			stateMigrationMetaData,
+			CheckpointOptions.forFullCheckpoint(),
+			checkpointMetrics);
+
+		synchronousCheckpointingOperation.executeCheckpointing();
 	}
 
 	public ExecutorService getAsyncOperationsThreadPool() {
@@ -1339,6 +1397,325 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			RUNNING,
 			DISCARDED,
 			COMPLETED
+		}
+	}
+
+	private static final class SynchronousCheckpointingOperation {
+
+		private final StreamTask<?, ?> owner;
+
+		private final StateMigrationMetaData stateMigrationMetaData;
+		private final CheckpointOptions checkpointOptions;
+		private final CheckpointMetrics checkpointMetrics;
+
+		private final StreamOperator<?>[] allOperators;
+
+		private long startSyncPartNano;
+
+		// ------------------------
+
+		private final List<StreamStateHandle> nonPartitionedStates;
+		private final List<OperatorSnapshotResult> snapshotInProgressList;
+
+		public SynchronousCheckpointingOperation(
+			StreamTask<?, ?> owner,
+			StateMigrationMetaData stateMigrationMetaData,
+			CheckpointOptions checkpointOptions,
+			CheckpointMetrics checkpointMetrics) {
+
+			this.owner = Preconditions.checkNotNull(owner);
+			this.stateMigrationMetaData = Preconditions.checkNotNull(stateMigrationMetaData);
+			this.checkpointOptions = Preconditions.checkNotNull(checkpointOptions);
+			this.checkpointMetrics = Preconditions.checkNotNull(checkpointMetrics);
+			this.allOperators = owner.operatorChain.getAllOperators();
+			this.nonPartitionedStates = new ArrayList<>(allOperators.length);
+			this.snapshotInProgressList = new ArrayList<>(allOperators.length);
+		}
+
+		public void executeCheckpointing() throws Exception {
+			startSyncPartNano = System.nanoTime();
+
+			boolean failed = true;
+			try {
+				for (StreamOperator<?> op : allOperators) {
+					checkpointStreamOperator(op);
+				}
+
+				LOG.debug("Finished synchronous checkpoints for checkpoint {} on task {}",
+					stateMigrationMetaData.getStateMigrationId(), owner.getName());
+
+				// at this point we are transferring ownership over snapshotInProgressList for cleanup to the thread
+				runSyncCheckpointingAndAcknowledge();
+				failed = false;
+
+			} finally {
+				if (failed) {
+					// Cleanup to release resources
+					for (OperatorSnapshotResult operatorSnapshotResult : snapshotInProgressList) {
+						if (null != operatorSnapshotResult) {
+							try {
+								operatorSnapshotResult.cancel();
+							} catch (Exception e) {
+								LOG.warn("Could not properly cancel an operator snapshot result.", e);
+							}
+						}
+					}
+
+					// Cleanup non partitioned state handles
+					for (StreamStateHandle nonPartitionedState : nonPartitionedStates) {
+						if (nonPartitionedState != null) {
+							try {
+								nonPartitionedState.discardState();
+							} catch (Exception e) {
+								LOG.warn("Could not properly discard a non partitioned " +
+									"state. This might leave some orphaned files behind.", e);
+							}
+						}
+					}
+
+					LOG.debug("{} - did NOT finish synchronous part of state migration {}.",
+							owner.getName(), stateMigrationMetaData.getStateMigrationId());
+				}
+			}
+		}
+
+		@SuppressWarnings("deprecation")
+		private void checkpointStreamOperator(StreamOperator<?> op) throws Exception {
+			if (null != op) {
+				// first call the legacy checkpoint code paths
+				nonPartitionedStates.add(op.snapshotLegacyOperatorState(
+					stateMigrationMetaData.getStateMigrationId(),
+					stateMigrationMetaData.getTimestamp(),
+					checkpointOptions));
+
+				OperatorSnapshotResult snapshotInProgress = op.snapshotState(
+					stateMigrationMetaData.getStateMigrationId(),
+					stateMigrationMetaData.getTimestamp(),
+					checkpointOptions);
+
+				snapshotInProgressList.add(snapshotInProgress);
+			} else {
+				nonPartitionedStates.add(null);
+				OperatorSnapshotResult emptySnapshotInProgress = new OperatorSnapshotResult();
+				snapshotInProgressList.add(emptySnapshotInProgress);
+			}
+		}
+
+		public void runSyncCheckpointingAndAcknowledge() throws IOException {
+
+			try (SendMigrationState asyncCheckpointRunnable = new SendMigrationState(
+				owner,
+				nonPartitionedStates,
+				snapshotInProgressList,
+				stateMigrationMetaData,
+				checkpointMetrics,
+				startSyncPartNano)){
+
+				asyncCheckpointRunnable.execute();
+
+			} finally {
+				LOG.debug("Migrated state {} to JobManager for task {}.",
+					stateMigrationMetaData.getStateMigrationId(), owner.getName());
+			}
+		}
+	}
+
+	private static final class SendMigrationState implements Closeable {
+
+		private final StreamTask<?, ?> owner;
+
+		private final List<OperatorSnapshotResult> snapshotInProgressList;
+
+		private RunnableFuture<KeyedStateHandle> futureKeyedBackendStateHandles;
+		private RunnableFuture<KeyedStateHandle> futureKeyedStreamStateHandles;
+
+		private List<StreamStateHandle> nonPartitionedStateHandles;
+
+		private final StateMigrationMetaData stateMigrationMetaData;
+		private final CheckpointMetrics checkpointMetrics;
+
+		private final long asyncStartNanos;
+
+		private final AtomicReference<CheckpointingOperation.AsynCheckpointState> asyncCheckpointState =
+			new AtomicReference<>(CheckpointingOperation.AsynCheckpointState.RUNNING);
+
+		SendMigrationState(
+			StreamTask<?, ?> owner,
+			List<StreamStateHandle> nonPartitionedStateHandles,
+			List<OperatorSnapshotResult> snapshotInProgressList,
+			StateMigrationMetaData stateMigrationMetaData,
+			CheckpointMetrics checkpointMetrics,
+			long syncStartNanos) {
+
+			this.owner = Preconditions.checkNotNull(owner);
+			this.snapshotInProgressList = Preconditions.checkNotNull(snapshotInProgressList);
+			this.stateMigrationMetaData = Preconditions.checkNotNull(stateMigrationMetaData);
+			this.checkpointMetrics = Preconditions.checkNotNull(checkpointMetrics);
+			this.nonPartitionedStateHandles = nonPartitionedStateHandles;
+			this.asyncStartNanos = syncStartNanos;
+
+			if (!snapshotInProgressList.isEmpty()) {
+				// TODO Currently only the head operator of a chain can have keyed state, so simply access it directly.
+				int headIndex = snapshotInProgressList.size() - 1;
+				OperatorSnapshotResult snapshotInProgress = snapshotInProgressList.get(headIndex);
+				if (null != snapshotInProgress) {
+					this.futureKeyedBackendStateHandles = snapshotInProgress.getKeyedStateManagedFuture();
+					this.futureKeyedStreamStateHandles = snapshotInProgress.getKeyedStateRawFuture();
+				}
+			}
+		}
+
+		public void execute() {
+			try {
+				// Keyed state handle future, currently only one (the head) operator can have this
+				KeyedStateHandle keyedStateHandleBackend = FutureUtil.runIfNotDoneAndGet(futureKeyedBackendStateHandles);
+				KeyedStateHandle keyedStateHandleStream = FutureUtil.runIfNotDoneAndGet(futureKeyedStreamStateHandles);
+
+				List<OperatorStateHandle> operatorStatesBackend = new ArrayList<>(snapshotInProgressList.size());
+				List<OperatorStateHandle> operatorStatesStream = new ArrayList<>(snapshotInProgressList.size());
+
+				for (OperatorSnapshotResult snapshotInProgress : snapshotInProgressList) {
+					if (null != snapshotInProgress) {
+						operatorStatesBackend.add(
+							FutureUtil.runIfNotDoneAndGet(snapshotInProgress.getOperatorStateManagedFuture()));
+						operatorStatesStream.add(
+							FutureUtil.runIfNotDoneAndGet(snapshotInProgress.getOperatorStateRawFuture()));
+					} else {
+						operatorStatesBackend.add(null);
+						operatorStatesStream.add(null);
+					}
+				}
+
+				final long asyncEndNanos = System.nanoTime();
+				final long asyncDurationMillis = (asyncEndNanos - asyncStartNanos) / 1_000_000;
+
+				checkpointMetrics.setAsyncDurationMillis(asyncDurationMillis);
+
+				ChainedStateHandle<StreamStateHandle> chainedNonPartitionedOperatorsState =
+					new ChainedStateHandle<>(nonPartitionedStateHandles);
+
+				ChainedStateHandle<OperatorStateHandle> chainedOperatorStateBackend =
+					new ChainedStateHandle<>(operatorStatesBackend);
+
+				ChainedStateHandle<OperatorStateHandle> chainedOperatorStateStream =
+					new ChainedStateHandle<>(operatorStatesStream);
+
+				SubtaskState subtaskState = createSubtaskStateFromSnapshotStateHandles(
+					chainedNonPartitionedOperatorsState,
+					chainedOperatorStateBackend,
+					chainedOperatorStateStream,
+					keyedStateHandleBackend,
+					keyedStateHandleStream);
+
+				if (asyncCheckpointState.compareAndSet(CheckpointingOperation.AsynCheckpointState.RUNNING,
+					CheckpointingOperation.AsynCheckpointState.COMPLETED)) {
+
+					owner.getEnvironment().acknowledgeCheckpoint(
+						stateMigrationMetaData.getStateMigrationId(),
+						checkpointMetrics,
+						subtaskState);
+
+					if (LOG.isDebugEnabled()) {
+						LOG.debug("{} - finished SendMigrationState {}. Duration: {} ms",
+							owner.getName(), stateMigrationMetaData.getStateMigrationId(), asyncDurationMillis);
+					}
+				} else {
+					LOG.debug("{} - SendMigrationState {} could not be completed because it was closed before.",
+						owner.getName(),
+						stateMigrationMetaData.getStateMigrationId());
+				}
+			} catch (Exception e) {
+				// the state is completed if an exception occurred in the acknowledgeCheckpoint call
+				// in order to clean up, we have to set it to RUNNING again.
+				asyncCheckpointState.compareAndSet(
+					CheckpointingOperation.AsynCheckpointState.COMPLETED,
+					CheckpointingOperation.AsynCheckpointState.RUNNING);
+
+				try {
+					cleanup();
+				} catch (Exception cleanupException) {
+					e.addSuppressed(cleanupException);
+				}
+
+				// registers the exception and tries to fail the whole task
+				AsynchronousException asyncException = new AsynchronousException(
+					new Exception(
+						"Could not materialize checkpoint " + stateMigrationMetaData.getStateMigrationId() +
+							" for operator " + owner.getName() + '.',
+						e));
+
+				owner.handleAsyncException("Failure in SendMigrationState materialization", asyncException);
+			} finally {
+				owner.cancelables.unregisterClosable(this);
+			}
+		}
+
+		@Override
+		public void close() {
+			try {
+				cleanup();
+			} catch (Exception cleanupException) {
+				LOG.warn("Could not properly clean up SendMigrationState.", cleanupException);
+			}
+		}
+
+		private SubtaskState createSubtaskStateFromSnapshotStateHandles(
+			ChainedStateHandle<StreamStateHandle> chainedNonPartitionedOperatorsState,
+			ChainedStateHandle<OperatorStateHandle> chainedOperatorStateBackend,
+			ChainedStateHandle<OperatorStateHandle> chainedOperatorStateStream,
+			KeyedStateHandle keyedStateHandleBackend,
+			KeyedStateHandle keyedStateHandleStream) {
+
+			boolean hasAnyState = keyedStateHandleBackend != null
+				|| keyedStateHandleStream != null
+				|| !chainedOperatorStateBackend.isEmpty()
+				|| !chainedOperatorStateStream.isEmpty()
+				|| !chainedNonPartitionedOperatorsState.isEmpty();
+
+			// we signal a stateless task by reporting null, so that there are no attempts to assign empty state to
+			// stateless tasks on restore. This allows for simple job modifications that only concern stateless without
+			// the need to assign them uids to match their (always empty) states.
+			return hasAnyState ? new SubtaskState(
+				chainedNonPartitionedOperatorsState,
+				chainedOperatorStateBackend,
+				chainedOperatorStateStream,
+				keyedStateHandleBackend,
+				keyedStateHandleStream)
+				: null;
+		}
+
+		private void cleanup() throws Exception {
+			if (asyncCheckpointState.compareAndSet(CheckpointingOperation.AsynCheckpointState.RUNNING, CheckpointingOperation.AsynCheckpointState.DISCARDED)) {
+				LOG.debug("Cleanup SendMigrationState for checkpoint {} of {}.", stateMigrationMetaData.getStateMigrationId(), owner.getName());
+				Exception exception = null;
+
+				// clean up ongoing operator snapshot results and non partitioned state handles
+				for (OperatorSnapshotResult operatorSnapshotResult : snapshotInProgressList) {
+					if (operatorSnapshotResult != null) {
+						try {
+							operatorSnapshotResult.cancel();
+						} catch (Exception cancelException) {
+							exception = ExceptionUtils.firstOrSuppressed(cancelException, exception);
+						}
+					}
+				}
+
+				// discard non partitioned state handles
+				try {
+					StateUtil.bestEffortDiscardAllStateObjects(nonPartitionedStateHandles);
+				} catch (Exception discardException) {
+					exception = ExceptionUtils.firstOrSuppressed(discardException, exception);
+				}
+
+				if (null != exception) {
+					throw exception;
+				}
+			} else {
+				LOG.debug("{} - SendMigrationState for checkpoint {} has " +
+						"already been completed. Thus, the state handles are not cleaned up.",
+					owner.getName(),
+					stateMigrationMetaData.getStateMigrationId());
+			}
 		}
 	}
 }

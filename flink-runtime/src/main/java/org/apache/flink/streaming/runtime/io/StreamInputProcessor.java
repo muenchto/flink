@@ -227,13 +227,6 @@ public class StreamInputProcessor<IN> {
 
 			final BufferOrEvent bufferOrEvent = barrierHandler.getNextNonBlocked();
 
-//			try {
-//				bufferOrEvent = barrierHandler.getNextNonBlocked();
-//			} catch (InterruptedException interruptedException) {
-//				LOG.info("Catched interruption in onProcess"); // TODO Masterthesis - old approach
-//				return false;
-//			}
-
 			if (bufferOrEvent != null) {
 				if (bufferOrEvent.isBuffer()) {
 					currentChannel = bufferOrEvent.getChannelIndex();

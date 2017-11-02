@@ -179,6 +179,17 @@ public interface Environment {
 	void acknowledgeCheckpoint(long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState);
 
 	/**
+	 * Confirms that the invokable has successfully completed all required steps for
+	 * the checkpoint with the give state-migration-ID. This method does include
+	 * the given state in the checkpoint.
+	 *
+	 * @param checkpointId ID of this checkpoint
+	 * @param checkpointMetrics metrics for this checkpoint
+	 * @param subtaskState All state handles for the checkpointed state
+	 */
+	void acknowledgeStateMigration(long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState);
+
+	/**
 	 * Declines a checkpoint. This tells the checkpoint coordinator that this task will
 	 * not be able to successfully complete a certain checkpoint.
 	 * 

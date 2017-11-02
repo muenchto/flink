@@ -1,11 +1,14 @@
 package org.apache.flink.runtime.taskmanager;
 
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
+import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
 import org.apache.flink.runtime.messages.modification.IgnoreModification;
+import org.apache.flink.runtime.messages.modification.StateMigrationModification;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.Preconditions;
 
@@ -34,6 +37,13 @@ public class ActorGatewayModificationResponder implements ModificationResponder 
 	@Override
 	public void ignoreModification(JobID jobId, ExecutionAttemptID executionId, long modificationID) {
 		IgnoreModification ignore = new IgnoreModification(jobId, executionId, modificationID);
+
+		actorGateway.tell(ignore);
+	}
+
+	@Override
+	public void acknowledgeStateMigration(JobID jobId, ExecutionAttemptID executionId, long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState) {
+		StateMigrationModification ignore = new StateMigrationModification(jobId, executionId, checkpointId, checkpointMetrics, subtaskState);
 
 		actorGateway.tell(ignore);
 	}

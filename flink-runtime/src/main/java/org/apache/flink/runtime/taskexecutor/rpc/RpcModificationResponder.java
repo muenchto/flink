@@ -27,4 +27,9 @@ public class RpcModificationResponder implements ModificationResponder {
 	public void ignoreModification(JobID jobId, ExecutionAttemptID executionId, long modificationID) {
 		throw new UnsupportedOperationException();
 	}
+
+	@Override
+	public void acknowledgeStateMigration(JobID jobId, ExecutionAttemptID executionId, long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState) {
+		throw new UnsupportedOperationException();
+	}
 }

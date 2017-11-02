@@ -46,4 +46,18 @@ public interface ModificationResponder {
 	 * @param modificationID The ID of the ignored modification
 	 */
 	void ignoreModification(JobID jobId, ExecutionAttemptID executionId, long modificationID);
+
+
+	/**
+	 * Acknowledges the state migration for a given pause command.
+	 * @param jobId The jobID
+	 * @param executionId The executionID
+	 * @param checkpointId The checkpointID
+	 * @param checkpointMetrics The checkpoint metrics
+	 * @param subtaskState The state
+	 */
+	void acknowledgeStateMigration(JobID jobId, ExecutionAttemptID executionId,
+								   long checkpointId,
+								   CheckpointMetrics checkpointMetrics,
+								   SubtaskState subtaskState);
 }

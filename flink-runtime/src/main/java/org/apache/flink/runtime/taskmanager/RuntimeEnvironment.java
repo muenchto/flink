@@ -263,6 +263,15 @@ public class RuntimeEnvironment implements Environment {
 	}
 
 	@Override
+	public void acknowledgeStateMigration(long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState) {
+
+		modificationResponder.acknowledgeStateMigration(
+			jobId, executionId, checkpointId, checkpointMetrics,
+			subtaskState);
+	}
+
+
+	@Override
 	public void declineCheckpoint(long checkpointId, Throwable cause) {
 		checkpointResponder.declineCheckpoint(jobId, executionId, checkpointId, cause);
 	}

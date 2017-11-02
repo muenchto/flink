@@ -351,14 +351,14 @@ public class MockEnvironment implements Environment {
 	}
 
 	@Override
-	public void acknowledgeCheckpoint(long checkpointId, CheckpointMetrics checkpointMetrics) {
-		throw new UnsupportedOperationException();
-	}
+	public void acknowledgeCheckpoint(long checkpointId, CheckpointMetrics checkpointMetrics) { }
 
 	@Override
-	public void acknowledgeCheckpoint(long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState) {
-		throw new UnsupportedOperationException();
-	}
+	public void acknowledgeCheckpoint(long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState) { }
+
+	@Override
+	public void acknowledgeStateMigration(long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState) { }
+
 
 	@Override
 	public void declineCheckpoint(long checkpointId, Throwable cause) {
