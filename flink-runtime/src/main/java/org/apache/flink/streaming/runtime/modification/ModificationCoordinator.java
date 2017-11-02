@@ -17,11 +17,13 @@ import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
 import org.apache.flink.runtime.messages.modification.IgnoreModification;
+import org.apache.flink.runtime.messages.modification.StateMigrationModification;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.runtime.modification.exceptions.OperatorNotFoundException;
+import org.apache.flink.streaming.runtime.modification.statemigration.StateMigrationMetaData;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.Preconditions;
 import org.apache.http.annotation.GuardedBy;
@@ -51,6 +53,8 @@ public class ModificationCoordinator {
 	private final Map<Long, CompletedModification> completedModifications = new LinkedHashMap<>(16);
 
 	private final Map<Long, PendingModification> failedModifications = new LinkedHashMap<Long, PendingModification>(16);
+
+	private final Map<ExecutionAttemptID, SubtaskState> storedState = new LinkedHashMap<>(16);
 
 	private final ExecutionGraph executionGraph;
 
@@ -223,7 +227,7 @@ public class ModificationCoordinator {
 		}
 
 		if (message.getJob() != executionGraph.getJobID()) {
-			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJob(), message);
+			LOG.error("Received wrong IgnoreModification message for job id {}: {}", message.getJob(), message);
 		}
 
 		final long modificationID = message.getModificationID();
@@ -251,6 +255,49 @@ public class ModificationCoordinator {
 					LOG.debug("Received ignore message for unknown (too old?) pendingModification attempt {} : {}",
 						modificationID, message.getTaskExecutionId());
 				}
+			}
+		}
+	}
+
+	public void receiveStateMigrationMessage(StateMigrationModification message) {
+
+		if (message == null) {
+			return;
+		}
+
+		if (message.getJob() != executionGraph.getJobID()) {
+			LOG.error("Received wrong StateMigrationModification message for job id {}: {}", message.getJob(), message);
+		}
+
+		final long modificationID = message.getModificationID();
+
+		synchronized (lock) {
+
+			if (storedState.put(message.getTaskExecutionId(), message.getSubtaskState()) != null) {
+				LOG.info("Received duplicate StateMigrationModification for {} from task {}. Removed previous.",
+					modificationID, message.getTaskExecutionId());
+			} else {
+				LOG.info("Received StateMigrationModification for {} from task {}",
+					modificationID, message.getTaskExecutionId());
+			}
+
+			PendingModification pendingModification = pendingModifications.get(modificationID);
+
+			if (pendingModification != null && !pendingModification.isDiscarded()) {
+				LOG.info("Received ignoring modification for {} from task {}",
+					modificationID, message.getTaskExecutionId());
+			} else if (pendingModification != null && pendingModification.isDiscarded()) {
+				if (failedModifications.containsKey(modificationID)) {
+					// message is for an unknown pendingModification, or comes too late (pendingModification disposed)
+					LOG.debug("Received another ignore message for now expired StateMigrationModification attempt {} : {}",
+						modificationID, message.getTaskExecutionId());
+				} else {
+					// message is for an unknown pendingModification. might be so old that we don't even remember it any more
+					LOG.debug("Received ignore message for unknown (too old?) StateMigrationModification attempt {} : {}",
+						modificationID, message.getTaskExecutionId());
+				}
+			} else {
+				LOG.debug("Received message for discarded but non-removed pendingModification {}.", modificationID);
 			}
 		}
 	}

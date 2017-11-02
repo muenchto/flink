@@ -69,7 +69,7 @@ import org.apache.flink.runtime.messages.TaskManagerMessages.Heartbeat
 import org.apache.flink.runtime.messages.TaskMessages.UpdateTaskExecutionState
 import org.apache.flink.runtime.messages.accumulators._
 import org.apache.flink.runtime.messages.checkpoint.{AbstractCheckpointMessage, AcknowledgeCheckpoint, DeclineCheckpoint}
-import org.apache.flink.runtime.messages.modification.{AbstractModificationMessage, AcknowledgeModification, DeclineModification, IgnoreModification}
+import org.apache.flink.runtime.messages.modification._
 import org.apache.flink.runtime.messages.webmonitor.{InfoMessage, _}
 import org.apache.flink.runtime.metrics.groups.JobManagerMetricGroup
 import org.apache.flink.runtime.metrics.{MetricRegistryConfiguration, MetricRegistry => FlinkMetricRegistry}
@@ -370,6 +370,31 @@ class JobManager(
                 catch {
                   case t: Throwable =>
                     log.error(s"Error in ModificationCoordinator while processing $ignoreModification", t)
+                }
+              }(context.dispatcher)
+            }
+            else {
+              log.error(
+                s"Received IgnoreModification message for job $jid with no ModificationCoordinator")
+            }
+
+          case None => log.error(s"Received IgnoreModification for unavailable job $jid")
+        }
+
+      case stateMigrationModification: StateMigrationModification =>
+        val jid = stateMigrationModification.getJob()
+        currentJobs.get(jid) match {
+          case Some((graph, _)) =>
+            val modificationCoordinator = graph.getModificationCoordinator()
+
+            if (modificationCoordinator != null) {
+              future {
+                try {
+                  modificationCoordinator.receiveStateMigrationMessage(stateMigrationModification)
+                }
+                catch {
+                  case t: Throwable =>
+                    log.error(s"Error in ModificationCoordinator while processing $stateMigrationModification", t)
                 }
               }(context.dispatcher)
             }

@@ -338,6 +338,9 @@ public class StreamMockEnvironment implements Environment {
 	}
 
 	@Override
+	public void acknowledgeStateMigration(long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState) { }
+
+	@Override
 	public void declineCheckpoint(long checkpointId, Throwable cause) {}
 
 	@Override
