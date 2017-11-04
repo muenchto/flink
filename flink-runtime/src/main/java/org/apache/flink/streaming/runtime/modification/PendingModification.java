@@ -30,7 +30,7 @@ public class PendingModification {
 		SUCCESS, // successful acknowledge of the task
 		DUPLICATE, // acknowledge message is a duplicate
 		UNKNOWN, // unknown task acknowledged
-		DISCARDED // pending checkpoint has been discarded
+		DISCARDED // pending modification has been discarded
 	}
 
 	/**
@@ -154,6 +154,8 @@ public class PendingModification {
 
 			// make sure we fulfill the promise with an exception if something fails
 			try {
+				discarded = true;
+
 				onCompletionPromise.complete(true);
 
 				return new CompletedModification(

@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.taskmanager;
 
+import com.google.common.base.Joiner;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
@@ -1586,6 +1587,9 @@ public class Task implements Runnable, TaskActions {
 						LOG.debug("Creating FileSystem stream leak safety net for {}", Thread.currentThread().getName());
 						FileSystemSafetyNet.setSafetyNetCloseableRegistryForThread(safetyNetCloseableRegistry);
 
+						LOG.debug("Triggering StartModificationMessage for {} with vertices {}.",
+							modificationID, Joiner.on(",").join(vertexIDS));
+
 						try {
 							boolean success = statefulTask.triggerModification(metaData, vertexIDS);
 							if (!success) {
@@ -1610,6 +1614,7 @@ public class Task implements Runnable, TaskActions {
 						}
 					}
 				};
+
 				executeAsyncCallRunnable(runnable, String.format("Modification Trigger for %s (%s).",
 					taskNameWithSubtask, executionId));
 			}

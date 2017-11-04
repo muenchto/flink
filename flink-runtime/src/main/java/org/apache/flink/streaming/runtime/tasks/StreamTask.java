@@ -264,10 +264,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				// so that we avoid race conditions in the case that initializeState()
 				// registers a timer, that fires before the open() is called.
 
-				if (!pausedForModification) { // TODO Masterthesis Necessary?
-					initializeState();
-				}
-
+				initializeState();
 				openAllOperators();
 			}
 
@@ -681,6 +678,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 								getName(), getEnvironment().getJobVertexId());
 							getEnvironment().acknowledgeModification(metaData.getModificationID());
 						} else {
+							LOG.info("Operator {} could not pause inputs. Declines modification {}.",
+								getName(), getEnvironment().getJobVertexId());
 							getEnvironment().declineModification(metaData.getModificationID(),
 								new Throwable("Failed to pause inputs for " + getName()));
 						}
@@ -1711,7 +1710,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					throw exception;
 				}
 			} else {
-				LOG.debug("{} - SendMigrationState for checkpoint {} has " +
+				LOG.debug("{} - SendMigrationState for migration {} has " +
 						"already been completed. Thus, the state handles are not cleaned up.",
 					owner.getName(),
 					stateMigrationMetaData.getStateMigrationId());
