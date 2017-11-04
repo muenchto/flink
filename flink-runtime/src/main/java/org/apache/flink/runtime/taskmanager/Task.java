@@ -636,6 +636,7 @@ public class Task implements Runnable, TaskActions {
 	}
 
 	private Map<String, Future<Path>> distributedCacheEntries = new HashMap<String, Future<Path>>();
+
 	private volatile ClassLoader userCodeClassLoader;
 
 	/**
@@ -675,11 +676,9 @@ public class Task implements Runnable, TaskActions {
 					}
 					return;
 				}
-			} else if (current == ExecutionState.MODIFICATION) {
-				if (transitionState(ExecutionState.MODIFICATION, ExecutionState.RESUMING)) {
-					// success, we can start our work, but skip certain initializatinos
-
-					LOG.info("Switched to running again");
+			} else if (current == ExecutionState.PAUSED) {
+				if (transitionState(ExecutionState.PAUSED, ExecutionState.RESUMING)) {
+					// success, we can start our work, but skip some initialization
 					break;
 				}
 			} else {
@@ -842,7 +841,7 @@ public class Task implements Runnable, TaskActions {
 
 				// make sure the user code classloader is accessible thread-locally
 				executingThread.setContextClassLoader(userCodeClassLoader);
-			} else {
+			} else if (executionState == ExecutionState.RESUMING) {
 				LOG.info("Task {} continued from different state than DEPLOYING: {}. Switching to Running.",
 					taskNameWithSubtask, executionState);
 
@@ -869,8 +868,9 @@ public class Task implements Runnable, TaskActions {
 
 				// notify everyone that we switched to running
 				notifyObservers(ExecutionState.RUNNING, null);
-				// TODO Masterthesis Enable later, extend States in ExecutionGraph
-//				taskManagerActions.updateTaskExecutionState(new TaskExecutionState(jobId, executionId, ExecutionState.RUNNING));
+				taskManagerActions.updateTaskExecutionState(new TaskExecutionState(jobId, executionId, ExecutionState.RUNNING));
+			} else {
+				throw new IllegalStateException("Illegal state during initialization: " + executionState);
 			}
 
 			// run the invokable
@@ -884,18 +884,19 @@ public class Task implements Runnable, TaskActions {
 				boolean fromModification = statefulTask.getPausedForModification();
 
 				if (fromModification) {
-					if (transitionState(ExecutionState.RUNNING, ExecutionState.MODIFICATION)) {
-						LOG.info("StreamTask {} successfully entered new state {}", taskNameWithSubtask, ExecutionState.MODIFICATION);
+					if (transitionState(ExecutionState.RUNNING, ExecutionState.PAUSING)) {
+						LOG.info("StreamTask {} successfully entered new state {}", taskNameWithSubtask, ExecutionState.PAUSING);
 
-						notifyObservers(ExecutionState.MODIFICATION, null);
+						taskManagerActions.updateTaskExecutionState(
+							new TaskExecutionState(jobId, executionId, ExecutionState.PAUSING));
 
 						// Do not finish the partitions
 						return;
 					} else {
-						LOG.info("StreamTask {} could not enter new state {}", taskNameWithSubtask, ExecutionState.MODIFICATION);
+						LOG.info("StreamTask {} could not enter new state {}", taskNameWithSubtask, ExecutionState.PAUSING);
 					}
 				} else {
-					LOG.info("StreamTask {} stopped but not for {}", taskNameWithSubtask, ExecutionState.MODIFICATION);
+					LOG.info("StreamTask {} stopped but not for {}", taskNameWithSubtask, ExecutionState.PAUSING);
 				}
 			} else {
 				LOG.info("Task {} is not a StreamTask", taskNameWithSubtask);
@@ -1007,7 +1008,7 @@ public class Task implements Runnable, TaskActions {
 		finally {
 			try {
 
-				if (executionState != ExecutionState.MODIFICATION) {
+				if (executionState != ExecutionState.PAUSING) {
 
 					LOG.info("Freeing task resources for {} ({}).", taskNameWithSubtask, executionId);
 
@@ -1038,8 +1039,17 @@ public class Task implements Runnable, TaskActions {
 
 					notifyFinalState();
 				} else {
-					LOG.info("Task {} entered MODIFICATION state, not releasing all current resources.",
+					LOG.info("Task {} entered PAUSED state, not releasing all current resources.",
 						taskNameWithSubtask);
+
+					if (transitionState(ExecutionState.PAUSING, ExecutionState.PAUSED)) {
+						notifyObservers(ExecutionState.PAUSED, null);
+
+						taskManagerActions.updateTaskExecutionState(
+							new TaskExecutionState(jobId, executionId, ExecutionState.PAUSED));
+					} else {
+						throw new CancelTaskException("Failed to enter PAUSED state");
+					}
 				}
 			}
 			catch (Throwable t) {
@@ -1053,7 +1063,7 @@ public class Task implements Runnable, TaskActions {
 			// counted as finished when this happens
 			// errors here will only be logged
 			try {
-				if (executionState != ExecutionState.MODIFICATION) {
+				if (executionState != ExecutionState.PAUSING) {
 					metrics.close();
 				}
 			}
@@ -1205,7 +1215,7 @@ public class Task implements Runnable, TaskActions {
 
 	public void pauseExecution() {
 		LOG.info("Attempting to pause task {} ({}).", taskNameWithSubtask, executionId);
-		changeRuntimeState(ExecutionState.MODIFICATION);
+		changeRuntimeState(ExecutionState.PAUSING);
 	}
 
 	public void resumeExecution() {
@@ -1214,8 +1224,8 @@ public class Task implements Runnable, TaskActions {
 		ExecutionState current = executionState;
 
 		// if the task is not running, then we need not do anything
-		if (current != ExecutionState.MODIFICATION) {
-			LOG.info("Task {} in different state {} than expected {}", taskNameWithSubtask, current, ExecutionState.MODIFICATION);
+		if (current != ExecutionState.PAUSED) {
+			LOG.info("Task {} in different state {} than expected {}", taskNameWithSubtask, current, ExecutionState.PAUSING);
 			return;
 		}
 

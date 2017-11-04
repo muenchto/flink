@@ -62,14 +62,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import static org.apache.flink.runtime.execution.ExecutionState.CANCELED;
-import static org.apache.flink.runtime.execution.ExecutionState.CANCELING;
-import static org.apache.flink.runtime.execution.ExecutionState.CREATED;
-import static org.apache.flink.runtime.execution.ExecutionState.DEPLOYING;
-import static org.apache.flink.runtime.execution.ExecutionState.FAILED;
-import static org.apache.flink.runtime.execution.ExecutionState.FINISHED;
-import static org.apache.flink.runtime.execution.ExecutionState.RUNNING;
-import static org.apache.flink.runtime.execution.ExecutionState.SCHEDULED;
+import static org.apache.flink.runtime.execution.ExecutionState.*;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
@@ -1134,8 +1127,9 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		if (transitionState(DEPLOYING, RUNNING)) {
 			sendPartitionInfos();
 			return true;
-		}
-		else {
+		} else if (transitionState(PAUSED, RUNNING)) {
+			return true;
+		} else {
 			// something happened while the call was in progress.
 			// it can mean:
 			//  - canceling, while deployment was in progress. state is now canceling, or canceled, if the response overtook
@@ -1147,18 +1141,16 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			if (currentState == FINISHED || currentState == CANCELED) {
 				// do nothing, the task was really fast (nice)
 				// or it was canceled really fast
-			}
-			else if (currentState == CANCELING || currentState == FAILED) {
+			} else if (currentState == CANCELING || currentState == FAILED) {
 				if (LOG.isDebugEnabled()) {
 					// this log statement is guarded because the 'getVertexWithAttempt()' method
 					// performs string concatenations 
 					LOG.debug("Concurrent canceling/failing of {} while deployment was in progress.", getVertexWithAttempt());
 				}
 				sendCancelRpcCall();
-			}
-			else {
+			} else {
 				String message = String.format("Concurrent unexpected state transition of task %s to %s while deployment was in progress.",
-						getVertexWithAttempt(), currentState);
+					getVertexWithAttempt(), currentState);
 
 				if (LOG.isDebugEnabled()) {
 					LOG.debug(message);
@@ -1166,6 +1158,64 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 
 				// undo the deployment
 				sendCancelRpcCall();
+
+				// record the failure
+				markFailed(new Exception(message));
+			}
+
+			return false;
+		}
+	}
+
+	boolean switchToPausing() {
+
+		if (transitionState(RUNNING, PAUSING)) {
+			return true;
+		} else {
+			// something happened while the call was in progress.
+			// it can mean:
+			//  - canceling, while deployment was in progress. state is now canceling, or canceled, if the response overtook
+			//  - finishing (execution and finished call overtook the deployment answer, which is possible and happens for fast tasks)
+			//  - failed (execution, failure, and failure message overtook the deployment answer)
+
+			ExecutionState currentState = this.state;
+
+			if (currentState == FINISHED || currentState == CANCELED) {
+				LOG.debug("Concurrent finished/canceling of {} while deployment was in progress.", getVertexWithAttempt());
+			} else {
+				String message = String.format("Concurrent unexpected state transition of task %s to %s.",
+					getVertexWithAttempt(), currentState);
+
+				LOG.debug(message);
+
+				// record the failure
+				markFailed(new Exception(message));
+			}
+
+			return false;
+		}
+	}
+
+	boolean switchToPaused() {
+
+		if (transitionState(PAUSING, PAUSED)) {
+			return true;
+		} else {
+			// something happened while the call was in progress.
+			// it can mean:
+			//  - canceling, while deployment was in progress. state is now canceling, or canceled, if the response overtook
+			//  - finishing (execution and finished call overtook the deployment answer, which is possible and happens for fast tasks)
+			//  - failed (execution, failure, and failure message overtook the deployment answer)
+
+			ExecutionState currentState = this.state;
+
+			if (currentState == FINISHED || currentState == CANCELED) {
+				LOG.debug("Concurrent finished/canceling of {} while deployment was in progress.", getVertexWithAttempt());
+			} else {
+				String message = String.format("Concurrent unexpected state transition of task %s to %s.",
+					getVertexWithAttempt(), currentState);
+
+				LOG.debug(message);
 
 				// record the failure
 				markFailed(new Exception(message));

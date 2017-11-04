@@ -1509,9 +1509,14 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 						attempt.markFailed(state.getError(userClassLoader), accumulators, state.getIOMetrics());
 						return true;
 
-					case MODIFICATION:
-						LOG.debug("ExecutionGraph - Changing to modification");
-						return true;
+					case PAUSING:
+						return attempt.switchToPausing();
+
+					case PAUSED:
+						return attempt.switchToPaused();
+
+					case RESUMING:
+						return attempt.switchToRunning();
 
 					default:
 						// we mark as failed and return false, which triggers the TaskManager
