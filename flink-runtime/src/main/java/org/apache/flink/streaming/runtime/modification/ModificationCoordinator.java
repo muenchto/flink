@@ -6,30 +6,28 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
-import org.apache.flink.runtime.checkpoint.*;
-import org.apache.flink.runtime.checkpoint.hooks.MasterHooks;
+import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.executiongraph.*;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
-import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
 import org.apache.flink.runtime.messages.modification.IgnoreModification;
 import org.apache.flink.runtime.messages.modification.StateMigrationModification;
+import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.runtime.modification.exceptions.OperatorNotFoundException;
-import org.apache.flink.streaming.runtime.modification.statemigration.StateMigrationMetaData;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.Preconditions;
-import org.apache.http.annotation.GuardedBy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.GuardedBy;
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -38,7 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class ModificationCoordinator {
 
-	private static final long MODIFICATION_TIMEOUT = 30000;
+	private static final long MODIFICATION_TIMEOUT = 30;
 
 	private static final Logger LOG = LoggerFactory.getLogger(ModificationCoordinator.class);
 
@@ -166,11 +164,12 @@ public class ModificationCoordinator {
 			Preconditions.checkState(pendingModification.isFullyAcknowledged());
 			completedModifications.put(pendingModification.getModificationId(), completedModification);
 
-			LOG.info("Completed modification {} in {} ms.", checkpointId, completedModification.getDuration());
+			LOG.info("Completed modification {} ({}) in {} ms.",
+				pendingModification.getModificationDescription(), checkpointId, completedModification.getDuration());
 		} else {
 			failedModifications.put(pendingModification.getModificationId(), pendingModification);
 
-			LOG.info("Modification '{}' failed.", checkpointId, pendingModification.getModificationDescription());
+			LOG.info("Modification {} ({}) failed.", pendingModification.getModificationDescription(), checkpointId);
 		}
 
 		// Maybe modify operators of completed modification
@@ -302,17 +301,21 @@ public class ModificationCoordinator {
 		}
 	}
 
-	private void triggerModification(ExecutionJobVertex operatorToPause, String description) {
+	private void triggerModification(ExecutionJobVertex operatorToPause, final String description) {
+
+		LOG.info("Triggering modification '{}' for ExecutionJobVertex {}.", description, operatorToPause.getName());
 
 		ExecutionVertex[] taskVertices = operatorToPause.getTaskVertices();
 
 		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>(taskVertices.length);
 
-		for (ExecutionVertex taskVertex : taskVertices) {
-			ackTasks.put(taskVertex.getCurrentExecutionAttempt().getAttemptId(), taskVertex);
-		}
+		for (ExecutionVertex executionVertex : taskVertices) {
+			ackTasks.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), executionVertex);
 
-		// TODO Masterthesis Check if operator instances are running
+			if (executionVertex.getExecutionState() != ExecutionState.RUNNING) {
+				throw new RuntimeException("ExecutionVertex " + executionVertex + " is not in running state.");
+			}
+		}
 
 		synchronized (triggerLock) {
 
@@ -332,18 +335,18 @@ public class ModificationCoordinator {
 				public void run() {
 					synchronized (lock) {
 
-						LOG.info("Checking if Modification " + modificationId + " is still onging.");
+						LOG.info("Checking if Modification {} ({}) is still ongoing.", description, modificationId);
 
 						// only do the work if the modification is not discarded anyways
 						// note that modification completion discards the pending modification object
 						if (!modification.isDiscarded()) {
-							LOG.info("Modification " + modificationId + " expired before completing.");
+							LOG.info("Modification {} expired before completing.", description);
 
 							modification.abortExpired();
 							pendingModifications.remove(modificationId);
 							failedModifications.remove(modificationId);
 						} else {
-							LOG.info("Modification " + modificationId + " already completed.");
+							LOG.info("Modification {} already completed.", description);
 						}
 					}
 				}
@@ -353,13 +356,13 @@ public class ModificationCoordinator {
 				// re-acquire the coordinator-wide lock
 				synchronized (lock) {
 
-					LOG.info("Triggering modification " + modificationId + " @ " + timestamp);
+					LOG.info("Triggering modification {}@{} - {}.", modificationId, timestamp, description);
 
 					pendingModifications.put(modificationId, modification);
 
 					ScheduledFuture<?> cancellerHandle = timer.schedule(
 						canceller,
-						MODIFICATION_TIMEOUT, TimeUnit.MILLISECONDS);
+						MODIFICATION_TIMEOUT, TimeUnit.SECONDS);
 
 					modification.setCancellerHandle(cancellerHandle);
 				}
@@ -507,10 +510,19 @@ public class ModificationCoordinator {
 		}
 
 		try {
-			stoppedExecutionVertex.resetForNewExecutionModification(System.currentTimeMillis(), executionGraph.getGlobalModVersion());
+			stoppedExecutionVertex.resetForNewExecutionModification(
+				System.currentTimeMillis(),
+				executionGraph.getGlobalModVersion());
 
-			stoppedExecutionVertex
-				.getCurrentExecutionAttempt()
+			Execution currentExecutionAttempt = stoppedExecutionVertex.getCurrentExecutionAttempt();
+
+			SubtaskState storedState = this.storedState.get(stoppedMapExecutionAttemptID);
+
+			TaskStateHandles taskStateHandles = new TaskStateHandles(storedState);
+
+			currentExecutionAttempt.setInitialState(taskStateHandles);
+
+			currentExecutionAttempt
 				.scheduleForMigration(
 					executionGraph.getSlotProvider(),
 					executionGraph.isQueuedSchedulingAllowed(),
