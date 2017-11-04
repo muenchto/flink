@@ -22,6 +22,9 @@ package org.apache.flink.runtime.execution;
  * An enumeration of all states that a task can be in during its execution.
  * Tasks usually start in the state {@code CREATED} and switch states according to
  * this diagram:
+ *
+ * <pre>OBSOLETE</pre>
+ *
  * <pre>{@code
  *
  *     CREATED  -> SCHEDULED -> DEPLOYING -> RUNNING -> FINISHED
@@ -37,6 +40,7 @@ package org.apache.flink.runtime.execution;
  *    RECONCILING  -> RUNNING | FINISHED | CANCELED | FAILED
  *
  * }</pre>
+ *
  *
  * <p>It is possible to enter the {@code RECONCILING} state from {@code CREATED}
  * state if job manager fail over, and the {@code RECONCILING} state can switch into
@@ -58,12 +62,17 @@ public enum ExecutionState {
 	RUNNING,
 
 	/**
-	 * Represents, that the current execution is paused, due to changes to the execution graph.
+	 * Represents, that the current execution is entering the paused state and may become ready for modifications.
 	 */
-	MODIFICATION,
+	PAUSING,
 
 	/**
-	 * Represents, that the current execution is paused, due to changes to the execution graph.
+	 * Represents, that the current execution is paused and is now ready for modifications.
+	 */
+	PAUSED,
+
+	/**
+	 * Represents, that the current execution is resuming, possibly from modifications.
 	 */
 	RESUMING,
 

@@ -63,7 +63,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.flink.runtime.execution.ExecutionState.FINISHED;
-import static org.apache.flink.runtime.execution.ExecutionState.MODIFICATION;
 
 /**
  * The ExecutionVertex is a parallel subtask of the execution. It may be executed once, or several times, each of
