@@ -746,41 +746,10 @@ public class Task implements Runnable, TaskActions {
 
 				network.registerTask(this);
 
-				// add metrics for buffers
-				this.metrics.getIOMetricGroup().initializeBufferMetrics(this);
-
-				// register detailed network metrics, if configured
-				if (taskManagerConfig.getConfiguration().getBoolean(TaskManagerOptions.NETWORK_DETAILED_METRICS)) {
-					// similar to MetricUtils.instantiateNetworkMetrics() but inside this IOMetricGroup
-					MetricGroup networkGroup = this.metrics.getIOMetricGroup().addGroup("Network");
-					MetricGroup outputGroup = networkGroup.addGroup("Output");
-					MetricGroup inputGroup = networkGroup.addGroup("Input");
-
-					// output metrics
-					for (int i = 0; i < producedPartitions.length; i++) {
-						ResultPartitionMetrics.registerQueueLengthMetrics(
-							outputGroup.addGroup(i), producedPartitions[i]);
-					}
-
-					for (int i = 0; i < inputGates.length; i++) {
-						InputGateMetrics.registerQueueLengthMetrics(
-							inputGroup.addGroup(i), inputGates[i]);
-					}
-				}
+				initializeMetrics();
 
 				// next, kick off the background copying of files for the distributed cache
-				try {
-					for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry :
-						DistributedCache.readFileInfoFromConfig(jobConfiguration)) {
-						LOG.info("Obtaining local cache file for '{}'.", entry.getKey());
-						Future<Path> cp = fileCache.createTmpFile(entry.getKey(), entry.getValue(), jobId);
-						distributedCacheEntries.put(entry.getKey(), cp);
-					}
-				} catch (Exception e) {
-					throw new Exception(
-						String.format("Exception while adding files to distributed cache of task %s (%s).", taskNameWithSubtask, executionId),
-						e);
-				}
+				copyForDistributedCache();
 
 				if (isCanceledOrFailed()) {
 					throw new CancelTaskException();
@@ -809,18 +778,9 @@ public class Task implements Runnable, TaskActions {
 				// the state into the task. the state is non-empty if this is an execution
 				// of a task that failed but had backuped state from a checkpoint
 
-				if (null != taskStateHandles) {
-					if (invokable instanceof StatefulTask) {
-						StatefulTask op = (StatefulTask) invokable;
-						op.setInitialState(taskStateHandles);
-					} else {
-						throw new IllegalStateException("Found operator state for a non-stateful task invokable");
-					}
-					// be memory and GC friendly - since the code stays in invoke() for a potentially long time,
-					// we clear the reference to the state handle
-					//noinspection UnusedAssignment
-					taskStateHandles = null;
-				}
+				initializeState(invokable);
+
+				initializeState(invokable);
 
 				// ----------------------------------------------------------------
 				//  actual task core work
@@ -845,8 +805,16 @@ public class Task implements Runnable, TaskActions {
 				LOG.info("Task {} continued from different state than DEPLOYING: {}. Switching to Running.",
 					taskNameWithSubtask, executionState);
 
+				// activate safety net for task thread
+				LOG.info("Creating FileSystem stream leak safety net for task {}", this);
+				FileSystemSafetyNet.initializeSafetyNetForThread();
+
 				// now load the task's invokable code
 				invokable = loadAndInstantiateInvokable(userCodeClassLoader, nameOfInvokableClass);
+
+				initializeMetrics();
+
+				copyForDistributedCache();
 
 				Environment env = new RuntimeEnvironment(
 					jobId, vertexId, executionId, executionConfig, taskInfo,
@@ -859,6 +827,8 @@ public class Task implements Runnable, TaskActions {
 				// let the task code create its readers and writers
 				invokable.setEnvironment(env);
 
+				initializeState(invokable);
+
 				this.invokable = invokable;
 
 				// switch to the RUNNING state, if that fails, we have been canceled/failed in the meantime
@@ -869,6 +839,9 @@ public class Task implements Runnable, TaskActions {
 				// notify everyone that we switched to running
 				notifyObservers(ExecutionState.RUNNING, null);
 				taskManagerActions.updateTaskExecutionState(new TaskExecutionState(jobId, executionId, ExecutionState.RUNNING));
+
+				// make sure the user code classloader is accessible thread-locally
+				executingThread.setContextClassLoader(userCodeClassLoader);
 			} else {
 				throw new IllegalStateException("Illegal state during initialization: " + executionState);
 			}
@@ -879,9 +852,7 @@ public class Task implements Runnable, TaskActions {
 			// Check if Task has been paused for modification
 			if (this.invokable instanceof StreamTask) {
 
-				StreamTask statefulTask = (StreamTask) this.invokable;
-
-				boolean fromModification = statefulTask.getPausedForModification();
+				boolean fromModification = ((StreamTask) this.invokable).getPausedForModification();
 
 				if (fromModification) {
 					if (transitionState(ExecutionState.RUNNING, ExecutionState.PAUSING)) {
@@ -1042,6 +1013,31 @@ public class Task implements Runnable, TaskActions {
 					LOG.info("Task {} entered PAUSED state, not releasing all current resources.",
 						taskNameWithSubtask);
 
+					// stop the async dispatcher.
+					// copy dispatcher reference to stack, against concurrent release
+					ExecutorService dispatcher = this.asyncCallDispatcher;
+					if (dispatcher != null && !dispatcher.isShutdown()) {
+						dispatcher.shutdownNow();
+					}
+
+					// free the network resources
+					// network.unregisterTask(this);
+
+					// free memory resources
+					if (invokable != null) {
+						memoryManager.releaseAll(invokable);
+					}
+
+					// remove all of the tasks library resources
+					libraryCache.unregisterTask(jobId, executionId);
+
+					// remove all files in the distributed cache
+					removeCachedFiles(distributedCacheEntries, fileCache);
+
+					// close and de-activate safety net for task thread
+					LOG.info("Ensuring all FileSystem streams are closed for task {}", this);
+					FileSystemSafetyNet.closeSafetyNetAndGuardedResourcesForThread();
+
 					if (transitionState(ExecutionState.PAUSING, ExecutionState.PAUSED)) {
 						notifyObservers(ExecutionState.PAUSED, null);
 
@@ -1063,13 +1059,66 @@ public class Task implements Runnable, TaskActions {
 			// counted as finished when this happens
 			// errors here will only be logged
 			try {
-				if (executionState != ExecutionState.PAUSING) {
+				if (executionState != ExecutionState.PAUSED) {
 					metrics.close();
 				}
-			}
-			catch (Throwable t) {
+			} catch (Throwable t) {
 				LOG.error("Error during metrics de-registration of task {} ({}).", taskNameWithSubtask, executionId, t);
 			}
+		}
+	}
+
+	private void initializeMetrics() {
+		// add metrics for buffers
+		this.metrics.getIOMetricGroup().initializeBufferMetrics(this);
+
+		// register detailed network metrics, if configured
+		if (taskManagerConfig.getConfiguration().getBoolean(TaskManagerOptions.NETWORK_DETAILED_METRICS)) {
+			// similar to MetricUtils.instantiateNetworkMetrics() but inside this IOMetricGroup
+			MetricGroup networkGroup = this.metrics.getIOMetricGroup().addGroup("Network");
+			MetricGroup outputGroup = networkGroup.addGroup("Output");
+			MetricGroup inputGroup = networkGroup.addGroup("Input");
+
+			// output metrics
+			for (int i = 0; i < producedPartitions.length; i++) {
+				ResultPartitionMetrics.registerQueueLengthMetrics(
+					outputGroup.addGroup(i), producedPartitions[i]);
+			}
+
+			for (int i = 0; i < inputGates.length; i++) {
+				InputGateMetrics.registerQueueLengthMetrics(
+					inputGroup.addGroup(i), inputGates[i]);
+			}
+		}
+	}
+
+	private void copyForDistributedCache() throws Exception {
+		try {
+			for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry :
+				DistributedCache.readFileInfoFromConfig(jobConfiguration)) {
+				LOG.info("Obtaining local cache file for '{}'.", entry.getKey());
+				Future<Path> cp = fileCache.createTmpFile(entry.getKey(), entry.getValue(), jobId);
+				distributedCacheEntries.put(entry.getKey(), cp);
+			}
+		} catch (Exception e) {
+			throw new Exception(
+				String.format("Exception while adding files to distributed cache of task %s (%s).", taskNameWithSubtask, executionId),
+				e);
+		}
+	}
+
+	private void initializeState(AbstractInvokable invokable) throws Exception {
+		if (null != taskStateHandles) {
+			if (invokable instanceof StatefulTask) {
+				StatefulTask op = (StatefulTask) invokable;
+				op.setInitialState(taskStateHandles);
+			} else {
+				throw new IllegalStateException("Found operator state for a non-stateful task invokable");
+			}
+			// be memory and GC friendly - since the code stays in invoke() for a potentially long time,
+			// we clear the reference to the state handle
+			//noinspection UnusedAssignment
+			taskStateHandles = null;
 		}
 	}
 
@@ -1323,9 +1372,7 @@ public class Task implements Runnable, TaskActions {
 			if (current.isTerminal() || current == ExecutionState.CANCELING) {
 				LOG.info("Task {} is already in state {}", taskNameWithSubtask, current);
 				return;
-			}
-
-			if (current == ExecutionState.DEPLOYING || current == ExecutionState.CREATED) {
+			} else if (current == ExecutionState.DEPLOYING || current == ExecutionState.CREATED) {
 				if (transitionState(current, targetState, cause)) {
 					// if we manage this state transition, then the invokable gets never called
 					// we need not call cancel on it
@@ -1340,8 +1387,22 @@ public class Task implements Runnable, TaskActions {
 							cause));
 					return;
 				}
-			}
-			else if (current == ExecutionState.RUNNING) {
+			} else if (current == ExecutionState.PAUSED || current == ExecutionState.PAUSING) {
+				if (transitionState(current, targetState, cause)) {
+					// if we manage this state transition, then the invokable gets never called
+					// we need not call cancel on it
+					this.failureCause = cause;
+					notifyObservers(
+						targetState,
+						new Exception(
+							String.format(
+								"Cancel or fail execution of %s (%s).",
+								taskNameWithSubtask,
+								executionId),
+							cause));
+					return;
+				}
+			} else if (current == ExecutionState.RUNNING) {
 				if (transitionState(ExecutionState.RUNNING, targetState, cause)) {
 					// we are canceling / failing out of the running state
 					// we need to cancel the invokable
@@ -1380,8 +1441,7 @@ public class Task implements Runnable, TaskActions {
 					}
 					return;
 				}
-			}
-			else {
+			} else {
 				throw new IllegalStateException(String.format("Unexpected state: %s of task %s (%s).",
 					current, taskNameWithSubtask, executionId));
 			}

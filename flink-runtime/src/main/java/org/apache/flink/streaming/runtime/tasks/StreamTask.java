@@ -223,23 +223,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 			configuration = new StreamConfig(getTaskConfiguration());
 
-			if (!pausedForModification) {
+			asyncOperationsThreadPool = Executors.newCachedThreadPool();
 
-				asyncOperationsThreadPool = Executors.newCachedThreadPool();
+			stateBackend = createStateBackend();
 
-				stateBackend = createStateBackend();
+			accumulatorMap = getEnvironment().getAccumulatorRegistry().getUserMap();
 
-				accumulatorMap = getEnvironment().getAccumulatorRegistry().getUserMap();
+			// if the clock is not already set, then assign a default TimeServiceProvider
+			if (timerService == null) {
+				ThreadFactory timerThreadFactory =
+					new DispatcherThreadFactory(TRIGGER_THREAD_GROUP, "Time Trigger for " + getName());
 
-				// if the clock is not already set, then assign a default TimeServiceProvider
-				if (timerService == null) {
-					ThreadFactory timerThreadFactory =
-						new DispatcherThreadFactory(TRIGGER_THREAD_GROUP, "Time Trigger for " + getName());
-
-					timerService = new SystemProcessingTimeService(this, getCheckpointLock(), timerThreadFactory);
-				}
+				timerService = new SystemProcessingTimeService(this, getCheckpointLock(), timerThreadFactory);
 			}
-
 
 			operatorChain = new OperatorChain<>(this);
 			headOperator = operatorChain.getHeadOperator();
@@ -277,6 +273,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			isRunning = true;
 			run();
 
+
+
 			// if this left the run() method cleanly despite the fact that this was canceled,
 			// make sure the "clean shutdown" is not attempted
 			if (canceled) {
@@ -288,10 +286,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				// Paused this StreamTask for modification, do not attempt to clean up
 				if (pausedForModification) {
 
+					LOG.debug("Paused task {} for migration", getName());
+
 					triggerStateMigration();
 
-					LOG.debug("Paused task {} for migration", getName());
-					return;
 				} else {
 					LOG.debug("Task {} stopped but not for migration", getName());
 				}
@@ -352,30 +350,24 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				LOG.error("Could not shut down async checkpoint threads", t);
 			}
 
-			// Do not perform cleanup, if pausing for modification
-			if (!pausedForModification) {
+			LOG.debug("Closing Operators for task {} from modification {}", getName(), pausedForModification);
 
-				LOG.debug("Closing Operators for task {} from modification {}", getName(), pausedForModification);
+			// we must! perform this cleanup
+			try {
+				cleanup();
+			} catch (Throwable t) {
+				// catch and log the exception to not replace the original exception
+				LOG.error("Error during cleanup of stream task", t);
+			}
 
-				// we must! perform this cleanup
-				try {
-					cleanup();
-				} catch (Throwable t) {
-					// catch and log the exception to not replace the original exception
-					LOG.error("Error during cleanup of stream task", t);
-				}
+			// if the operators were not disposed before, do a hard dispose
+			if (!disposed) {
+				disposeAllOperators();
+			}
 
-				// if the operators were not disposed before, do a hard dispose
-				if (!disposed) {
-					disposeAllOperators();
-				}
-
-				// release the output resources. this method should never fail.
-				if (operatorChain != null) {
-					operatorChain.releaseOutputs();
-				}
-			} else {
-				LOG.debug("Skipping closing of operators for task {} from modification {}", getName(), pausedForModification);
+			// release the output resources. this method should never fail.
+			if (operatorChain != null) {
+				operatorChain.releaseOutputs();
 			}
 		}
 	}

@@ -1209,7 +1209,10 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 
 			ExecutionState currentState = this.state;
 
-			if (currentState == FINISHED || currentState == CANCELED) {
+			if (currentState == PAUSED) {
+				LOG.debug("Concurrent PAUSED message overtook.", getVertexWithAttempt());
+				return true;
+			} else if (currentState == FINISHED || currentState == CANCELED) {
 				LOG.debug("Concurrent finished/canceling of {} while deployment was in progress.", getVertexWithAttempt());
 			} else {
 				String message = String.format("Concurrent unexpected state transition of task %s to %s.",
