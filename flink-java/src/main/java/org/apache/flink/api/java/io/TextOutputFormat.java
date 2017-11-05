@@ -18,18 +18,23 @@
 
 package org.apache.flink.api.java.io;
 
+import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.api.common.io.FileOutputFormat;
+import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 
-import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.api.common.io.FileOutputFormat;
-import org.apache.flink.core.fs.Path;
-
 @PublicEvolving
 public class TextOutputFormat<T> extends FileOutputFormat<T> {
+
+	private static final Logger LOG = LoggerFactory.getLogger(TextOutputFormat.class);
 
 	private static final long serialVersionUID = 1L;
 	
@@ -87,7 +92,25 @@ public class TextOutputFormat<T> extends FileOutputFormat<T> {
 			throw new IOException("The charset " + charsetName + " is not supported.", e);
 		}
 	}
-	
+
+	@Override
+	public void close() throws IOException {
+		super.close();
+
+		FileSystem fileSystem = getOutputFilePath().getFileSystem();
+
+		Path oldDestination = getOutputFilePath();
+		Path newDestination = new Path(oldDestination.toUri().toString() + System.currentTimeMillis());
+
+		boolean renamingOutputDirectory = fileSystem.rename(getOutputFilePath(), newDestination);
+
+		if (renamingOutputDirectory) {
+			LOG.info("Successful to move {} to {}.", oldDestination, newDestination);
+		} else {
+			LOG.info("Failed to move {} to {}.", oldDestination, newDestination);
+		}
+	}
+
 	@Override
 	public void writeRecord(T record) throws IOException {
 		byte[] bytes = record.toString().getBytes(charset);
