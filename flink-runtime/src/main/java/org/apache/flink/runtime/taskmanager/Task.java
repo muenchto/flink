@@ -1018,6 +1018,8 @@ public class Task implements Runnable, TaskActions {
 					ExecutorService dispatcher = this.asyncCallDispatcher;
 					if (dispatcher != null && !dispatcher.isShutdown()) {
 						dispatcher.shutdownNow();
+						// Set explicitly to null, so that executeAsyncCallRunnable can run
+						this.asyncCallDispatcher = null;
 					}
 
 					// free the network resources
