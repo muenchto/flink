@@ -36,6 +36,7 @@ import org.apache.flink.util.OperatingSystem;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -277,6 +278,27 @@ public class LocalFileSystem extends FileSystem {
 
 		try {
 			Files.move(srcFile.toPath(), dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			return true;
+		}
+		catch (NoSuchFileException | AccessDeniedException | DirectoryNotEmptyException | SecurityException ex) {
+			// catch the errors that are regular "move failed" exceptions and return false
+			return false;
+		}
+	}
+
+	@Override
+	public boolean copy(Path src, Path dst) throws IOException {
+		final File srcFile = pathToFile(src);
+		final File dstFile = pathToFile(dst);
+
+		final File dstParent = dstFile.getParentFile();
+
+		// Files.move fails if the destination directory doesn't exist
+		//noinspection ResultOfMethodCallIgnored -- we don't care if the directory existed or was created
+		dstParent.mkdirs();
+
+		try {
+			Files.copy(srcFile.toPath(), dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 			return true;
 		}
 		catch (NoSuchFileException | AccessDeniedException | DirectoryNotEmptyException | SecurityException ex) {

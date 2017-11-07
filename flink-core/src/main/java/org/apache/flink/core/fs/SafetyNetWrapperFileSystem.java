@@ -131,6 +131,11 @@ public class SafetyNetWrapperFileSystem extends FileSystem implements WrappingPr
 	}
 
 	@Override
+	public boolean copy(Path src, Path dst) throws IOException {
+		return unsafeFileSystem.copy(src, dst);
+	}
+
+	@Override
 	public boolean initOutPathLocalFS(Path outPath, WriteMode writeMode, boolean createDirectory) throws IOException {
 		return unsafeFileSystem.initOutPathLocalFS(outPath, writeMode, createDirectory);
 	}

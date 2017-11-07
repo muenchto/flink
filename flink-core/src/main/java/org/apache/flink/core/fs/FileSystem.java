@@ -651,6 +651,18 @@ public abstract class FileSystem {
 	public abstract boolean rename(Path src, Path dst) throws IOException;
 
 	/**
+	 * Copies the file/directory src to dst.
+	 *
+	 * @param src
+	 *        the file/directory to rename
+	 * @param dst
+	 *        the new name of the file/directory
+	 * @return <code>true</code> if the renaming was successful, <code>false</code> otherwise
+	 * @throws IOException
+	 */
+	public abstract boolean copy(Path src, Path dst) throws IOException;
+
+	/**
 	 * Returns true if this is a distributed file system. A distributed file system here means
 	 * that the file system is shared among all Flink processes that participate in a cluster or
 	 * job and that all these processes can see the same files.

@@ -99,15 +99,14 @@ public class TextOutputFormat<T> extends FileOutputFormat<T> {
 
 		FileSystem fileSystem = getOutputFilePath().getFileSystem();
 
-		Path oldDestination = getOutputFilePath();
-		Path newDestination = new Path(oldDestination.toUri().toString() + System.currentTimeMillis());
+		Path newDestination = new Path(actualFilePath.toUri().toString() + "-" + System.currentTimeMillis());
 
-		boolean renamingOutputDirectory = fileSystem.rename(getOutputFilePath(), newDestination);
+		boolean renamingOutputDirectory = fileSystem.rename(actualFilePath, newDestination);
 
 		if (renamingOutputDirectory) {
-			LOG.info("Successful to move {} to {}.", oldDestination, newDestination);
+			LOG.info("Successful to move {} to {}.", actualFilePath, newDestination);
 		} else {
-			LOG.info("Failed to move {} to {}.", oldDestination, newDestination);
+			LOG.info("Failed to move {} to {}.", actualFilePath, newDestination);
 		}
 	}
 
