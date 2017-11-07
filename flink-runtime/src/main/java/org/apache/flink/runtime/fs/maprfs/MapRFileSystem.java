@@ -40,6 +40,7 @@ import org.apache.flink.runtime.fs.hdfs.HadoopBlockLocation;
 import org.apache.flink.runtime.fs.hdfs.HadoopDataInputStream;
 import org.apache.flink.runtime.fs.hdfs.HadoopDataOutputStream;
 import org.apache.flink.runtime.fs.hdfs.HadoopFileStatus;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * Concrete implementation of the {@link FileSystem} base class for the MapR
@@ -371,6 +372,11 @@ public final class MapRFileSystem extends FileSystem {
 
 		return this.fs.rename(new org.apache.hadoop.fs.Path(src.toString()),
 				new org.apache.hadoop.fs.Path(dst.toString()));
+	}
+
+	@Override
+	public boolean copy(final Path src, final Path dst) throws IOException {
+		throw new NotImplementedException();
 	}
 
 	@SuppressWarnings("deprecation")

@@ -119,7 +119,7 @@ public abstract class FileOutputFormat<IT> extends RichOutputFormat<IT> implemen
 	protected transient FSDataOutputStream stream;
 	
 	/** The path that is actually written to (may a a file in a the directory defined by {@code outputFilePath} ) */
-	private transient Path actualFilePath;
+	protected transient Path actualFilePath;
 	
 	/** Flag indicating whether this format actually created a file, which should be removed on cleanup. */
 	private transient boolean fileCreated;

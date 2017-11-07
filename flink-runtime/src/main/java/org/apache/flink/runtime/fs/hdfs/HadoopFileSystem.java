@@ -30,6 +30,7 @@ import org.apache.hadoop.conf.Configuration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.IOException;
@@ -457,6 +458,11 @@ public final class HadoopFileSystem extends FileSystem implements HadoopFileSyst
 	public boolean rename(final Path src, final Path dst) throws IOException {
 		return this.fs.rename(new org.apache.hadoop.fs.Path(src.toString()),
 			new org.apache.hadoop.fs.Path(dst.toString()));
+	}
+
+	@Override
+	public boolean copy(Path src, Path dst) throws IOException {
+		throw new NotImplementedException();
 	}
 
 	@SuppressWarnings("deprecation")
