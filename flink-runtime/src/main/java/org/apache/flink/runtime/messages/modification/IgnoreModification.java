@@ -14,6 +14,6 @@ public class IgnoreModification extends AbstractModificationMessage implements j
 	@Override
 	public String toString() {
 		return String.format("Ignore Task Modification %d for (%s/%s)",
-			getModificationID(), getJob(), getTaskExecutionId());
+			getModificationID(), getJobID(), getTaskExecutionId());
 	}
 }

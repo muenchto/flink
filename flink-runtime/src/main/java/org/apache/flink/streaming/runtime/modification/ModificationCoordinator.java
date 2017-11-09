@@ -83,8 +83,8 @@ public class ModificationCoordinator {
 			return false;
 		}
 
-		if (message.getJob() != executionGraph.getJobID()) {
-			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJob(), message);
+		if (message.getJobID() != executionGraph.getJobID()) {
+			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJobID(), message);
 		}
 
 		final long modificationID = message.getModificationID();
@@ -98,7 +98,7 @@ public class ModificationCoordinator {
 				switch (modification.acknowledgeTask(message.getTaskExecutionId())) {
 					case SUCCESS:
 						LOG.debug("Received acknowledge message for modification {} from task {} of job {}.",
-							modificationID, message.getTaskExecutionId(), message.getJob());
+							modificationID, message.getTaskExecutionId(), message.getJobID());
 
 						if (modification.isFullyAcknowledged()) {
 							completePendingCheckpoint(modification);
@@ -106,18 +106,18 @@ public class ModificationCoordinator {
 						break;
 					case DUPLICATE:
 						LOG.debug("Received a duplicate acknowledge message for modification {}, task {}, job {}.",
-							message.getModificationID(), message.getTaskExecutionId(), message.getJob());
+							message.getModificationID(), message.getTaskExecutionId(), message.getJobID());
 						break;
 					case UNKNOWN:
 						LOG.warn("Could not acknowledge the modification {} for task {} of job {}, " +
 								"because the task's execution attempt id was unknown.",
-							message.getModificationID(), message.getTaskExecutionId(), message.getJob());
+							message.getModificationID(), message.getTaskExecutionId(), message.getJobID());
 
 						break;
 					case DISCARDED:
 						LOG.warn("Could not acknowledge the modification {} for task {} of job {}, " +
 								"because the pending modification had been discarded",
-							message.getModificationID(), message.getTaskExecutionId(), message.getJob());
+							message.getModificationID(), message.getTaskExecutionId(), message.getJobID());
 				}
 
 				return true;
@@ -132,10 +132,10 @@ public class ModificationCoordinator {
 				if (completedModifications.containsKey(modificationID)) {
 					wasPendingModification = true;
 					LOG.warn("Received late message for now expired modification attempt {} from " +
-						"{} of job {}.", modificationID, message.getTaskExecutionId(), message.getJob());
+						"{} of job {}.", modificationID, message.getTaskExecutionId(), message.getJobID());
 				} else {
 					LOG.debug("Received message for an unknown modification {} from {} of job {}.",
-						modificationID, message.getTaskExecutionId(), message.getJob());
+						modificationID, message.getTaskExecutionId(), message.getJobID());
 					wasPendingModification = false;
 				}
 
@@ -183,8 +183,8 @@ public class ModificationCoordinator {
 			return;
 		}
 
-		if (message.getJob() != executionGraph.getJobID()) {
-			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJob(), message);
+		if (message.getJobID() != executionGraph.getJobID()) {
+			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJobID(), message);
 		}
 
 		final long modificationID = message.getModificationID();
@@ -227,8 +227,8 @@ public class ModificationCoordinator {
 			return;
 		}
 
-		if (message.getJob() != executionGraph.getJobID()) {
-			LOG.error("Received wrong IgnoreModification message for job id {}: {}", message.getJob(), message);
+		if (message.getJobID() != executionGraph.getJobID()) {
+			LOG.error("Received wrong IgnoreModification message for job id {}: {}", message.getJobID(), message);
 		}
 
 		final long modificationID = message.getModificationID();
@@ -266,8 +266,8 @@ public class ModificationCoordinator {
 			return;
 		}
 
-		if (message.getJob() != executionGraph.getJobID()) {
-			LOG.error("Received wrong StateMigrationModification message for job id {}: {}", message.getJob(), message);
+		if (message.getJobID() != executionGraph.getJobID()) {
+			LOG.error("Received wrong StateMigrationModification message for job id {}: {}", message.getJobID(), message);
 		}
 
 		final long modificationID = message.getModificationID();

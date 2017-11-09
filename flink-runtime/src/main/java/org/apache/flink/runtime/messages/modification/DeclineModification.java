@@ -3,7 +3,6 @@ package org.apache.flink.runtime.messages.modification;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.checkpoint.decline.*;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
-import org.apache.flink.runtime.messages.checkpoint.AbstractCheckpointMessage;
 import org.apache.flink.runtime.util.SerializedThrowable;
 
 public class DeclineModification extends AbstractModificationMessage implements java.io.Serializable {
@@ -54,6 +53,6 @@ public class DeclineModification extends AbstractModificationMessage implements 
 	@Override
 	public String toString() {
 		return String.format("Declined Modification %d for (%s/%s): %s",
-			getModificationID(), getJob(), getTaskExecutionId(), reason);
+			getModificationID(), getJobID(), getTaskExecutionId(), reason);
 	}
 }

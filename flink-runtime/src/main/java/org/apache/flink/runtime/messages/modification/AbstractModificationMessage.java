@@ -36,7 +36,7 @@ public abstract class AbstractModificationMessage implements java.io.Serializabl
 
 	// --------------------------------------------------------------------------------------------
 
-	public JobID getJob() {
+	public JobID getJobID() {
 		return job;
 	}
 
