@@ -26,7 +26,7 @@ public class StateMigrationModification extends AbstractModificationMessage impl
 	@Override
 	public String toString() {
 		return String.format("State Migration Modification %d for (%s/%s)",
-			getModificationID(), getJob(), getTaskExecutionId());
+			getModificationID(), getJobID(), getTaskExecutionId());
 	}
 
 	public SubtaskState getSubtaskState() {

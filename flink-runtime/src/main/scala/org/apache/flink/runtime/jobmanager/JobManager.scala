@@ -304,7 +304,7 @@ class JobManager(
   def handleModificationMessage(modificationMessage: AbstractModificationMessage): Unit = {
     modificationMessage match {
       case ackMessage: AcknowledgeModification =>
-        val jid = ackMessage.getJob()
+        val jid = ackMessage.getJobID()
         currentJobs.get(jid) match {
           case Some((graph, _)) =>
 
@@ -332,7 +332,7 @@ class JobManager(
         }
 
       case declineMessage: DeclineModification =>
-        val jid = declineMessage.getJob()
+        val jid = declineMessage.getJobID()
         currentJobs.get(jid) match {
           case Some((graph, _)) =>
             val modificationCoordinator = graph.getModificationCoordinator()
@@ -357,7 +357,7 @@ class JobManager(
         }
 
       case ignoreModification: IgnoreModification =>
-        val jid = ignoreModification.getJob()
+        val jid = ignoreModification.getJobID()
         currentJobs.get(jid) match {
           case Some((graph, _)) =>
             val modificationCoordinator = graph.getModificationCoordinator()
@@ -382,7 +382,7 @@ class JobManager(
         }
 
       case stateMigrationModification: StateMigrationModification =>
-        val jid = stateMigrationModification.getJob()
+        val jid = stateMigrationModification.getJobID()
         currentJobs.get(jid) match {
           case Some((graph, _)) =>
             val modificationCoordinator = graph.getModificationCoordinator()

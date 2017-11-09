@@ -33,6 +33,6 @@ public class TriggerModification extends AbstractModificationMessage {
 	@Override
 	public String toString() {
 		return String.format("Confirm Task Modification %d for (%s/%s) @ %d",
-			getModificationID(), getJob(), getTaskExecutionId(), timestamp);
+			getModificationID(), getJobID(), getTaskExecutionId(), timestamp);
 	}
 }
