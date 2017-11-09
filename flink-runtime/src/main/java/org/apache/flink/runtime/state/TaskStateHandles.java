@@ -169,4 +169,13 @@ public class TaskStateHandles implements Serializable {
 		result = 31 * result + (rawOperatorState != null ? rawOperatorState.hashCode() : 0);
 		return result;
 	}
+
+	@Override
+	public String toString() {
+		return "TaskStateHandles(legacyOperatorState[" + (legacyOperatorState != null ? legacyOperatorState.getLength() : 0) + "], " +
+			"managedKeyedState[" + (managedKeyedState != null ? managedKeyedState.size() : 0) +"], " +
+			"rawKeyedState[" + (rawKeyedState != null ? rawKeyedState.size() : 0) +"], " +
+			"managedOperatorState[" + (managedOperatorState != null ? managedOperatorState.size() : 0) +"], " +
+			"rawOperatorState[" + (rawOperatorState != null ? rawOperatorState.size() : 0) +"])";
+	}
 }

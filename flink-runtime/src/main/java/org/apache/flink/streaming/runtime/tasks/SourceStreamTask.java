@@ -125,7 +125,7 @@ public class SourceStreamTask<OUT, SRC extends SourceFunction<OUT>, OP extends S
 
 	@Override
 	protected boolean pauseInputs() {
-		pausedForModification = true;
+		setPausedForModification(true);
 		return true;
 	}
 }
