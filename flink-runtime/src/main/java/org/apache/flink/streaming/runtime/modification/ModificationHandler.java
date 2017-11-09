@@ -1,5 +1,7 @@
 package org.apache.flink.streaming.runtime.modification;
 
+import org.apache.flink.runtime.checkpoint.SubtaskState;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,11 +14,21 @@ public class ModificationHandler {
 
 	private final List<Long> pastCheckpoints = new ArrayList<>(4);
 
+	private SubtaskState subTaskState;
+
 	public void handledModification(long modificationId) {
 		pastCheckpoints.add(modificationId);
 	}
 
 	public List<Long> getHandledModifications() {
 		return pastCheckpoints;
+	}
+
+	public void storeStateForResuming(SubtaskState subtaskState) {
+		this.subTaskState = subtaskState;
+	}
+
+	public SubtaskState getStoredStateWhenResuming() {
+		return subTaskState;
 	}
 }

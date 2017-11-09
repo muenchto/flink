@@ -66,6 +66,8 @@ public class ModificationCoordinator {
 
 	private int parallelSubTaskIndex;
 
+	private ExecutionAttemptID newMapOperatorExecutionAttemptID;
+
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
 		this.rpcCallTimeout = rpcCallTimeout;
@@ -276,7 +278,7 @@ public class ModificationCoordinator {
 				LOG.info("Received duplicate StateMigrationModification for {} from task {}. Removed previous.",
 					modificationID, message.getTaskExecutionId());
 			} else {
-				LOG.info("Received StateMigrationModification for {} from task {}",
+				LOG.info("Received valid StateMigrationModification for {} from task {}",
 					modificationID, message.getTaskExecutionId());
 			}
 
@@ -518,9 +520,16 @@ public class ModificationCoordinator {
 
 			SubtaskState storedState = this.storedState.get(stoppedMapExecutionAttemptID);
 
-			TaskStateHandles taskStateHandles = new TaskStateHandles(storedState);
+			if (storedState == null) {
+				throw new IllegalStateException("Could not find state to restore for ExecutionAttempt: "
+					+ stoppedMapExecutionAttemptID);
+			} else {
+				TaskStateHandles taskStateHandles = new TaskStateHandles(storedState);
 
-			currentExecutionAttempt.setInitialState(taskStateHandles);
+				currentExecutionAttempt.setInitialState(taskStateHandles);
+			}
+
+			newMapOperatorExecutionAttemptID = currentExecutionAttempt.getAttemptId();
 
 			currentExecutionAttempt
 				.scheduleForMigration(
@@ -548,7 +557,7 @@ public class ModificationCoordinator {
 		triggerModification(sink, "Pause Sink");
 	}
 
-	public void modifySinkInstance(ExecutionAttemptID newOperatorExecutionAttemptID) {
+	public void modifySinkInstance() {
 		ExecutionJobVertex sink = findSink();
 
 		Preconditions.checkNotNull(sink);
@@ -558,7 +567,7 @@ public class ModificationCoordinator {
 		executionVertex.getCurrentExecutionAttempt()
 			.triggerResumeWithDifferentInputs(
 				rpcCallTimeout,
-				newOperatorExecutionAttemptID,
+				newMapOperatorExecutionAttemptID,
 				parallelSubTaskIndex);
 	}
 

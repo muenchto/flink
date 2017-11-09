@@ -163,7 +163,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	private TaskStateHandles restoreStateHandles;
 
 	/** The currently active background materialization threads. */
-	private final CloseableRegistry cancelables = new CloseableRegistry();
+	private CloseableRegistry cancelables;
 
 	/**
 	 * Flag to mark the task "in operation", in which case check needs to be initialized to true,
@@ -199,6 +199,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		return pausedForModification;
 	}
 
+	public void setPausedForModification(boolean pausedForModification) {
+		this.pausedForModification = pausedForModification;
+	}
+
 	/**
 	 * Allows the user to specify his own {@link ProcessingTimeService TimerServiceProvider}.
 	 * By default a {@link SystemProcessingTimeService DefaultTimerService} is going to be provided.
@@ -221,6 +225,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 			// -------- Initialize ---------
 			LOG.info("Initializing {} with migration {}.", getName(), pausedForModification);
+
+			cancelables = new CloseableRegistry();
 
 			configuration = new StreamConfig(getTaskConfiguration());
 
@@ -273,8 +279,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			pausedForModification = false;
 			isRunning = true;
 			run();
-
-
 
 			// if this left the run() method cleanly despite the fact that this was canceled,
 			// make sure the "clean shutdown" is not attempted
@@ -1494,7 +1498,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 		public void runSyncCheckpointingAndAcknowledge() throws IOException {
 
-			try (SendMigrationState asyncCheckpointRunnable = new SendMigrationState(
+			try (SendMigrationState synchronousStateSending = new SendMigrationState(
 				owner,
 				nonPartitionedStates,
 				snapshotInProgressList,
@@ -1502,7 +1506,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				checkpointMetrics,
 				startSyncPartNano)){
 
-				asyncCheckpointRunnable.execute();
+				synchronousStateSending.execute();
 
 			} finally {
 				LOG.debug("Migrated state {} to JobManager for task {}.",
@@ -1601,7 +1605,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				if (asyncCheckpointState.compareAndSet(CheckpointingOperation.AsynCheckpointState.RUNNING,
 					CheckpointingOperation.AsynCheckpointState.COMPLETED)) {
 
-					owner.getEnvironment().acknowledgeCheckpoint(
+					owner.getEnvironment().acknowledgeStateMigration(
 						stateMigrationMetaData.getStateMigrationId(),
 						checkpointMetrics,
 						subtaskState);

@@ -1027,20 +1027,10 @@ class JobManager(
 
             case msg if msg.startsWith("modifySink") =>
 
-              val m = msg.split(":")
+              log.info(s"Attempting to modify sink for new map input")
 
-              if (m.length != 2) {
-                (false, s"Jar command $command")
-
-              } else {
-
-                val newExecutionAttempt: ExecutionAttemptID = ExecutionAttemptID.fromString(m(1))
-
-                log.info(s"Attempting to stop map for id '$newExecutionAttempt'")
-
-                modificationCoordinator.modifySinkInstance(newExecutionAttempt)
-                (true, "Modify sink submitted")
-              }
+              modificationCoordinator.modifySinkInstance()
+              (true, "Modify sink submitted")
 
             case "jobmanagerIDs" =>
 

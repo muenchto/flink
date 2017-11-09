@@ -106,7 +106,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 	protected boolean pauseInputs() {
 
 		running = false;
-		pausedForModification = true;
+		setPausedForModification(true);
 
 		return true;
 	}

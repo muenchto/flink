@@ -268,6 +268,7 @@ public class RuntimeEnvironment implements Environment {
 		modificationResponder.acknowledgeStateMigration(
 			jobId, executionId, checkpointId, checkpointMetrics,
 			subtaskState);
+		modificationHandler.storeStateForResuming(subtaskState);
 	}
 
 

@@ -35,6 +35,7 @@ import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineTaskNotCheckpointingException;
 import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineTaskNotReadyException;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
@@ -780,8 +781,6 @@ public class Task implements Runnable, TaskActions {
 
 				initializeState(invokable);
 
-				initializeState(invokable);
-
 				// ----------------------------------------------------------------
 				//  actual task core work
 				// ----------------------------------------------------------------
@@ -809,8 +808,8 @@ public class Task implements Runnable, TaskActions {
 				LOG.info("Creating FileSystem stream leak safety net for task {}", this);
 				FileSystemSafetyNet.initializeSafetyNetForThread();
 
-				// now load the task's invokable code
-				invokable = loadAndInstantiateInvokable(userCodeClassLoader, nameOfInvokableClass);
+				// Do not re-instantiate the invokable, since all fields would be cleared otherwise.
+//				invokable = loadAndInstantiateInvokable(userCodeClassLoader, nameOfInvokableClass);
 
 				initializeMetrics();
 
@@ -825,11 +824,30 @@ public class Task implements Runnable, TaskActions {
 					checkpointResponder, modificationResponder, modificationHandler, taskManagerConfig, metrics, this);
 
 				// let the task code create its readers and writers
-				invokable.setEnvironment(env);
+				this.invokable.setEnvironment(env);
 
-				initializeState(invokable);
+				initializeState(this.invokable);
 
-				this.invokable = invokable;
+				// Set state when resuming
+				if (this.invokable instanceof StreamTask) {
+
+					SubtaskState storedStateWhenResuming = modificationHandler.getStoredStateWhenResuming();
+
+					if (storedStateWhenResuming != null) {
+						// If we are in resuming, we already reused the initial state handles.
+						// Therefore, simply set the storedStateWhenResuming, even when
+						TaskStateHandles taskStateHandles = new TaskStateHandles(storedStateWhenResuming);
+						((StreamTask) this.invokable).setInitialState(taskStateHandles);
+
+						LOG.info("Restored state {} during {} for task {}.", taskStateHandles, executionState, taskNameWithSubtask);
+					} else {
+						LOG.info("Failed to restore state during {} for task {}.", executionState, taskNameWithSubtask);
+					}
+
+				} else {
+					LOG.info("Could not set 'pausedForModification' during {} phase, since task {} is not a StreamTask",
+						executionState, taskNameWithSubtask);
+				}
 
 				// switch to the RUNNING state, if that fails, we have been canceled/failed in the meantime
 				if (!transitionState(ExecutionState.RESUMING, ExecutionState.RUNNING)) {
