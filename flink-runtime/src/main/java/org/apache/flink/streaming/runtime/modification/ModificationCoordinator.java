@@ -8,6 +8,8 @@ import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
+import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.executiongraph.*;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
@@ -64,7 +66,7 @@ public class ModificationCoordinator {
 
 	private ExecutionAttemptID stoppedMapExecutionAttemptID;
 
-	private int parallelSubTaskIndex;
+	private int stoppedMapSubTaskIndex;
 
 	private ExecutionAttemptID newMapOperatorExecutionAttemptID;
 
@@ -433,7 +435,7 @@ public class ModificationCoordinator {
 		}
 
 		stoppedMapExecutionAttemptID = operatorInstanceToStop.getCurrentExecutionAttempt().getAttemptId();
-		parallelSubTaskIndex = operatorInstanceToStop.getCurrentExecutionAttempt().getParallelSubtaskIndex();
+		stoppedMapSubTaskIndex = operatorInstanceToStop.getCurrentExecutionAttempt().getParallelSubtaskIndex();
 
 		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
 	}
@@ -561,14 +563,30 @@ public class ModificationCoordinator {
 		ExecutionJobVertex sink = findSink();
 
 		Preconditions.checkNotNull(sink);
-		Preconditions.checkArgument(sink.getTaskVertices().length == 1);
 
-		ExecutionVertex executionVertex = sink.getTaskVertices()[0];
-		executionVertex.getCurrentExecutionAttempt()
-			.triggerResumeWithDifferentInputs(
-				rpcCallTimeout,
-				newMapOperatorExecutionAttemptID,
-				parallelSubTaskIndex);
+		ExecutionVertex[] taskVertices = findMap().getTaskVertices();
+		assert taskVertices != null;
+		assert taskVertices.length >= stoppedMapSubTaskIndex;
+		Execution newMapExecutionAttemptId = taskVertices[stoppedMapSubTaskIndex].getCurrentExecutionAttempt();
+		assert newMapExecutionAttemptId.getAttemptId() != stoppedMapExecutionAttemptID;
+
+		ExecutionVertex[] sinkTaskVertices = sink.getTaskVertices();
+
+		for (ExecutionVertex executionVertex : sinkTaskVertices) {
+
+			List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor;
+			try {
+				inputGateDeploymentDescriptor =
+					executionVertex.createInputGateDeploymentDescriptor(executionVertex.getCurrentAssignedResource());
+			} catch (ExecutionGraphException e) {
+				throw new RuntimeException(e);
+			}
+
+			executionVertex.getCurrentExecutionAttempt()
+				.triggerResumeWithDifferentInputs(
+					rpcCallTimeout,
+					inputGateDeploymentDescriptor);
+		}
 	}
 
 	public void resumeSink() {

@@ -24,6 +24,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
+import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
@@ -186,9 +187,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	@Override
 	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 																	 ExecutionAttemptID currentSinkAttempt,
-																	 ExecutionAttemptID newOperatorExecutionAttemptID,
-																	 TaskManagerLocation tmLocation,
-																	 int subTaskIndex) {
+																	 List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
 		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
 

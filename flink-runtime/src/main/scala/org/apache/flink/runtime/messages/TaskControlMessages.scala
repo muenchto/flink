@@ -19,10 +19,11 @@
 package org.apache.flink.runtime.messages
 
 import java.util
+import java.util.List
 
 import org.apache.flink.api.common.JobID
 import org.apache.flink.runtime.clusterframework.types.AllocationID
-import org.apache.flink.runtime.deployment.{InputChannelDeploymentDescriptor, TaskDeploymentDescriptor}
+import org.apache.flink.runtime.deployment.{InputChannelDeploymentDescriptor, InputGateDeploymentDescriptor, TaskDeploymentDescriptor}
 import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, PartitionInfo}
 import org.apache.flink.runtime.jobgraph.{IntermediateDataSetID, IntermediateResultPartitionID}
 import org.apache.flink.runtime.taskmanager.{TaskExecutionState, TaskManagerLocation}
@@ -114,9 +115,7 @@ object TaskMessages {
     extends TaskMessage with RequiresLeaderSessionID
 
   case class ResumeWithDifferentInputs(sinkExecutionAttemptID: ExecutionAttemptID,
-                                       newInput: ExecutionAttemptID,
-                                       taskManagerLocation: TaskManagerLocation,
-                                       subTaskIndex: Int)
+                                       inputGateDeploymentDescriptor: util.List[InputGateDeploymentDescriptor] )
     extends TaskMessage with RequiresLeaderSessionID
 
   case class ResumeWithIncreasedDoP(sinkExecutionAttemptID: ExecutionAttemptID,
