@@ -771,10 +771,7 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		
 		// Produced intermediate results
 		List<ResultPartitionDeploymentDescriptor> producedPartitions = new ArrayList<>(resultPartitions.size());
-		
-		// Consumed intermediate results
-		List<InputGateDeploymentDescriptor> consumedPartitions = new ArrayList<>(inputEdges.length);
-		
+
 		boolean lazyScheduling = getExecutionGraph().getScheduleMode().allowLazyDeployment();
 
 		for (IntermediateResultPartition partition : resultPartitions.values()) {
@@ -784,12 +781,12 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 			if (consumers.isEmpty()) {
 				//TODO this case only exists for test, currently there has to be exactly one consumer in real jobs!
 				producedPartitions.add(ResultPartitionDeploymentDescriptor.from(
-						partition,
-						KeyGroupRangeAssignment.UPPER_BOUND_MAX_PARALLELISM,
-						lazyScheduling));
+					partition,
+					KeyGroupRangeAssignment.UPPER_BOUND_MAX_PARALLELISM,
+					lazyScheduling));
 			} else {
 				Preconditions.checkState(1 == consumers.size(),
-						"Only one consumer supported in the current implementation! Found: " + consumers.size());
+					"Only one consumer supported in the current implementation! Found: " + consumers.size());
 
 				List<ExecutionEdge> consumer = consumers.get(0);
 				ExecutionJobVertex vertex = consumer.get(0).getTarget().getJobVertex();
@@ -797,25 +794,9 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 				producedPartitions.add(ResultPartitionDeploymentDescriptor.from(partition, maxParallelism, lazyScheduling));
 			}
 		}
-		
-		
-		for (ExecutionEdge[] edges : inputEdges) {
-			InputChannelDeploymentDescriptor[] partitions = InputChannelDeploymentDescriptor
-					.fromEdges(edges, targetSlot, lazyScheduling);
 
-			// If the produced partition has multiple consumers registered, we
-			// need to request the one matching our sub task index.
-			// TODO Refactor after removing the consumers from the intermediate result partitions
-			int numConsumerEdges = edges[0].getSource().getConsumers().get(0).size();
-
-			int queueToRequest = subTaskIndex % numConsumerEdges; // TODO Masterthesis What?
-
-			IntermediateResult consumedIntermediateResult = edges[0].getSource().getIntermediateResult();
-			final IntermediateDataSetID resultId = consumedIntermediateResult.getId();
-			final ResultPartitionType partitionType = consumedIntermediateResult.getResultType();
-
-			consumedPartitions.add(new InputGateDeploymentDescriptor(resultId, partitionType, queueToRequest, partitions));
-		}
+		// Consumed intermediate results
+		List<InputGateDeploymentDescriptor> consumedPartitions = createInputGateDeploymentDescriptor(targetSlot);
 
 		SerializedValue<JobInformation> serializedJobInformation = getExecutionGraph().getSerializedJobInformation();
 		SerializedValue<TaskInformation> serializedJobVertexInformation = null;
@@ -840,15 +821,43 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 			consumedPartitions);
 	}
 
+	public List<InputGateDeploymentDescriptor> createInputGateDeploymentDescriptor(SimpleSlot targetSlot)
+		throws ExecutionGraphException {
+
+		// Consumed intermediate results
+		List<InputGateDeploymentDescriptor> consumedPartitions = new ArrayList<>(inputEdges.length);
+
+		boolean lazyScheduling = getExecutionGraph().getScheduleMode().allowLazyDeployment();
+
+		for (ExecutionEdge[] edges : inputEdges) {
+			InputChannelDeploymentDescriptor[] partitions = InputChannelDeploymentDescriptor
+				.fromEdges(edges, targetSlot, lazyScheduling);
+
+			// If the produced partition has multiple consumers registered, we
+			// need to request the one matching our sub task index.
+			// TODO Refactor after removing the consumers from the intermediate result partitions
+			int numConsumerEdges = edges[0].getSource().getConsumers().get(0).size();
+
+			// numConsumerEdges is the number of parallelism for that operator.
+			// It ensure, that each consumer access the right queue.
+			int queueToRequest = subTaskIndex % numConsumerEdges;
+
+			IntermediateResult consumedIntermediateResult = edges[0].getSource().getIntermediateResult();
+			final IntermediateDataSetID resultId = consumedIntermediateResult.getId();
+			final ResultPartitionType partitionType = consumedIntermediateResult.getResultType();
+
+			consumedPartitions.add(new InputGateDeploymentDescriptor(resultId, partitionType, queueToRequest, partitions));
+		}
+
+		return consumedPartitions;
+	}
+
 	TaskDeploymentDescriptor createRuntimeDeploymentDescriptor(ExecutionAttemptID executionId,
 																	  SimpleSlot targetSlot,
 																	  TaskStateHandles taskStateHandles,
 																	  int attemptNumber) throws ExecutionGraphException {
 		// Produced intermediate results
 		List<ResultPartitionDeploymentDescriptor> producedPartitions = new ArrayList<>(resultPartitions.size());
-
-		// Consumed intermediate results
-		List<InputGateDeploymentDescriptor> consumedPartitions = new ArrayList<>(inputEdges.length);
 
 		boolean lazyScheduling = getExecutionGraph().getScheduleMode().allowLazyDeployment();
 
@@ -878,23 +887,8 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 			}
 		}
 
-		for (ExecutionEdge[] edges : inputEdges) {
-			InputChannelDeploymentDescriptor[] partitions = InputChannelDeploymentDescriptor
-				.fromEdges(edges, targetSlot, lazyScheduling);
-
-			// If the produced partition has multiple consumers registered, we
-			// need to request the one matching our sub task index.
-			// TODO Refactor after removing the consumers from the intermediate result partitions
-			int numConsumerEdges = edges[0].getSource().getConsumers().get(0).size();
-
-			int queueToRequest = subTaskIndex % numConsumerEdges;
-
-			IntermediateResult consumedIntermediateResult = edges[0].getSource().getIntermediateResult();
-			final IntermediateDataSetID resultId = consumedIntermediateResult.getId();
-			final ResultPartitionType partitionType = consumedIntermediateResult.getResultType();
-
-			consumedPartitions.add(new InputGateDeploymentDescriptor(resultId, partitionType, queueToRequest, partitions));
-		}
+		// Consumed intermediate results
+		List<InputGateDeploymentDescriptor> consumedPartitions = createInputGateDeploymentDescriptor(targetSlot);
 
 		SerializedValue<JobInformation> serializedJobInformation = getExecutionGraph().getSerializedJobInformation();
 		SerializedValue<TaskInformation> serializedJobVertexInformation = null;

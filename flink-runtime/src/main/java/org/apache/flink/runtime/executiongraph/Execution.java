@@ -1439,16 +1439,13 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	}
 
 	public void triggerResumeWithDifferentInputs(Time timestamp,
-												 ExecutionAttemptID newOperatorExecutionAttemptID,
-												 int parallelSubTaskIndex) {
+												 List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
 		FlinkFuture<Acknowledge> acknowledgeFlinkFuture = getAssignedResource()
 			.getTaskManagerGateway()
 			.triggerResumeWithDifferentInputs(
 				timestamp,
 				getAttemptId(),
-				newOperatorExecutionAttemptID,
-				getAssignedResourceLocation(),
-				parallelSubTaskIndex);
+				inputGateDeploymentDescriptor);
 
 		acknowledgeFlinkFuture.handle(new BiFunction<Acknowledge, Throwable, Object>() {
 			@Override

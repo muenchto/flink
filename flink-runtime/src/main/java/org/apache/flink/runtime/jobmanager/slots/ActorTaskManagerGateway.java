@@ -26,6 +26,7 @@ import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.clusterframework.messages.StopCluster;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
+import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
@@ -320,17 +321,13 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	@Override
 	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 																	 ExecutionAttemptID currentSinkAttempt,
-																	 ExecutionAttemptID newOperatorExecutionAttemptID,
-																	 TaskManagerLocation tmLocation,
-																	 int subTaskIndex) {
+																	 List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
 		Preconditions.checkNotNull(timeout);
-		Preconditions.checkNotNull(newOperatorExecutionAttemptID);
+		Preconditions.checkNotNull(inputGateDeploymentDescriptor);
 
 		scala.concurrent.Future<Acknowledge> resumeResult = actorGateway.ask(
 			new TaskMessages.ResumeWithDifferentInputs(currentSinkAttempt,
-				newOperatorExecutionAttemptID,
-				tmLocation,
-				subTaskIndex),
+				inputGateDeploymentDescriptor),
 			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
 			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
 

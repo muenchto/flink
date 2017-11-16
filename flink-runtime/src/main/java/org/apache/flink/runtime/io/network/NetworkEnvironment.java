@@ -232,6 +232,36 @@ public class NetworkEnvironment {
 		}
 	}
 
+	public void registerInputGates(Task task) {
+		synchronized (lock) {
+			if (isShutdown) {
+				throw new IllegalStateException("NetworkEnvironment is shut down");
+			}
+
+			// Setup the buffer pool for each buffer reader
+			final SingleInputGate[] inputGates = task.getAllInputGates();
+
+			for (SingleInputGate gate : inputGates) {
+				BufferPool bufferPool = null;
+
+				try {
+					int maxNumberOfMemorySegments = gate.getConsumedPartitionType().isBounded() ?
+						gate.getNumberOfInputChannels() * networkBuffersPerChannel +
+							extraNetworkBuffersPerGate : Integer.MAX_VALUE;
+					bufferPool = networkBufferPool.createBufferPool(gate.getNumberOfInputChannels(),
+						maxNumberOfMemorySegments);
+					gate.setBufferPool(bufferPool);
+				} catch (Throwable t) {
+					if (bufferPool != null) {
+						bufferPool.lazyDestroy();
+					}
+
+					throw new RuntimeException(t);
+				}
+			}
+		}
+	}
+
 	public void unregisterTask(Task task) {
 		LOG.debug("Unregister task {} from network environment (state: {}).",
 				task.getTaskInfo().getTaskNameWithSubtasks(), task.getExecutionState());

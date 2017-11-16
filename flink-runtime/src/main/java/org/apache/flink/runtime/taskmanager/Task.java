@@ -454,34 +454,32 @@ public class Task implements Runnable, TaskActions {
 	}
 
 	public void connectToNewInputAfterMigration(NetworkEnvironment networkEnvironment,
-												ExecutionAttemptID migratedMapTask,
-												TaskManagerLocation taskManagerLocation,
-												int changedIndex) {
+												List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptors) {
 
 		Preconditions.checkArgument(inputGateDeploymentDescriptor.length == 1);
 
-		final String taskNameWithSubtaskAndId = " Modified - " + taskNameWithSubtask + " (" + executionId + ')';
-		LOG.info("{} Modifying with new IGDD: {}", taskNameWithSubtaskAndId, inputGateDeploymentDescriptor);
-		LOG.info("{} Before Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
+		// Consumed intermediate result partitions
+		this.inputGates = new SingleInputGate[inputGateDeploymentDescriptors.size()];
 
-		// Omitted single case for multiple input
+		int counter = 0;
 
-		SingleInputGate gate = SingleInputGate.createModified(
-			taskNameWithSubtaskAndId,
-			jobId,
-			executionId,
-			inputGateDeploymentDescriptor[0],
-			networkEnvironment,
-			this,
-			taskMetricGroup.getIOMetricGroup(),
-			migratedMapTask,
-			taskManagerLocation,
-			changedIndex);
+		for (InputGateDeploymentDescriptor inputGateDeploymentDescriptor: inputGateDeploymentDescriptors) {
+			SingleInputGate gate = SingleInputGate.create(
+				taskNameWithSubtask,
+				jobId,
+				executionId,
+				inputGateDeploymentDescriptor,
+				networkEnvironment,
+				this,
+				taskMetricGroup.getIOMetricGroup());
 
-		inputGates[0] = gate;
-		inputGatesById.put(gate.getConsumedResultId(), gate);
+			inputGates[counter] = gate;
+			inputGatesById.put(gate.getConsumedResultId(), gate);
 
-		LOG.info("{} After Current input gates: {}", taskNameWithSubtaskAndId, Arrays.toString(inputGates));
+			++counter;
+		}
+
+		networkEnvironment.registerInputGates(this);
 	}
 
 	public void reconfigureForNewInputAfterChangedDoP(NetworkEnvironment networkEnvironment,
@@ -811,7 +809,7 @@ public class Task implements Runnable, TaskActions {
 				// Do not re-instantiate the invokable, since all fields would be cleared otherwise.
 //				invokable = loadAndInstantiateInvokable(userCodeClassLoader, nameOfInvokableClass);
 
-				initializeMetrics();
+//				initializeMetrics();
 
 				copyForDistributedCache();
 
