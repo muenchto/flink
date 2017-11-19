@@ -25,6 +25,9 @@ import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.BufferProvider;
 import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
+import org.apache.flink.runtime.io.network.partition.ResultSubpartition;
+import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartition;
+import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.util.event.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,6 +120,31 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 
 	@Override
 	public void onEvent(TaskEvent event) {
+
+		if (event.getClass() == PausingTaskEvent.class) {
+			int taskIndex = ((PausingTaskEvent) event).getTaskIndex();
+
+			ResultSubpartition[] allPartitions = partition.getAllPartitions();
+
+			if (taskIndex >= allPartitions.length) {
+				throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
+			}
+
+			ResultSubpartition resultSubpartition = allPartitions[taskIndex];
+
+			if (resultSubpartition.getClass() != SpillablePipelinedSubpartition.class) {
+				throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
+			} else {
+				try {
+					((SpillablePipelinedSubpartition) resultSubpartition).spillToDisk();
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			}
+
+			return;
+		}
+
 		taskEventHandler.publish(event);
 	}
 
