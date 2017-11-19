@@ -163,7 +163,8 @@ public class ResultPartition implements BufferPoolOwner {
 			case PIPELINED:
 			case PIPELINED_BOUNDED:
 				for (int i = 0; i < subpartitions.length; i++) {
-					subpartitions[i] = new PipelinedSubpartition(i, this, owningTaskName);
+//					subpartitions[i] = new PipelinedSubpartition(i, this, owningTaskName);
+					subpartitions[i] = new SpillablePipelinedSubpartition(i, this, ioManager);
 				}
 
 				break;
