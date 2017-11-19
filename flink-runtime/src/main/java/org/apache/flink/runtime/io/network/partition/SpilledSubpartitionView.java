@@ -178,7 +178,7 @@ class SpilledSubpartitionView implements ResultSubpartitionView, NotificationLis
 	 * <p>This pool ensures that a consuming input gate makes progress in all cases, even when all
 	 * buffers of the input gate buffer pool have been requested by remote input channels.
 	 */
-	private static class SpillReadBufferPool implements BufferRecycler {
+	static class SpillReadBufferPool implements BufferRecycler {
 
 		private final Queue<Buffer> buffers;
 
@@ -206,7 +206,7 @@ class SpilledSubpartitionView implements ResultSubpartitionView, NotificationLis
 			}
 		}
 
-		private Buffer requestBufferBlocking() throws InterruptedException {
+		Buffer requestBufferBlocking() throws InterruptedException {
 			synchronized (buffers) {
 				while (true) {
 					if (isDestroyed) {
@@ -224,7 +224,7 @@ class SpilledSubpartitionView implements ResultSubpartitionView, NotificationLis
 			}
 		}
 
-		private void destroy() {
+		void destroy() {
 			synchronized (buffers) {
 				isDestroyed = true;
 				buffers.notifyAll();
