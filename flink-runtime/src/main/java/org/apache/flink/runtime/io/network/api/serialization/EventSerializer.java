@@ -24,10 +24,7 @@ import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions.CheckpointType;
 import org.apache.flink.runtime.event.AbstractEvent;
-import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
-import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
-import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
-import org.apache.flink.runtime.io.network.api.EndOfSuperstepEvent;
+import org.apache.flink.runtime.io.network.api.*;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.FreeingBufferRecycler;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
@@ -66,12 +63,17 @@ public class EventSerializer {
 
 	private static final int MODIFICATION_CANCEL_EVENT = 6;
 
+	private static final int SPILL_TO_DISK_MARKER = 7;
+
 	// ------------------------------------------------------------------------
 
 	public static ByteBuffer toSerializedEvent(AbstractEvent event) throws IOException {
 		final Class<?> eventClass = event.getClass();
 		if (eventClass == EndOfPartitionEvent.class) {
 			return ByteBuffer.wrap(new byte[] { 0, 0, 0, END_OF_PARTITION_EVENT });
+		}
+		else if (eventClass == SpillToDiskMarker.class) {
+			return ByteBuffer.wrap(new byte[] { 0, 0, 0, SPILL_TO_DISK_MARKER });
 		}
 		else if (eventClass == CheckpointBarrier.class) {
 			CheckpointBarrier barrier = (CheckpointBarrier) event;
@@ -253,8 +255,9 @@ public class EventSerializer {
 
 			if (type == END_OF_PARTITION_EVENT) {
 				return EndOfPartitionEvent.INSTANCE;
-			}
-			else if (type == CHECKPOINT_BARRIER_EVENT) {
+			} else if (type == SPILL_TO_DISK_MARKER) {
+				return SpillToDiskMarker.INSTANCE;
+			} else if (type == CHECKPOINT_BARRIER_EVENT) {
 				long id = buffer.getLong();
 				long timestamp = buffer.getLong();
 
@@ -278,11 +281,9 @@ public class EventSerializer {
 				}
 
 				return new CheckpointBarrier(id, timestamp, checkpointOptions);
-			}
-			else if (type == END_OF_SUPERSTEP_EVENT) {
+			} else if (type == END_OF_SUPERSTEP_EVENT) {
 				return EndOfSuperstepEvent.INSTANCE;
-			}
-			else if (type == CANCEL_CHECKPOINT_MARKER_EVENT) {
+			} else if (type == CANCEL_CHECKPOINT_MARKER_EVENT) {
 				long id = buffer.getLong();
 				return new CancelCheckpointMarker(id);
 			} else if (type == MODIFICATION_START_EVENT) {
