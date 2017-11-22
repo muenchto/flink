@@ -103,6 +103,14 @@ public interface StatefulTask {
 	boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs) throws Exception;
 
 	/**
+	 * This method is called to trigger a acknowledge the spilling of the graph.
+	 * This should trigger the pausing of the operator.
+	 *
+	 * @return {@code false} if pausing can not be carried out, {@code true} otherwise
+	 */
+	boolean acknowledgeSpillingToDisk() throws Exception;
+
+	/**
 	 * This method is called to abort a modification of the graph.
 	 *
 	 * @param jobVertexIDs Options for aborting this modification

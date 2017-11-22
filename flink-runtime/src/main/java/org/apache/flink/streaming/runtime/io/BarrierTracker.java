@@ -28,6 +28,7 @@ import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
+import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
@@ -117,9 +118,15 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 			} else if (next.getEvent().getClass() == StartModificationMarker.class) {
 				LOG.info("Received ModificationMarker:  {}", StartModificationMarker.class);
 
+				inputGate.sendTaskEvent(new PausingTaskEvent(next.getChannelIndex()));
+
+				return next;
+			} else if (next.getEvent().getClass() == PausingTaskEvent.class) {
+
 				notifyStartModification((StartModificationMarker) next.getEvent());
 
 				return next;
+
 			} else if (next.getEvent().getClass() == CancelModificationMarker.class) {
 				LOG.info("Received ModificationMarker: {}", CancelModificationMarker.class);
 

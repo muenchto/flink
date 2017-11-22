@@ -27,6 +27,7 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.*;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.FreeingBufferRecycler;
+import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.util.DataInputDeserializer;
 import org.apache.flink.runtime.util.DataOutputSerializer;
@@ -65,17 +66,26 @@ public class EventSerializer {
 
 	private static final int SPILL_TO_DISK_MARKER = 7;
 
+	private static final int PAUSING_TASK_EVENT = 8;
+
 	// ------------------------------------------------------------------------
 
 	public static ByteBuffer toSerializedEvent(AbstractEvent event) throws IOException {
 		final Class<?> eventClass = event.getClass();
 		if (eventClass == EndOfPartitionEvent.class) {
 			return ByteBuffer.wrap(new byte[] { 0, 0, 0, END_OF_PARTITION_EVENT });
-		}
-		else if (eventClass == SpillToDiskMarker.class) {
+		} else if (eventClass == SpillToDiskMarker.class) {
 			return ByteBuffer.wrap(new byte[] { 0, 0, 0, SPILL_TO_DISK_MARKER });
-		}
-		else if (eventClass == CheckpointBarrier.class) {
+		} else if (eventClass == PausingTaskEvent.class) {
+
+			PausingTaskEvent marker = (PausingTaskEvent) event;
+
+			ByteBuffer buf = ByteBuffer.allocate(8);
+			buf.putInt(0, PAUSING_TASK_EVENT);
+			buf.putInt(4, marker.getTaskIndex());
+			return buf;
+
+		} else if (eventClass == CheckpointBarrier.class) {
 			CheckpointBarrier barrier = (CheckpointBarrier) event;
 
 			CheckpointOptions checkpointOptions = barrier.getCheckpointOptions();
@@ -90,7 +100,7 @@ public class EventSerializer {
 				buf.putInt(20, checkpointType.ordinal());
 			} else if (checkpointType == CheckpointType.SAVEPOINT) {
 				String targetLocation = checkpointOptions.getTargetLocation();
-				assert(targetLocation != null);
+				assert (targetLocation != null);
 				byte[] locationBytes = targetLocation.getBytes(STRING_CODING_CHARSET);
 
 				buf = ByteBuffer.allocate(24 + 4 + locationBytes.length);
@@ -107,11 +117,9 @@ public class EventSerializer {
 			}
 
 			return buf;
-		}
-		else if (eventClass == EndOfSuperstepEvent.class) {
-			return ByteBuffer.wrap(new byte[] { 0, 0, 0, END_OF_SUPERSTEP_EVENT });
-		}
-		else if (eventClass == CancelCheckpointMarker.class) {
+		} else if (eventClass == EndOfSuperstepEvent.class) {
+			return ByteBuffer.wrap(new byte[]{0, 0, 0, END_OF_SUPERSTEP_EVENT});
+		} else if (eventClass == CancelCheckpointMarker.class) {
 			CancelCheckpointMarker marker = (CancelCheckpointMarker) event;
 
 			ByteBuffer buf = ByteBuffer.allocate(12);
@@ -210,6 +218,10 @@ public class EventSerializer {
 					return eventClass.equals(StartModificationMarker.class);
 				case MODIFICATION_CANCEL_EVENT:
 					return eventClass.equals(CancelModificationMarker.class);
+				case SPILL_TO_DISK_MARKER:
+					return eventClass.equals(CancelModificationMarker.class);
+				case PAUSING_TASK_EVENT:
+					return eventClass.equals(CancelModificationMarker.class);
 				case OTHER_EVENT:
 					try {
 						final DataInputDeserializer deserializer = new DataInputDeserializer(buffer);
@@ -257,6 +269,10 @@ public class EventSerializer {
 				return EndOfPartitionEvent.INSTANCE;
 			} else if (type == SPILL_TO_DISK_MARKER) {
 				return SpillToDiskMarker.INSTANCE;
+			} else if (type == PAUSING_TASK_EVENT) {
+				int subTaskIndex = buffer.getInt();
+
+				return new PausingTaskEvent(subTaskIndex);
 			} else if (type == CHECKPOINT_BARRIER_EVENT) {
 				long id = buffer.getLong();
 				long timestamp = buffer.getLong();

@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.google.common.base.Joiner;
 import org.apache.commons.lang.StringUtils;
@@ -42,6 +43,8 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
+import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
+import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
@@ -126,6 +129,18 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	/** The logger used by the StreamTask and its subclasses. */
 	private static final Logger LOG = LoggerFactory.getLogger(StreamTask.class);
+
+	enum ModificationStatus {
+		NOT_MODIFIED,
+		WAITING_FOR_SPILLING_MARKER,
+		PAUSING,
+		PAUSED
+	}
+
+	private static final AtomicReferenceFieldUpdater<StreamTask, ModificationStatus> STATE_UPDATER =
+		AtomicReferenceFieldUpdater.newUpdater(StreamTask.class, ModificationStatus.class, "modificationStatus");
+
+	private volatile ModificationStatus modificationStatus = ModificationStatus.NOT_MODIFIED;
 
 	// ------------------------------------------------------------------------
 
@@ -669,8 +684,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						if (getEnvironment().getModificationHandler().getHandledModifications().contains(metaData.getModificationID())) {
 							LOG.info("Operator {} has already reacted to modification {}. Ignoring modification.",
 								getName(), getEnvironment().getJobVertexId());
-						} else if (pauseInputs()) {
-							LOG.info("Operator {} successfully paused inputs for modification {}.",
+						} else if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER)) {
+
+							for (InputGate inputGate : getEnvironment().getAllInputGates()) {
+								inputGate.sendTaskEvent(new PausingTaskEvent(getIndexInSubtaskGroup()));
+							}
+
+							LOG.info("Operator {} successfully started modification sequence for {}.",
 								getName(), getEnvironment().getJobVertexId());
 							getEnvironment().acknowledgeModification(metaData.getModificationID());
 						} else {
@@ -734,6 +754,45 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			}
 		}
 	}
+
+	@Override
+	public boolean acknowledgeSpillingToDisk() throws Exception {
+
+		LOG.info("Operator {} acknowledges SpillingToDisk {}.", getName(), getEnvironment().getJobVertexId());
+
+		synchronized (lock) {
+			if (isRunning) {
+				if (pauseInputs()) {
+
+					if (transitionState(ModificationStatus.WAITING_FOR_SPILLING_MARKER, ModificationStatus.PAUSING)) {
+
+						LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
+							getName(), getEnvironment().getJobVertexId());
+
+						return true;
+					} else {
+
+						LOG.info("Operator {} successfully acknowledged SpillingToDisk but failed to pause Inputs: {}.",
+							getName(), getEnvironment().getJobVertexId());
+
+						return false;
+					}
+
+				} else {
+					LOG.info("Operator {} failed to pause Input for SpillingToDisk: {}.",
+						getName(), getEnvironment().getJobVertexId());
+
+					return false;
+				}
+			} else {
+				LOG.info("Operator {} wants to acknowledge SpillingToDisk, but is not running: {}.",
+					getName(), getEnvironment().getJobVertexId());
+
+				return false;
+			}
+		}
+	}
+
 
 	private boolean performCheckpoint(
 			CheckpointMetaData checkpointMetaData,
@@ -900,6 +959,40 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			Preconditions.checkArgument(operatorStates.size() == operatorChainLength,
 					"Invalid number of operator states. Found :" + operatorStates.size() +
 							". Expected: " + operatorChainLength);
+		}
+	}
+
+	/**
+	 * Try to transition the execution state from the current state to the new state.
+	 *
+	 * @param currentState of the execution
+	 * @param newState of the execution
+	 * @return true if the transition was successful, otherwise false
+	 */
+	private boolean transitionState(ModificationStatus currentState, ModificationStatus newState) {
+		return transitionState(currentState, newState, null);
+	}
+
+	/**
+	 * Try to transition the execution state from the current state to the new state.
+	 *
+	 * @param currentState of the execution
+	 * @param newState of the execution
+	 * @param cause of the transition change or null
+	 * @return true if the transition was successful, otherwise false
+	 */
+	private boolean transitionState(ModificationStatus currentState, ModificationStatus newState, Throwable cause) {
+
+		if (STATE_UPDATER.compareAndSet(this, currentState, newState)) {
+			if (cause == null) {
+				LOG.info("{} ({}) switched from {} to {}.", getName(), getEnvironment().getExecutionId(), currentState, newState);
+			} else {
+				LOG.info("{} ({}) switched from {} to {} with exception {}.", getName(), getEnvironment().getExecutionId(), currentState, newState, cause);
+			}
+
+			return true;
+		} else {
+			return false;
 		}
 	}
 
