@@ -33,8 +33,10 @@ import org.apache.flink.runtime.io.disk.iomanager.IOManager;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
+import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
+import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
@@ -196,6 +198,12 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 
 					return next;
 
+				} else if (next.getEvent().getClass() == SpillToDiskMarker.class) {
+
+					pauseInputAfterSpillingAcknowledged();
+
+					return next;
+
 				} else if (next.getEvent().getClass() == CancelModificationMarker.class) {
 					LOG.info("Received ModificationMarker: {}", CancelModificationMarker.class);
 
@@ -217,6 +225,16 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 				// final end of both input and buffered data
 				return null;
 			}
+		}
+	}
+
+	private void pauseInputAfterSpillingAcknowledged() throws Exception {
+		if (statefulTask != null) {
+
+			statefulTask.acknowledgeSpillingToDisk();
+
+		} else {
+			throw new NullPointerException("statefulTask must not be null");
 		}
 	}
 

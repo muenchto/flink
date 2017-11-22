@@ -1523,6 +1523,11 @@ public class BarrierBufferTest {
 		}
 
 		@Override
+		public boolean acknowledgeSpillingToDisk() throws Exception {
+			return false;
+		}
+
+		@Override
 		public void abortModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, Throwable cause) throws Exception {
 
 		}

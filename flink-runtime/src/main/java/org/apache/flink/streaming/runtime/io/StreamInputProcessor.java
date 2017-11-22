@@ -34,12 +34,14 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
+import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
 import org.apache.flink.runtime.io.network.api.serialization.RecordDeserializer;
 import org.apache.flink.runtime.io.network.api.serialization.RecordDeserializer.DeserializationResult;
 import org.apache.flink.runtime.io.network.api.serialization.SpillingAdaptiveSpanningRecordDeserializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
+import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.runtime.metrics.groups.OperatorMetricGroup;
 import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
@@ -247,6 +249,10 @@ public class StreamInputProcessor<IN> {
 						// Return true, so that we can restart this method, but check if we are still running
 						return true;
 
+					} else if (event.getClass() == SpillToDiskMarker.class) {
+						// Do nothing here, as modification was triggered in BarrierTracker
+						// Return true, so that we can restart this method, but check if we are still running
+						return true;
 					} else if (event.getClass() != EndOfPartitionEvent.class) {
 						throw new IOException("Unexpected event: " + event);
 					}

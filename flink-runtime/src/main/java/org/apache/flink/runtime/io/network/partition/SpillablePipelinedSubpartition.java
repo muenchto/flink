@@ -153,6 +153,8 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 			buffers.add(buffer);
 			reader = readView;
 			updateStatistics(buffer);
+
+			this.spillWriter = ioManager.createBufferFileWriter(ioManager.createChannel());
 		}
 
 		LOG.debug("Start spilling subpartition {} for task {} to disk.", this, parent.owningTaskName);
@@ -213,8 +215,6 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 				return 0;
 			} else if (spillWriter == null) {
 				// No view and in-memory => spill to disk
-
-				this.spillWriter = ioManager.createBufferFileWriter(ioManager.createChannel());
 
 				int numberOfBuffers = buffers.size();
 				long spilledBytes = 0;

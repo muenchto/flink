@@ -546,6 +546,11 @@ public class BarrierTrackerTest {
 		}
 
 		@Override
+		public boolean acknowledgeSpillingToDisk() throws Exception {
+			return false;
+		}
+
+		@Override
 		public void abortModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, Throwable cause) throws Exception {
 			throw new UnsupportedOperationException("should never be called");
 		}

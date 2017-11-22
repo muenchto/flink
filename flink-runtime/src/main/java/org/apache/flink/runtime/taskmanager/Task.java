@@ -902,7 +902,7 @@ public class Task implements Runnable, TaskActions {
 			// finish the produced partitions. if this fails, we consider the execution failed.
 			for (ResultPartition partition : producedPartitions) {
 				if (partition != null) {
-					partition.finish();
+					partition.finish(); // For Batch tasks, this is necessary to consume the current subpartitionresult
 				}
 			}
 
