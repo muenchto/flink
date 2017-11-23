@@ -40,7 +40,7 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 	private final SpilledSubpartitionView.SpillReadBufferPool bufferPool;
 
 	/** The total number of spilled buffers */
-	private final long numberOfSpilledBuffers;
+	private volatile long numberOfSpilledBuffers;
 
 	/** Flag indicating whether a spill is still in progress */
 	private volatile boolean isSpillInProgress = true;
@@ -55,7 +55,7 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 		this.subpartition = checkNotNull(subpartition);
 		this.availabilityListener = checkNotNull(listener);
 
-		this.bufferPool = new SpilledSubpartitionView.SpillReadBufferPool(2, memorySegmentSize);
+		this.bufferPool = new SpilledSubpartitionView.SpillReadBufferPool(8, memorySegmentSize);
 		this.spillWriter = checkNotNull(spillWriter);
 		this.fileReader = new SynchronousBufferFileReader(spillWriter.getChannelID(), false);
 		checkArgument(numberOfSpilledBuffers >= 0);
@@ -75,7 +75,11 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 
 	@Override
 	public void notifyBuffersAvailable(long numBuffers) throws IOException {
-		availabilityListener.notifyBuffersAvailable(numBuffers);
+		if (isSpillInProgress) {
+			numberOfSpilledBuffers += numBuffers;
+		} else {
+			availabilityListener.notifyBuffersAvailable(numBuffers);
+		}
 	}
 
 	/**
@@ -87,18 +91,16 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 	public void onNotification() {
 		isSpillInProgress = false;
 		availabilityListener.notifyBuffersAvailable(numberOfSpilledBuffers);
-		spillingInProgressLock.notify();
 		LOG.debug("Finished spilling. Notified about {} available buffers.", numberOfSpilledBuffers);
 	}
 
 	@Override
 	public Buffer getNextBuffer() throws IOException, InterruptedException {
 
-		if (isSpillInProgress) {
-			spillingInProgressLock.wait();
+		// No locking needed, since we do not notifyForAvailableBuffers before?
+		if (!fileReader.hasReachedEndOfFile()) {
 
-			return getNextBuffer();
-		} else if (!fileReader.hasReachedEndOfFile()) {
+			LOG.info("Reading from fileReader");
 
 			// TODO This is fragile as we implicitly expect that multiple calls to
 			// this method don't happen before recycling buffers returned earlier.
@@ -107,6 +109,9 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 
 			return buffer;
 		} else {
+
+			LOG.info("Finished Reading from fileReader and reading from subpartition {} again", subpartition);
+
 			return subpartition.pollBuffer();
 		}
 	}

@@ -88,11 +88,12 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 
 			LOG.info("For {} adding buffer to {} with spilling {}.", owningTaskName, buffers, isSpilling);
 
+			updateStatistics(buffer);
+
 			if (!isSpilling) {
 				// Add the buffer and update the stats
 				buffers.add(buffer);
 				reader = readView;
-				updateStatistics(buffer);
 			} else {
 				synchronizedIsSpilling = true;
 			}
@@ -213,7 +214,7 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 
 			if (!isSpilling) {
 				return 0;
-			} else if (spillWriter == null) {
+			} else if (spillWriter != null) {
 				// No view and in-memory => spill to disk
 
 				int numberOfBuffers = buffers.size();
