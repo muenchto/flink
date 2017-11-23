@@ -1318,6 +1318,8 @@ public class Task implements Runnable, TaskActions {
 	public void stopForMigration() {
 		// TODO Masterthesis Remove all currently allocated resources
 
+		network.unregisterTask(this);
+
 		LOG.info("Stopped task {} for migration to different task manager ({}).", taskNameWithSubtask, executionId);
 	}
 
