@@ -15,12 +15,19 @@ public class PausingTaskEvent extends TaskEvent {
 
 	private int taskIndex;
 
-	public PausingTaskEvent(int taskIndex) {
+	private long upcomingCheckpointID;
+
+	public PausingTaskEvent(int taskIndex, long upcomingCheckpointID) {
 		this.taskIndex = taskIndex;
+		this.upcomingCheckpointID = upcomingCheckpointID;
 	}
 
 	public int getTaskIndex() {
 		return taskIndex;
+	}
+
+	public long getUpcomingCheckpointID() {
+		return upcomingCheckpointID;
 	}
 
 	@Override

@@ -53,11 +53,13 @@ public class AsynchronousBufferFileWriter extends AsynchronousFileIOChannel<Buff
 
 		@Override
 		public void requestSuccessful(Buffer buffer) {
+			LOG.info("AsynchronousBufferFileWriter recycling {}", buffer);
 			buffer.recycle();
 		}
 
 		@Override
 		public void requestFailed(Buffer buffer, IOException e) {
+			LOG.info("AsynchronousBufferFileWriter failed, but recycling {}", buffer);
 			buffer.recycle();
 		}
 	}

@@ -21,6 +21,7 @@ package org.apache.flink.runtime.io.network.api.writer;
 import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.SimpleCounter;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
 import org.apache.flink.runtime.event.AbstractEvent;
@@ -33,6 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 import static org.apache.flink.runtime.io.network.api.serialization.RecordSerializer.SerializationResult;
@@ -162,6 +165,7 @@ public class RecordWriter<T extends IOReadableWritable> {
 
 	public void broadcastEvent(AbstractEvent event) throws IOException, InterruptedException {
 		final Buffer eventBuffer = EventSerializer.toBuffer(event);
+
 		try {
 			for (int targetChannel = 0; targetChannel < numChannels; targetChannel++) {
 				RecordSerializer<T> serializer = serializers[targetChannel];
@@ -179,6 +183,11 @@ public class RecordWriter<T extends IOReadableWritable> {
 					// retain the buffer so that it can be recycled by each channel of targetPartition
 					eventBuffer.retain();
 					targetPartition.writeBuffer(eventBuffer, targetChannel);
+
+					if (event.getClass() == CheckpointBarrier.class) {
+						CheckpointBarrier checkpointBarrier = (CheckpointBarrier) event;
+						targetPartition.checkForSpillingAfterCheckpointBarrier(checkpointBarrier.getId(), targetChannel);
+					}
 				}
 			}
 		} finally {

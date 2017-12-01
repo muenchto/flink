@@ -147,6 +147,8 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 
 		isSpilling = true;
 
+		LOG.debug("Trying to start spilling subpartition {} for task {} to disk.", this, parent.owningTaskName);
+
 		// view reference accessible outside the lock, but assigned inside the locked scope
 		final ResultSubpartitionView reader;
 
