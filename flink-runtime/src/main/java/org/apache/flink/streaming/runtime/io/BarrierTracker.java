@@ -26,6 +26,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineOnCancellationBarrierException;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
+import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
@@ -118,11 +119,12 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 			} else if (next.getEvent().getClass() == StartModificationMarker.class) {
 				LOG.info("Received ModificationMarker:  {}", StartModificationMarker.class);
 
-				inputGate.sendTaskEvent(new PausingTaskEvent(next.getChannelIndex()));
+//				inputGate.sendTaskEvent(new PausingTaskEvent(next.getChannelIndex()));
 
 				return next;
-			} else if (next.getEvent().getClass() == PausingTaskEvent.class) {
+			} else if (next.getEvent().getClass() == SpillToDiskMarker.class) {
 
+				// TODO ERROR!!!!
 				notifyStartModification((StartModificationMarker) next.getEvent());
 
 				return next;

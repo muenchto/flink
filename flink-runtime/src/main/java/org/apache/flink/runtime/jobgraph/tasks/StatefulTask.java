@@ -103,6 +103,20 @@ public interface StatefulTask {
 	boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs) throws Exception;
 
 	/**
+	 * This method is called to trigger a modification of the graph.
+	 * This methods pauses the current task, if it contains a operator for the JobVertexID specified
+	 * by {@code jobVertexIDs} and propagates the
+	 * {@link org.apache.flink.streaming.runtime.modification.events.StartModificationMarker}.
+	 *
+	 * @param jobVertexIDs Options for performing this modification
+	 *
+	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
+	 */
+	boolean triggerModification(ModificationMetaData modificationMetaData,
+								List<JobVertexID> jobVertexIDs,
+								long upcomingCheckpointID) throws Exception;
+
+	/**
 	 * This method is called to trigger a acknowledge the spilling of the graph.
 	 * This should trigger the pausing of the operator.
 	 *

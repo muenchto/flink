@@ -29,10 +29,16 @@ import org.apache.flink.runtime.io.network.partition.ResultSubpartition;
 import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartition;
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.util.event.EventListener;
+import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A buffer-oriented runtime result writer.
@@ -122,30 +128,69 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 	public void onEvent(TaskEvent event) {
 
 		if (event.getClass() == PausingTaskEvent.class) {
-			int taskIndex = ((PausingTaskEvent) event).getTaskIndex();
-
-			ResultSubpartition[] allPartitions = partition.getAllPartitions();
-
-			if (taskIndex >= allPartitions.length) {
-				throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
-			}
-
-			ResultSubpartition resultSubpartition = allPartitions[taskIndex];
-
-			if (resultSubpartition.getClass() != SpillablePipelinedSubpartition.class) {
-				throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
-			} else {
-				try {
-					((SpillablePipelinedSubpartition) resultSubpartition).spillToDisk();
-				} catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-			}
-
+			spillAfterUpcomingCheckpoint((PausingTaskEvent) event);
 			return;
 		}
 
 		taskEventHandler.publish(event);
+	}
+
+	// Upcoming to-pause CheckpointID maps to list of subpartitions, that should spill to disk afterwards
+	private final Map<Long, List<Integer>> upcomingCheckpointIDsToPausingPartitions = new ConcurrentHashMap<>();
+
+	private void spillAfterUpcomingCheckpoint(PausingTaskEvent pausingTaskEvent) {
+		int taskIndex = pausingTaskEvent.getTaskIndex();
+
+		ResultSubpartition[] allPartitions = partition.getAllPartitions();
+
+		if (taskIndex >= allPartitions.length) {
+			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
+		}
+
+//		Preconditions.checkArgument(
+//			upcomingCheckpointIDsToPausingPartitions.get(pausingTaskEvent.getUpcomingCheckpointID()) == null);
+
+		List<Integer> toPauseTaskIndices = upcomingCheckpointIDsToPausingPartitions.get(pausingTaskEvent.getUpcomingCheckpointID());
+
+		if (toPauseTaskIndices == null) {
+			toPauseTaskIndices = new ArrayList<>();
+			toPauseTaskIndices.add(taskIndex);
+		} else {
+			toPauseTaskIndices.add(taskIndex);
+		}
+
+		upcomingCheckpointIDsToPausingPartitions.put(pausingTaskEvent.getUpcomingCheckpointID(), toPauseTaskIndices);
+	}
+
+	void checkForSpillingAfterCheckpointBarrier(long checkpointID, int taskIndex) {
+
+		List<Integer> taskIndices = upcomingCheckpointIDsToPausingPartitions.get(checkpointID);
+
+		if (taskIndices == null) {
+			return;
+		}
+
+		if (!taskIndices.contains(taskIndex)) {
+			return;
+		}
+
+		ResultSubpartition[] allPartitions = partition.getAllPartitions();
+
+		if (taskIndex >= allPartitions.length) {
+			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
+		}
+
+		ResultSubpartition resultSubpartition = allPartitions[taskIndex];
+
+		if (resultSubpartition.getClass() != SpillablePipelinedSubpartition.class) {
+			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
+		} else {
+			try {
+				((SpillablePipelinedSubpartition) resultSubpartition).spillToDisk();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 
 	public void reconfigureKeySelectorForNewConsumer() {

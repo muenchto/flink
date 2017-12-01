@@ -546,6 +546,11 @@ public class BarrierTrackerTest {
 		}
 
 		@Override
+		public boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, long upcomingCheckpointID) throws Exception {
+			return false;
+		}
+
+		@Override
 		public boolean acknowledgeSpillingToDisk() throws Exception {
 			return false;
 		}

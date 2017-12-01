@@ -21,6 +21,10 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
@@ -36,7 +40,6 @@ import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
-import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
@@ -199,8 +202,6 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 					return next;
 
 				} else if (next.getEvent().getClass() == SpillToDiskMarker.class) {
-
-					pauseInputAfterSpillingAcknowledged();
 
 					return next;
 
@@ -402,7 +403,10 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 			ModificationMetaData checkpointMetaData =
 				new ModificationMetaData(startModificationMarker.getModificationID(), startModificationMarker.getTimestamp());
 
-			statefulTask.triggerModification(checkpointMetaData, startModificationMarker.getJobVertexIDs());
+			statefulTask.triggerModification(
+				checkpointMetaData,
+				startModificationMarker.getJobVertexIDs(),
+				currentCheckpointId + 10);
 
 		} else {
 			throw new NullPointerException("statefulTask must not be null");

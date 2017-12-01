@@ -80,9 +80,10 @@ public class EventSerializer {
 
 			PausingTaskEvent marker = (PausingTaskEvent) event;
 
-			ByteBuffer buf = ByteBuffer.allocate(8);
+			ByteBuffer buf = ByteBuffer.allocate(16);
 			buf.putInt(0, PAUSING_TASK_EVENT);
 			buf.putInt(4, marker.getTaskIndex());
+			buf.putLong(8, marker.getUpcomingCheckpointID());
 			return buf;
 
 		} else if (eventClass == CheckpointBarrier.class) {
@@ -219,9 +220,9 @@ public class EventSerializer {
 				case MODIFICATION_CANCEL_EVENT:
 					return eventClass.equals(CancelModificationMarker.class);
 				case SPILL_TO_DISK_MARKER:
-					return eventClass.equals(CancelModificationMarker.class);
+					return eventClass.equals(SpillToDiskMarker.class);
 				case PAUSING_TASK_EVENT:
-					return eventClass.equals(CancelModificationMarker.class);
+					return eventClass.equals(PausingTaskEvent.class);
 				case OTHER_EVENT:
 					try {
 						final DataInputDeserializer deserializer = new DataInputDeserializer(buffer);
@@ -271,8 +272,9 @@ public class EventSerializer {
 				return SpillToDiskMarker.INSTANCE;
 			} else if (type == PAUSING_TASK_EVENT) {
 				int subTaskIndex = buffer.getInt();
+				long upcomingModificationID = buffer.getLong();
 
-				return new PausingTaskEvent(subTaskIndex);
+				return new PausingTaskEvent(subTaskIndex, upcomingModificationID);
 			} else if (type == CHECKPOINT_BARRIER_EVENT) {
 				long id = buffer.getLong();
 				long timestamp = buffer.getLong();

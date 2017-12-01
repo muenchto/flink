@@ -22,6 +22,7 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 import java.io.IOException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.io.IOReadableWritable;
+import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.writer.ChannelSelector;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
@@ -95,6 +96,17 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 		checkErroneous();
 		LOG.info(name + " emmits: " + record);
 		super.emit(record);
+		if (flushAlways) {
+			flush();
+		}
+	}
+
+	@Override
+	public void broadcastEvent(AbstractEvent event) throws IOException, InterruptedException {
+		checkErroneous();
+		LOG.info(name + " broadcast event: " + event);
+
+		super.broadcastEvent(event);
 		if (flushAlways) {
 			flush();
 		}

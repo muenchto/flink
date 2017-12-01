@@ -220,6 +220,9 @@ class LocalBufferPool implements BufferPool {
 					owner.releaseMemory(1);
 				}
 
+				LOG.info("Requesting buffer blocked for available memory segments {} and requested memory segments {} and current size {}",
+					availableMemorySegments.size(), numberOfRequestedMemorySegments, currentPoolSize);
+
 				if (isBlocking) {
 					availableMemorySegments.wait(2000);
 				}
@@ -234,12 +237,18 @@ class LocalBufferPool implements BufferPool {
 
 	@Override
 	public void recycle(MemorySegment segment) {
+
+		LOG.info("Recycling buffer for synchronized");
+
 		synchronized (availableMemorySegments) {
 			if (isDestroyed || numberOfRequestedMemorySegments > currentPoolSize) {
 				returnMemorySegment(segment);
 			}
 			else {
+
 				EventListener<Buffer> listener = registeredListeners.poll();
+
+				LOG.info("Recycling buffer for LocalBufferPool {}", this);
 
 				if (listener == null) {
 					availableMemorySegments.add(segment);
