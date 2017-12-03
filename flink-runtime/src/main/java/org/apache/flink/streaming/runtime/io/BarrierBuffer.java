@@ -34,10 +34,7 @@ import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineOnCancellati
 import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineSubsumedException;
 import org.apache.flink.runtime.checkpoint.decline.InputEndOfStreamException;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
-import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
-import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
-import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
-import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
+import org.apache.flink.runtime.io.network.api.*;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
@@ -193,8 +190,11 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 				}
 				else if (next.getEvent().getClass() == CancelCheckpointMarker.class) {
 					processCancellationBarrier((CancelCheckpointMarker) next.getEvent());
-				}
-				else if (next.getEvent().getClass() == StartModificationMarker.class) {
+				} else if (next.getEvent().getClass() == PausingOperatorMarker.class) {
+
+					LOG.info("Acknowledge Pausing for channel {}",next.getChannelIndex());
+
+				} else if (next.getEvent().getClass() == StartModificationMarker.class) {
 					LOG.info("Received ModificationMarker:  {}", StartModificationMarker.class);
 
 					notifyModification((StartModificationMarker) next.getEvent());
@@ -202,6 +202,14 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 					return next;
 
 				} else if (next.getEvent().getClass() == SpillToDiskMarker.class) {
+
+					numberOfSpillingToDiskMarker += 1;
+
+					if (numberOfSpillingToDiskMarker == inputGate.getNumberOfInputChannels()) {
+						pauseInputAfterSpillingAcknowledged();
+					} else {
+						LOG.info("Received SpillToDiskMarker #{}", numberOfSpillingToDiskMarker);
+					}
 
 					return next;
 
@@ -229,8 +237,12 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 		}
 	}
 
+	private volatile int numberOfSpillingToDiskMarker = 0;
+
 	private void pauseInputAfterSpillingAcknowledged() throws Exception {
 		if (statefulTask != null) {
+
+			LOG.debug("Received all SpillToDisk-Marker and now spilling to disk");
 
 			statefulTask.acknowledgeSpillingToDisk();
 
@@ -406,7 +418,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 			statefulTask.triggerModification(
 				checkpointMetaData,
 				startModificationMarker.getJobVertexIDs(),
-				currentCheckpointId + 10);
+				currentCheckpointId + 5);
 
 		} else {
 			throw new NullPointerException("statefulTask must not be null");

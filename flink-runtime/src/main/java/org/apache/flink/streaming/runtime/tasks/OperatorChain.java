@@ -29,6 +29,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
+import org.apache.flink.runtime.io.network.api.PausingOperatorMarker;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.metrics.groups.OperatorMetricGroup;
@@ -215,6 +216,18 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			CheckpointBarrier barrier = new CheckpointBarrier(id, timestamp, checkpointOptions);
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
 				streamOutput.broadcastEvent(barrier);
+			}
+		}
+		catch (InterruptedException e) {
+			throw new IOException("Interrupted while broadcasting checkpoint barrier");
+		}
+	}
+
+	public void broadcastOperatorPausedEvent() throws IOException {
+		try {
+			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
+				streamOutput.broadcastEvent(PausingOperatorMarker.INSTANCE);
+				streamOutput.flush();
 			}
 		}
 		catch (InterruptedException e) {

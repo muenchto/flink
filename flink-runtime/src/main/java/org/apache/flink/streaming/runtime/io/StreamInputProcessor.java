@@ -252,6 +252,7 @@ public class StreamInputProcessor<IN> {
 					} else if (event.getClass() == SpillToDiskMarker.class) {
 						// Do nothing here, as modification was triggered in BarrierTracker
 						// Return true, so that we can restart this method, but check if we are still running
+
 						return true;
 					} else if (event.getClass() != EndOfPartitionEvent.class) {
 						throw new IOException("Unexpected event: " + event);

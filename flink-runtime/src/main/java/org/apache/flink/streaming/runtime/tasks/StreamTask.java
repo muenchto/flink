@@ -599,10 +599,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 		try {
 
-			if (pendingCheckpointIDsForModification.contains(checkpointMetaData.getCheckpointId())) {
-				acknowledgeSpillingToDisk();
-			}
-
 			performCheckpoint(checkpointMetaData, checkpointOptions, checkpointMetrics);
 		}
 		catch (CancelTaskException e) {
@@ -799,6 +795,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 		synchronized (lock) {
 			if (isRunning) {
+
+				operatorChain.broadcastOperatorPausedEvent();
+
 				if (pauseInputs()) {
 
 					if (transitionState(ModificationStatus.WAITING_FOR_SPILLING_MARKER, ModificationStatus.PAUSING)) {

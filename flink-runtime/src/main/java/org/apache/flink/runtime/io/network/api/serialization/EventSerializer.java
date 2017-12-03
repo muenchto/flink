@@ -68,6 +68,8 @@ public class EventSerializer {
 
 	private static final int PAUSING_TASK_EVENT = 8;
 
+	private static final int PAUSED_OPERATOR_EVENT = 9;
+
 	// ------------------------------------------------------------------------
 
 	public static ByteBuffer toSerializedEvent(AbstractEvent event) throws IOException {
@@ -76,6 +78,8 @@ public class EventSerializer {
 			return ByteBuffer.wrap(new byte[] { 0, 0, 0, END_OF_PARTITION_EVENT });
 		} else if (eventClass == SpillToDiskMarker.class) {
 			return ByteBuffer.wrap(new byte[] { 0, 0, 0, SPILL_TO_DISK_MARKER });
+		} else if (eventClass == PausingOperatorMarker.class) {
+			return ByteBuffer.wrap(new byte[] { 0, 0, 0, PAUSED_OPERATOR_EVENT });
 		} else if (eventClass == PausingTaskEvent.class) {
 
 			PausingTaskEvent marker = (PausingTaskEvent) event;
@@ -223,6 +227,8 @@ public class EventSerializer {
 					return eventClass.equals(SpillToDiskMarker.class);
 				case PAUSING_TASK_EVENT:
 					return eventClass.equals(PausingTaskEvent.class);
+				case PAUSED_OPERATOR_EVENT:
+					return eventClass.equals(PausingOperatorMarker.class);
 				case OTHER_EVENT:
 					try {
 						final DataInputDeserializer deserializer = new DataInputDeserializer(buffer);
@@ -270,6 +276,8 @@ public class EventSerializer {
 				return EndOfPartitionEvent.INSTANCE;
 			} else if (type == SPILL_TO_DISK_MARKER) {
 				return SpillToDiskMarker.INSTANCE;
+			} else if (type == PAUSED_OPERATOR_EVENT) {
+				return PausingOperatorMarker.INSTANCE;
 			} else if (type == PAUSING_TASK_EVENT) {
 				int subTaskIndex = buffer.getInt();
 				long upcomingModificationID = buffer.getLong();
