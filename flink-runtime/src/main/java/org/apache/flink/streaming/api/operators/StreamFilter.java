@@ -30,8 +30,6 @@ import org.slf4j.LoggerFactory;
 @Internal
 public class StreamFilter<IN> extends AbstractUdfStreamOperator<IN, FilterFunction<IN>> implements OneInputStreamOperator<IN, IN> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(StreamFilter.class);
-
 	private static final long serialVersionUID = 1L;
 
 	public StreamFilter(FilterFunction<IN> filterFunction) {
@@ -41,12 +39,7 @@ public class StreamFilter<IN> extends AbstractUdfStreamOperator<IN, FilterFuncti
 
 	@Override
 	public void processElement(StreamRecord<IN> element) throws Exception {
-
-		LOG.info("StreamFilter received {}", element);
-
 		if (userFunction.filter(element.getValue())) {
-			LOG.info("Sending element: {}", element);
-
 			output.collect(element);
 		}
 	}
