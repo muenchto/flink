@@ -61,6 +61,7 @@ import org.junit.Test;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 import static org.junit.Assert.assertFalse;
@@ -272,12 +273,12 @@ public class TaskAsyncCallTest {
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs) throws Exception {
+		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs) throws Exception {
 			return false;
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, long upcomingCheckpointID) throws Exception {
+		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, long upcomingCheckpointID) throws Exception {
 			return false;
 		}
 
@@ -287,7 +288,7 @@ public class TaskAsyncCallTest {
 		}
 
 		@Override
-		public void abortModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, Throwable cause) throws Exception {
+		public void abortModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> executionAttemptIDS, Throwable cause) throws Exception {
 
 		}
 	}

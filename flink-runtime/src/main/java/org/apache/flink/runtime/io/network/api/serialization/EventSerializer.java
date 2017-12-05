@@ -24,6 +24,7 @@ import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions.CheckpointType;
 import org.apache.flink.runtime.event.AbstractEvent;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.*;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.FreeingBufferRecycler;
@@ -39,7 +40,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.flink.util.Preconditions;
 
@@ -134,19 +137,22 @@ public class EventSerializer {
 		} else if (eventClass == StartModificationMarker.class) {
 			StartModificationMarker marker = (StartModificationMarker) event;
 
-			List<JobVertexID> jobVertexIDs = marker.getJobVertexIDs();
+			Set<ExecutionAttemptID> executionAttemptIDS = marker.getJobVertexIDs();
 
 			// 24 for all base field and dynamic size for the list of objects
-			int bufferSize = jobVertexIDs.size() * 16 + 24;
+			int bufferSize = executionAttemptIDS.size() * 16 + 24;
 
 			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
 			buf.putInt(0, MODIFICATION_START_EVENT);
 			buf.putLong(4, marker.getModificationID());
 			buf.putLong(12, marker.getTimestamp());
-			buf.putInt(20, jobVertexIDs.size());
+			buf.putInt(20, executionAttemptIDS.size());
 
-			for (int index = 24, i = 0; i < jobVertexIDs.size(); i++, index += 16) {
-				JobVertexID vertexID = jobVertexIDs.get(i);
+			ExecutionAttemptID[] executionAttempts =
+				executionAttemptIDS.toArray(new ExecutionAttemptID[executionAttemptIDS.size()]);
+
+			for (int index = 24, i = 0; i < executionAttemptIDS.size(); i++, index += 16) {
+				ExecutionAttemptID vertexID = executionAttempts[i];
 				buf.putLong(index, vertexID.getLowerPart());
 				buf.putLong(index + 8, vertexID.getUpperPart());
 			}
@@ -156,21 +162,24 @@ public class EventSerializer {
 		} else if (eventClass == CancelModificationMarker.class) {
 			CancelModificationMarker marker = (CancelModificationMarker) event;
 
-			List<JobVertexID> jobVertexIDs = marker.getJobVertexIDs();
+			Set<ExecutionAttemptID> executionAttemptIDS = marker.getJobVertexIDs();
 
 			// 24 for all base field and dynamic size for the list of objects
-			int bufferSize = jobVertexIDs.size() * 16 + 24;
+			int bufferSize = executionAttemptIDS.size() * 16 + 24;
 
 			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
 			buf.putInt(0, MODIFICATION_CANCEL_EVENT);
 			buf.putLong(4, marker.getModificationID());
 			buf.putLong(12, marker.getTimestamp());
-			buf.putInt(20, jobVertexIDs.size());
+			buf.putInt(20, executionAttemptIDS.size());
 
-			for (int index = 24, i = 0; i < jobVertexIDs.size(); i++, index += 16) {
-				JobVertexID vertexID = jobVertexIDs.get(i);
-				buf.putLong(index, vertexID.getLowerPart());
-				buf.putLong(index + 8, vertexID.getUpperPart());
+			ExecutionAttemptID[] executionAttempts =
+				executionAttemptIDS.toArray(new ExecutionAttemptID[executionAttemptIDS.size()]);
+
+			for (int index = 24, i = 0; i < executionAttemptIDS.size(); i++, index += 16) {
+				ExecutionAttemptID executionAttemptID = executionAttempts[i];
+				buf.putLong(index, executionAttemptID.getLowerPart());
+				buf.putLong(index + 8, executionAttemptID.getUpperPart());
 			}
 
 			return buf;
@@ -318,12 +327,12 @@ public class EventSerializer {
 				long timestamp = buffer.getLong();
 				int size = buffer.getInt();
 
-				List<JobVertexID> ids = new ArrayList<>(size);
+				Set<ExecutionAttemptID> ids = new HashSet<>(size);
 
 				for (int i = 0; i < size; i++) {
 					long lower = buffer.getLong();
 					long upper = buffer.getLong();
-					ids.add(new JobVertexID(lower, upper));
+					ids.add(new ExecutionAttemptID(lower, upper));
 				}
 
 				return new StartModificationMarker(modificationID, timestamp, ids);
@@ -334,12 +343,12 @@ public class EventSerializer {
 				long timestamp = buffer.getLong();
 				int size = buffer.getInt();
 
-				List<JobVertexID> ids = new ArrayList<>(size);
+				Set<ExecutionAttemptID> ids = new HashSet<>(size);
 
 				for (int i = 0; i < size; i++) {
 					long lower = buffer.getLong();
 					long upper = buffer.getLong();
-					ids.add(new JobVertexID(lower, upper));
+					ids.add(new ExecutionAttemptID(lower, upper));
 				}
 
 				return new CancelModificationMarker(modificationID, timestamp, ids);

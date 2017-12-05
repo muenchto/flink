@@ -31,13 +31,13 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.InstanceID;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTrace;
 import org.apache.flink.runtime.messages.StackTraceSampleResponse;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Task manager gateway interface to communicate with the task manager.
@@ -234,8 +234,7 @@ public interface TaskManagerGateway {
 	 * Trigger for the source tasks, that is should send out
 	 * {@link org.apache.flink.streaming.runtime.modification.events.StartModificationMarker}
 	 * to pause the job.
-	 *
-	 * @param attemptId identifying the task
+	 *  @param attemptId identifying the task
 	 * @param jobId identifying the job to which the task belongs
 	 * @param modificationID of the modification to trigger
 	 * @param timestamp of the modification to trigger
@@ -245,7 +244,7 @@ public interface TaskManagerGateway {
 							 JobID jobId,
 							 long modificationID,
 							 long timestamp,
-							 List<JobVertexID> ids);
+							 Set<ExecutionAttemptID> ids);
 
 	/**
 	 * Request the task manager log from the task manager.

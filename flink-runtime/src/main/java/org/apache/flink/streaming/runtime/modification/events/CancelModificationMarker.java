@@ -3,13 +3,11 @@ package org.apache.flink.streaming.runtime.modification.events;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
-import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.event.RuntimeEvent;
-import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -20,20 +18,20 @@ public class CancelModificationMarker extends RuntimeEvent {
 
 	private final long modificationID;
 	private final long timestamp;
-	private final List<JobVertexID> vertexIds;
+	private final Set<ExecutionAttemptID> executionAttemptIDS;
 
-	public CancelModificationMarker(long modificationID, long timestamp, List<JobVertexID> vertexIDs) {
+	public CancelModificationMarker(long modificationID, long timestamp, Set<ExecutionAttemptID> vertexIDs) {
 		this.modificationID = modificationID;
 		this.timestamp = timestamp;
-		this.vertexIds = checkNotNull(vertexIDs);
+		this.executionAttemptIDS = checkNotNull(vertexIDs);
 	}
 
 	public long getModificationID() {
 		return modificationID;
 	}
 
-	public List<JobVertexID> getJobVertexIDs() {
-		return vertexIds;
+	public Set<ExecutionAttemptID> getJobVertexIDs() {
+		return executionAttemptIDS;
 	}
 
 	public long getTimestamp() {
@@ -66,6 +64,6 @@ public class CancelModificationMarker extends RuntimeEvent {
 	@Override
 	public String toString() {
 		return String.format("CancelModificationMarker with ids: %d @ %s - %d",
-			modificationID, StringUtils.join(vertexIds, ","), timestamp);
+			modificationID, StringUtils.join(executionAttemptIDS, ","), timestamp);
 	}
 }

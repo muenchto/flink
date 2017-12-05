@@ -22,6 +22,7 @@ import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
@@ -36,6 +37,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -541,12 +543,12 @@ public class BarrierTrackerTest {
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs) throws Exception {
+		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs) throws Exception {
 			throw new UnsupportedOperationException("should never be called");
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, long upcomingCheckpointID) throws Exception {
+		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, long upcomingCheckpointID) throws Exception {
 			return false;
 		}
 
@@ -556,7 +558,7 @@ public class BarrierTrackerTest {
 		}
 
 		@Override
-		public void abortModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, Throwable cause) throws Exception {
+		public void abortModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> executionAttemptIDS, Throwable cause) throws Exception {
 			throw new UnsupportedOperationException("should never be called");
 		}
 	}

@@ -48,6 +48,7 @@ import org.apache.flink.runtime.checkpoint.StandaloneCheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.execution.librarycache.BlobLibraryCacheManager;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.restart.FixedDelayRestartStrategy;
 import org.apache.flink.runtime.executiongraph.restart.RestartStrategyFactory;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServices;
@@ -101,14 +102,7 @@ import scala.concurrent.duration.Deadline;
 import scala.concurrent.duration.FiniteDuration;
 import scala.runtime.BoxedUnit;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
@@ -598,12 +592,12 @@ public class JobManagerHARecoveryTest extends TestLogger {
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs) throws Exception {
+		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs) throws Exception {
 			return false;
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, long upcomingCheckpointID) throws Exception {
+		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, long upcomingCheckpointID) throws Exception {
 			return false;
 		}
 
@@ -613,7 +607,7 @@ public class JobManagerHARecoveryTest extends TestLogger {
 		}
 
 		@Override
-		public void abortModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs, Throwable cause) throws Exception {
+		public void abortModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> executionAttemptIDS, Throwable cause) throws Exception {
 
 		}
 

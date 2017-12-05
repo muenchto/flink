@@ -40,8 +40,10 @@ import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineTaskNotCheck
 import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineTaskNotReadyException;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.concurrent.BiFunction;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.ResultPartitionDeploymentDescriptor;
+import org.apache.flink.runtime.deployment.ResultPartitionLocation;
 import org.apache.flink.runtime.execution.CancelTaskException;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.execution.ExecutionState;
@@ -58,7 +60,9 @@ import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionConsumableNotifier;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionMetrics;
+import org.apache.flink.runtime.io.network.partition.consumer.InputChannel;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGateMetrics;
+import org.apache.flink.runtime.io.network.partition.consumer.RemoteInputChannel;
 import org.apache.flink.runtime.io.network.partition.consumer.SingleInputGate;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
@@ -72,6 +76,7 @@ import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateHandles;
+import org.apache.flink.streaming.runtime.io.InputGateUtil;
 import org.apache.flink.streaming.runtime.modification.ModificationHandler;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
@@ -458,28 +463,32 @@ public class Task implements Runnable, TaskActions {
 
 		Preconditions.checkArgument(inputGateDeploymentDescriptor.length == 1);
 
-		// Consumed intermediate result partitions
-		this.inputGates = new SingleInputGate[inputGateDeploymentDescriptors.size()];
+		InputGateDeploymentDescriptor igdd = inputGateDeploymentDescriptors.get(0);
+		InputChannelDeploymentDescriptor icdd = igdd.getInputChannelDeploymentDescriptors()[1];
 
-		int counter = 0;
+		SingleInputGate inputGate = inputGates[0];
 
-		for (InputGateDeploymentDescriptor inputGateDeploymentDescriptor: inputGateDeploymentDescriptors) {
-			SingleInputGate gate = SingleInputGate.create(
-				taskNameWithSubtask,
-				jobId,
-				executionId,
-				inputGateDeploymentDescriptor,
-				networkEnvironment,
-				this,
-				taskMetricGroup.getIOMetricGroup());
+		final ResultPartitionID partitionId = icdd.getConsumedPartitionId();
+		final ResultPartitionLocation partitionLocation = icdd.getConsumedPartitionLocation();
 
-			inputGates[counter] = gate;
-			inputGatesById.put(gate.getConsumedResultId(), gate);
+		InputChannel inputChannel = new RemoteInputChannel(
+			inputGate,
+			1,
+			partitionId,
+			partitionLocation.getConnectionId(),
+			networkEnvironment.getConnectionManager(),
+			networkEnvironment.getPartitionRequestInitialBackoff(),
+			networkEnvironment.getPartitionRequestMaxBackoff(),
+			taskMetricGroup.getIOMetricGroup(),
+			taskNameWithSubtask);
 
-			++counter;
+		try {
+			inputGate.updateInputChannel(partitionId.getPartitionId(), inputChannel);
+		} catch (IOException | InterruptedException e) {
+			failExternally(e);
 		}
 
-		networkEnvironment.registerInputGates(this);
+		LOG.debug("Successfully connected Task to new Input");
 	}
 
 	public void reconfigureForNewInputAfterChangedDoP(NetworkEnvironment networkEnvironment,
@@ -1316,9 +1325,18 @@ public class Task implements Runnable, TaskActions {
 	}
 
 	public void stopForMigration() {
-		// TODO Masterthesis Remove all currently allocated resources
+		// TODO Masterthesis Slot has be returned by JobManager
 
 		network.unregisterTask(this);
+
+		// un-register the metrics at the end so that the task may already be
+		// counted as finished when this happens
+		// errors here will only be logged
+		try {
+			metrics.close();
+		} catch (Throwable t) {
+			LOG.error("Error during metrics de-registration of task {} ({}).", taskNameWithSubtask, executionId, t);
+		}
 
 		LOG.info("Stopped task {} for migration to different task manager ({}).", taskNameWithSubtask, executionId);
 	}
@@ -1659,7 +1677,7 @@ public class Task implements Runnable, TaskActions {
 	public void triggerStartModificationMessage(
 		final long modificationID,
 		long modificationTimestamp,
-		final List<JobVertexID> vertexIDS) {
+		final Set<ExecutionAttemptID> vertexIDS) {
 
 		final AbstractInvokable invokable = this.invokable;
 

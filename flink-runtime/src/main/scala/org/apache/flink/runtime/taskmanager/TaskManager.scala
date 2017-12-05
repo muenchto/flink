@@ -821,7 +821,7 @@ class TaskManager(
         val taskExecutionId = message.getTaskExecutionId
         val modificationID = message.getModificationID
         val timestamp = message.getTimestamp
-        val ids = message.getVertexIDs
+        val ids = message.getExecutionAttempsToModify
 
         log.info(s"Receiver TriggerModification $modificationID@$timestamp for $taskExecutionId.")
 
