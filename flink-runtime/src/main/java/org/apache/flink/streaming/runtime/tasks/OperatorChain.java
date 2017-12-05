@@ -27,6 +27,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.execution.Environment;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.PausingOperatorMarker;
@@ -235,10 +236,10 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		}
 	}
 
-	public void broadcastStartModificationEvent(ModificationMetaData metaData, List<JobVertexID> vertexIDS) throws IOException {
+	public void broadcastStartModificationEvent(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS) throws IOException {
 		try {
 			StartModificationMarker startModificationMarker =
-				new StartModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), vertexIDS);
+				new StartModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), executionAttemptIDS);
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
 				streamOutput.broadcastEvent(startModificationMarker);
 			}
@@ -248,7 +249,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		}
 	}
 
-	public void broadcastCancelModificationEvent(ModificationMetaData metaData, List<JobVertexID> vertexIDS) throws IOException {
+	public void broadcastCancelModificationEvent(ModificationMetaData metaData, Set<ExecutionAttemptID> vertexIDS) throws IOException {
 		try {
 			CancelModificationMarker cancelModificationMarker =
 				new CancelModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), vertexIDS);

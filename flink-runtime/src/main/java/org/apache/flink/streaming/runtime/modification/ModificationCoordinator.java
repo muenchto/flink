@@ -305,15 +305,25 @@ public class ModificationCoordinator {
 		}
 	}
 
-	private void triggerModification(ExecutionJobVertex operatorToPause, final String description) {
+	private void triggerModification(ExecutionJobVertex instancesToPause, final String description) {
 
-		LOG.info("Triggering modification '{}' for ExecutionJobVertex {}.", description, operatorToPause.getName());
+		ArrayList<ExecutionVertex> objects = new ArrayList<>(instancesToPause.getTaskVertices().length);
+		objects.addAll(Arrays.asList(instancesToPause.getTaskVertices()));
 
-		ExecutionVertex[] taskVertices = operatorToPause.getTaskVertices();
+		triggerModification(objects, description);
+	}
 
-		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>(taskVertices.length);
+	private void triggerModification(List<ExecutionVertex> instancesToPause, final String description) {
 
-		for (ExecutionVertex executionVertex : taskVertices) {
+		Preconditions.checkNotNull(instancesToPause);
+		Preconditions.checkNotNull(description);
+		Preconditions.checkArgument(instancesToPause.size() >= 1);
+
+		LOG.info("Triggering modification '{}' for ExecutionJobVertex {}.", description, instancesToPause.get(0).getTaskName());
+
+		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>(instancesToPause.size());
+
+		for (ExecutionVertex executionVertex : instancesToPause) {
 			ackTasks.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), executionVertex);
 
 			if (executionVertex.getExecutionState() != ExecutionState.RUNNING) {
@@ -378,7 +388,7 @@ public class ModificationCoordinator {
 					execution.getCurrentExecutionAttempt().triggerModification(
 						modificationId,
 						timestamp,
-						Collections.singletonList(operatorToPause.getJobVertexId()));
+						ackTasks.keySet());
 				}
 
 			}
@@ -627,6 +637,21 @@ public class ModificationCoordinator {
 		ExecutionJobVertex map = findMap();
 
 		triggerModification(map, "Pause map");
+	}
+
+	public void pauseMap(ExecutionAttemptID mapAttemptID) {
+		ExecutionJobVertex map = findMap();
+
+		ExecutionVertex[] taskVertices = map.getTaskVertices();
+
+		for (ExecutionVertex vertex : taskVertices) {
+			if (vertex.getCurrentExecutionAttempt().getAttemptId().equals(mapAttemptID)) {
+				triggerModification(Collections.singletonList(vertex), "Pause single map instance");
+				return;
+			}
+		}
+
+		executionGraph.failGlobal(new Exception("Failed to find map operator instance for " + mapAttemptID));
 	}
 
 	public void resumeMapOperator() {

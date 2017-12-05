@@ -33,7 +33,6 @@ import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.ActorGateway;
 import org.apache.flink.runtime.instance.InstanceID;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.Messages;
 import org.apache.flink.runtime.messages.StackTrace;
@@ -52,6 +51,7 @@ import scala.concurrent.duration.FiniteDuration;
 import scala.reflect.ClassTag$;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Implementation of the {@link TaskManagerGateway} for {@link ActorGateway}.
@@ -293,7 +293,7 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 									JobID jobId,
 									long modificationID,
 									long timestamp,
-									List<JobVertexID> ids) {
+									Set<ExecutionAttemptID> ids) {
 		Preconditions.checkNotNull(attemptId);
 		Preconditions.checkNotNull(jobId);
 

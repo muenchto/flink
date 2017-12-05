@@ -919,4 +919,36 @@ public class SingleInputGate implements InputGate {
 		return "InputGate for '" + owningTaskName + "' for IDSID: " + consumedResultId +
 			" SubPartitionIndex: " + consumedSubpartitionIndex;
 	}
+
+	public void updateInputChannel(IntermediateResultPartitionID partitionId, InputChannel newChannel) throws IOException, InterruptedException {
+		synchronized (requestLock) {
+			if (isReleased) {
+				// There was a race with a task failure/cancel
+				return;
+			}
+
+			InputChannel oldChannel = inputChannels.put(partitionId, newChannel);
+
+			if (oldChannel == null) {
+				throw new RuntimeException("No previous input channel.");
+			}
+
+			oldChannel.releaseAllResources();
+
+
+			LOG.debug("Updated existing input channel to {}.", newChannel);
+
+			if (requestedPartitionsFlag) {
+				newChannel.requestSubpartition(consumedSubpartitionIndex);
+			}
+
+			for (TaskEvent event : pendingEvents) {
+				newChannel.sendTaskEvent(event);
+			}
+
+			if (--numberOfUninitializedChannels == 0) {
+				pendingEvents.clear();
+			}
+		}
+	}
 }

@@ -1007,6 +1007,23 @@ class JobManager(
             case "pauseMap" => modificationCoordinator.pauseMap()
               (true, "Pausing Map submitted")
 
+            case msg if msg.startsWith("pauseSingleMap") =>
+
+              val m = msg.split(":")
+
+              if (m.length != 2) {
+                (false, s"Jar command $command")
+
+              } else {
+
+                val mapAttempt: ExecutionAttemptID = ExecutionAttemptID.fromString(m(1))
+
+                log.info(s"Attempting to pause map for id '$mapAttempt'")
+
+                modificationCoordinator.pauseMap(mapAttempt)
+                (true, "Stopping map submitted")
+              }
+
             case "pauseFilter" => modificationCoordinator.pauseFilter()
               (true, "Pausing Filter submitted")
 

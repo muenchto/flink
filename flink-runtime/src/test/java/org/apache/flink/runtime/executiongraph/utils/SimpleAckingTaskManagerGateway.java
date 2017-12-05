@@ -32,7 +32,6 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.PartitionInfo;
 import org.apache.flink.runtime.instance.InstanceID;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTrace;
@@ -40,6 +39,7 @@ import org.apache.flink.runtime.messages.StackTraceSampleResponse;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -145,7 +145,7 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 									JobID jobId,
 									long modificationID,
 									long timestamp,
-									List<JobVertexID> ids) {}
+									Set<ExecutionAttemptID> ids) {}
 
 	@Override
 	public Future<BlobKey> requestTaskManagerLog(Time timeout) {

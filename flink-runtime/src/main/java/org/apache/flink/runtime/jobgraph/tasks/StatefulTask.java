@@ -21,11 +21,13 @@ package org.apache.flink.runtime.jobgraph.tasks;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * This interface must be implemented by any invokable that has recoverable state and participates
@@ -100,20 +102,22 @@ public interface StatefulTask {
 	 *
 	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
 	 */
-	boolean triggerModification(ModificationMetaData modificationMetaData, List<JobVertexID> jobVertexIDs) throws Exception;
+	boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs) throws Exception;
 
 	/**
 	 * This method is called to trigger a modification of the graph.
 	 * This methods pauses the current task, if it contains a operator for the JobVertexID specified
-	 * by {@code jobVertexIDs} and propagates the
+	 * by {@code executionAttemptIDS} and propagates the
 	 * {@link org.apache.flink.streaming.runtime.modification.events.StartModificationMarker}.
 	 *
-	 * @param jobVertexIDs Options for performing this modification
+	 *
+	 * @param metaData
+	 * @param executionAttemptIDS Options for performing this modification
 	 *
 	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
 	 */
-	boolean triggerModification(ModificationMetaData modificationMetaData,
-								List<JobVertexID> jobVertexIDs,
+	boolean triggerModification(ModificationMetaData metaData,
+								Set<ExecutionAttemptID> executionAttemptIDS,
 								long upcomingCheckpointID) throws Exception;
 
 	/**
@@ -127,11 +131,11 @@ public interface StatefulTask {
 	/**
 	 * This method is called to abort a modification of the graph.
 	 *
-	 * @param jobVertexIDs Options for aborting this modification
+	 * @param executionAttemptIDS Options for aborting this modification
 	 *
 	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
 	 */
 	void abortModification(ModificationMetaData modificationMetaData,
-						   List<JobVertexID> jobVertexIDs,
+						   Set<ExecutionAttemptID> executionAttemptIDS,
 						   Throwable cause) throws Exception;
 }

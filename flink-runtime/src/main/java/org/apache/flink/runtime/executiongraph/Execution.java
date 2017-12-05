@@ -52,10 +52,7 @@ import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -883,11 +880,11 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 
 	/**
 	 * Trigger a new modification on the task of this execution.
-	 *
-	 * @param modificationID of the modification to trigger
+	 *  @param modificationID of the modification to trigger
 	 * @param timestamp of the modification to trigger
+	 * @param ids
 	 */
-	public void triggerModification(long modificationID, long timestamp, List<JobVertexID> ids) {
+	public void triggerModification(long modificationID, long timestamp, Set<ExecutionAttemptID> ids) {
 		final SimpleSlot slot = assignedResource;
 
 		if (slot != null) {

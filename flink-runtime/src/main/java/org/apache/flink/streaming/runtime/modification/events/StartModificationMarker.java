@@ -4,10 +4,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.runtime.event.RuntimeEvent;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -19,9 +19,9 @@ public class StartModificationMarker extends RuntimeEvent {
 
 	private final long modificationID;
 	private final long timestamp;
-	private final List<JobVertexID> vertexIds;
+	private final Set<ExecutionAttemptID> vertexIds;
 
-	public StartModificationMarker(long modificationID, long timestamp, List<JobVertexID> vertexIDs) {
+	public StartModificationMarker(long modificationID, long timestamp, Set<ExecutionAttemptID> vertexIDs) {
 		this.modificationID = modificationID;
 		this.timestamp = timestamp;
 		this.vertexIds = checkNotNull(vertexIDs);
@@ -31,7 +31,7 @@ public class StartModificationMarker extends RuntimeEvent {
 		return modificationID;
 	}
 
-	public List<JobVertexID> getJobVertexIDs() {
+	public Set<ExecutionAttemptID> getJobVertexIDs() {
 		return vertexIds;
 	}
 

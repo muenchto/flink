@@ -41,6 +41,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.execution.CancelTaskException;
 import org.apache.flink.runtime.execution.Environment;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
@@ -70,7 +71,6 @@ import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
-import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.streaming.runtime.modification.statemigration.StateMigrationMetaData;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
@@ -651,7 +651,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	@Override
 	public void abortModification(ModificationMetaData modificationMetaData,
-								  List<JobVertexID> jobVertexIDs,
+								  Set<ExecutionAttemptID> executionAttemptIDS,
 								  Throwable cause) throws Exception {
 		LOG.debug("Aborting modification via cancel-barrier {} for task {}", modificationMetaData.getModificationID(), getName());
 
@@ -660,7 +660,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 		// notify all downstream operators that they should not wait for a barrier from us
 		synchronized (lock) {
-			operatorChain.broadcastCancelModificationEvent(modificationMetaData, jobVertexIDs);
+			operatorChain.broadcastCancelModificationEvent(modificationMetaData, executionAttemptIDS);
 		}
 	}
 
@@ -683,19 +683,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	@Override
 	public boolean triggerModification(ModificationMetaData metaData,
-									   List<JobVertexID> jobVertexIDs) throws Exception {
-		return triggerModification(metaData, jobVertexIDs, -1);
+									   Set<ExecutionAttemptID> executionAttemptIDS) throws Exception {
+		return triggerModification(metaData, executionAttemptIDS, -1);
 	}
 
 	@Override
 	public boolean triggerModification(ModificationMetaData metaData,
-									   List<JobVertexID> jobVertexIDs,
+									   Set<ExecutionAttemptID> executionAttemptIDS,
 									   long upcomingCheckpointID) throws Exception {
 		try {
 
 			LOG.info("Starting modification ({}) for '{}' on task {} with jobVertexID {}",
 				metaData.getModificationID(),
-				StringUtils.join(jobVertexIDs, ","),
+				StringUtils.join(executionAttemptIDS, ","),
 				getName(),
 				getEnvironment().getJobVertexId());
 
@@ -703,7 +703,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				if (isRunning) {
 					// we can do a modification
 
-					if (jobVertexIDs.contains(getEnvironment().getJobVertexId())) {
+					if (executionAttemptIDS.contains(getEnvironment().getExecutionId())) {
 						LOG.info("Found {} in vertices for {}, that should be modified. Past modifications: {}",
 							getEnvironment().getJobVertexId(), getName(), Joiner.on(",").join(getEnvironment().getModificationHandler().getHandledModifications()));
 
@@ -743,7 +743,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					// lock scope, they are an atomic operation regardless of the order in which they occur.
 					// Given this, we immediately emit the checkpoint barriers, so the downstream operators
 					// can start their checkpoint work as soon as possible
-					operatorChain.broadcastStartModificationEvent(metaData, jobVertexIDs);
+					operatorChain.broadcastStartModificationEvent(metaData, executionAttemptIDS);
 
 					return true;
 				}
@@ -754,7 +754,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					// we cannot broadcast the modification markers on the 'operator chain', because it may not
 					// yet be created
 					final CancelModificationMarker cancelModificationMarker =
-						new CancelModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), jobVertexIDs);
+						new CancelModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), executionAttemptIDS);
 
 					Exception exception = null;
 
