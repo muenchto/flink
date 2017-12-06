@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
@@ -62,6 +63,8 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 	private volatile boolean isSpilling = false;
 
 	private BufferFileWriter spillWriter;
+
+	private final AtomicLong numberOfSpilledBuffers = new AtomicLong();
 
 	// ------------------------------------------------------------------------
 
@@ -101,6 +104,7 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 
 		if (synchronizedIsSpilling) {
 			spillWriter.writeBlock(buffer);
+			numberOfSpilledBuffers.incrementAndGet();
 		}
 
 		// Notify the listener outside of the synchronized block
@@ -263,7 +267,7 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 					this,
 					parent.getBufferProvider().getMemorySegmentSize(),
 					spillWriter,
-					queueSize,
+					numberOfSpilledBuffers.get(),
 					availabilityListener);
 
 				spillWriter = null;
@@ -306,5 +310,11 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 	public int unsynchronizedGetNumberOfQueuedBuffers() {
 		// since we do not synchronize, the size may actually be lower than 0!
 		return Math.max(buffers.size(), 0);
+	}
+
+	public boolean isEmpty() {
+		synchronized (buffers) {
+			return buffers.isEmpty();
+		}
 	}
 }

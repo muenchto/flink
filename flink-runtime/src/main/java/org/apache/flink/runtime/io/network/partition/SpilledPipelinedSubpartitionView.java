@@ -45,8 +45,6 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 	/** Flag indicating whether a spill is still in progress */
 	private volatile boolean isSpillInProgress = true;
 
-	private final Object spillingInProgressLock = new Object();
-
 	SpilledPipelinedSubpartitionView(SpillablePipelinedSubpartition subpartition,
 									 int memorySegmentSize,
 									 BufferFileWriter spillWriter,
@@ -101,6 +99,8 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 		if (!fileReader.hasReachedEndOfFile()) {
 
 			LOG.info("Reading from fileReader");
+
+			numberOfSpilledBuffers--;
 
 			// TODO This is fragile as we implicitly expect that multiple calls to
 			// this method don't happen before recycling buffers returned earlier.
