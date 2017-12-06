@@ -20,10 +20,13 @@ package org.apache.flink.runtime.io.network.util;
 
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
+import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.partition.BufferAvailabilityListener;
 import org.apache.flink.runtime.io.network.partition.ResultSubpartitionView;
+import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartitionView;
+import org.apache.flink.runtime.io.network.partition.SpilledPipelinedSubpartitionView;
 
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -112,15 +115,24 @@ public class TestSubpartitionConsumer implements Callable<Boolean>, BufferAvaila
 						buffer.recycle();
 
 						if (event.getClass() == EndOfPartitionEvent.class) {
+							System.out.println("Received EndOfPartitionEvent-Marker");
 							subpartitionView.notifySubpartitionConsumed();
 
+							return true;
+						} else if (event.getClass() == SpillToDiskMarker.class) {
+							System.out.println("Received SpillToDisk-Marker");
 							return true;
 						}
 					}
 				} else if (subpartitionView.isReleased()) {
 					return true;
+				} else {
+					System.out.println("Received NullBuffer, not SubPartitionNotReleased");
 				}
 			}
+		} catch (Throwable e) {
+			System.out.println(e.getMessage());
+			return false;
 		} finally {
 			subpartitionView.releaseAllResources();
 		}
@@ -132,7 +144,6 @@ public class TestSubpartitionConsumer implements Callable<Boolean>, BufferAvaila
 			synchronized (numBuffersAvailable) {
 				numBuffersAvailable.notifyAll();
 			}
-			;
 		}
 	}
 }

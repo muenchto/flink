@@ -54,15 +54,26 @@ public class TestSubpartitionProducer implements Callable<Boolean> {
 	/** Random source for sleeps. */
 	private final Random random;
 
+	private final boolean shouldFinishSubpartitionAfterSending;
+
 	public TestSubpartitionProducer(
 			ResultSubpartition subpartition,
 			boolean isSlowProducer,
 			TestProducerSource source) {
+		this(subpartition, isSlowProducer, source, true);
+	}
+
+	public TestSubpartitionProducer(
+		ResultSubpartition subpartition,
+		boolean isSlowProducer,
+		TestProducerSource source,
+		boolean shouldFinishSubpartitionAfterSending) {
 
 		this.subpartition = checkNotNull(subpartition);
 		this.isSlowProducer = isSlowProducer;
 		this.random = isSlowProducer ? new Random() : null;
 		this.source = checkNotNull(source);
+		this.shouldFinishSubpartitionAfterSending = shouldFinishSubpartitionAfterSending;
 	}
 
 	@Override
@@ -96,7 +107,9 @@ public class TestSubpartitionProducer implements Callable<Boolean> {
 				}
 			}
 
-			subpartition.finish();
+			if (shouldFinishSubpartitionAfterSending) {
+				subpartition.finish();
+			}
 
 			success = true;
 			return true;
