@@ -264,7 +264,7 @@ public interface TaskManagerGateway {
 
 	FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 															  ExecutionAttemptID currentSinkAttempt,
-															  List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor);
+															  int stoppedMapSubTaskIndex, List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor);
 
 	FlinkFuture<Acknowledge>  triggerResumeWithIncreaseDoP(Time timeout,
 														   ExecutionAttemptID currentSinkAttempt,

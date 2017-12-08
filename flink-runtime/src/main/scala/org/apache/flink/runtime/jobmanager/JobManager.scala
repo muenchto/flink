@@ -1042,7 +1042,7 @@ class JobManager(
             case "details" => val details = modificationCoordinator.getDetails()
               (true, details)
 
-            case msg if msg.startsWith("modifySink") =>
+            case "modifySink" =>
 
               log.info(s"Attempting to modify sink for new map input")
 
