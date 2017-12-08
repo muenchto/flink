@@ -60,10 +60,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionConsumableNotifier;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionMetrics;
-import org.apache.flink.runtime.io.network.partition.consumer.InputChannel;
-import org.apache.flink.runtime.io.network.partition.consumer.InputGateMetrics;
-import org.apache.flink.runtime.io.network.partition.consumer.RemoteInputChannel;
-import org.apache.flink.runtime.io.network.partition.consumer.SingleInputGate;
+import org.apache.flink.runtime.io.network.partition.consumer.*;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
@@ -459,28 +456,43 @@ public class Task implements Runnable, TaskActions {
 	}
 
 	public void connectToNewInputAfterMigration(NetworkEnvironment networkEnvironment,
+												int stoppedMapSubTaskIndex,
 												List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptors) {
 
 		Preconditions.checkArgument(inputGateDeploymentDescriptor.length == 1);
 
-		InputGateDeploymentDescriptor igdd = inputGateDeploymentDescriptors.get(0);
-		InputChannelDeploymentDescriptor icdd = igdd.getInputChannelDeploymentDescriptors()[1];
-
 		SingleInputGate inputGate = inputGates[0];
+
+		InputGateDeploymentDescriptor igdd = inputGateDeploymentDescriptors.get(0);
+		InputChannelDeploymentDescriptor icdd = igdd.getInputChannelDeploymentDescriptors()[stoppedMapSubTaskIndex];
 
 		final ResultPartitionID partitionId = icdd.getConsumedPartitionId();
 		final ResultPartitionLocation partitionLocation = icdd.getConsumedPartitionLocation();
 
-		InputChannel inputChannel = new RemoteInputChannel(
-			inputGate,
-			1,
-			partitionId,
-			partitionLocation.getConnectionId(),
-			networkEnvironment.getConnectionManager(),
-			networkEnvironment.getPartitionRequestInitialBackoff(),
-			networkEnvironment.getPartitionRequestMaxBackoff(),
-			taskMetricGroup.getIOMetricGroup(),
-			taskNameWithSubtask);
+		InputChannel inputChannel;
+
+		LOG.info("Modifying InputGate with new {}InputChannel for SubTaskIndex {}",
+			partitionLocation.isLocal() ? "Local" : "Remote", stoppedMapSubTaskIndex);
+
+		if (icdd.getConsumedPartitionLocation().isLocal()) {
+			inputChannel = new LocalInputChannel(inputGate, stoppedMapSubTaskIndex, partitionId,
+				networkEnvironment.getResultPartitionManager(),
+				networkEnvironment.getTaskEventDispatcher(),
+				networkEnvironment.getPartitionRequestInitialBackoff(),
+				networkEnvironment.getPartitionRequestMaxBackoff(),
+				taskMetricGroup.getIOMetricGroup());
+		} else {
+			inputChannel = new RemoteInputChannel(
+				inputGate,
+				stoppedMapSubTaskIndex,
+				partitionId,
+				partitionLocation.getConnectionId(),
+				networkEnvironment.getConnectionManager(),
+				networkEnvironment.getPartitionRequestInitialBackoff(),
+				networkEnvironment.getPartitionRequestMaxBackoff(),
+				taskMetricGroup.getIOMetricGroup(),
+				taskNameWithSubtask);
+		}
 
 		try {
 			inputGate.updateInputChannel(partitionId.getPartitionId(), inputChannel);
@@ -488,8 +500,9 @@ public class Task implements Runnable, TaskActions {
 			failExternally(e);
 		}
 
-		LOG.debug("Successfully connected Task to new Input");
+		LOG.debug("Successfully connected {} to new Input", taskNameWithSubtask);
 	}
+
 
 	public void reconfigureForNewInputAfterChangedDoP(NetworkEnvironment networkEnvironment,
 													  ExecutionAttemptID migratedMapTask,

@@ -115,6 +115,7 @@ object TaskMessages {
     extends TaskMessage with RequiresLeaderSessionID
 
   case class ResumeWithDifferentInputs(sinkExecutionAttemptID: ExecutionAttemptID,
+                                       stoppedMapSubTaskIndex: Int,
                                        inputGateDeploymentDescriptor: util.List[InputGateDeploymentDescriptor] )
     extends TaskMessage with RequiresLeaderSessionID
 

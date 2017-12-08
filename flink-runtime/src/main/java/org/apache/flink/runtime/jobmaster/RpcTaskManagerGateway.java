@@ -187,7 +187,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	@Override
 	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 																	 ExecutionAttemptID currentSinkAttempt,
-																	 List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
+																	 int stoppedMapSubTaskIndex, List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
 		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
 

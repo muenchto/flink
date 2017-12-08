@@ -321,12 +321,14 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	@Override
 	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 																	 ExecutionAttemptID currentSinkAttempt,
+																	 int stoppedMapSubTaskIndex,
 																	 List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
 		Preconditions.checkNotNull(timeout);
 		Preconditions.checkNotNull(inputGateDeploymentDescriptor);
 
 		scala.concurrent.Future<Acknowledge> resumeResult = actorGateway.ask(
 			new TaskMessages.ResumeWithDifferentInputs(currentSinkAttempt,
+				stoppedMapSubTaskIndex,
 				inputGateDeploymentDescriptor),
 			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
 			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));

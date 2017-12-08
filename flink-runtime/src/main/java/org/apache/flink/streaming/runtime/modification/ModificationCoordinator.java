@@ -595,6 +595,7 @@ public class ModificationCoordinator {
 			executionVertex.getCurrentExecutionAttempt()
 				.triggerResumeWithDifferentInputs(
 					rpcCallTimeout,
+					stoppedMapSubTaskIndex,
 					inputGateDeploymentDescriptor);
 		}
 	}

@@ -552,13 +552,13 @@ class TaskManager(
           // startTaskFromMigration(taskDeploymentDescriptor, executionAttemptID)
           submitTask(taskDeploymentDescriptor)
 
-        case ResumeWithDifferentInputs(currentSinkAttempt, inputGateDeploymentDescriptor) =>
+        case ResumeWithDifferentInputs(currentSinkAttempt, stoppedMapSubTaskIndex, inputGateDeploymentDescriptor) =>
           val task = runningTasks.get(currentSinkAttempt)
           if (task != null) {
 
             log.debug(s"Attempting to change inputs for sink $currentSinkAttempt")
 
-            task.connectToNewInputAfterMigration(network, inputGateDeploymentDescriptor)
+            task.connectToNewInputAfterMigration(network, stoppedMapSubTaskIndex, inputGateDeploymentDescriptor)
 
             sender ! decorateMessage(Acknowledge.get())
           } else {
