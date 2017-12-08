@@ -388,7 +388,7 @@ public class ModificationCoordinator {
 					execution.getCurrentExecutionAttempt().triggerModification(
 						modificationId,
 						timestamp,
-						ackTasks.keySet());
+						new HashSet<>(ackTasks.keySet())); // KeySet not serializable
 				}
 
 			}
