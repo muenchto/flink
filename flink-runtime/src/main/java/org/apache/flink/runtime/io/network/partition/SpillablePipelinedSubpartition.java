@@ -121,16 +121,18 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 		// view reference accessible outside the lock, but assigned inside the locked scope
 		final ResultSubpartitionView reader;
 
+		final Buffer buffer = EventSerializer.toBuffer(EndOfPartitionEvent.INSTANCE);
+
 		synchronized (buffers) {
 			if (isFinished || isReleased) {
 				return;
 			}
 
-			if (add(EventSerializer.toBuffer(EndOfPartitionEvent.INSTANCE))) {
-				isFinished = true;
-			}
-
+			buffers.add(buffer);
 			reader = readView;
+			updateStatistics(buffer);
+
+			isFinished = true;
 		}
 
 		// If we are spilling/have spilled, wait for the writer to finish
@@ -193,6 +195,21 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 
 			// Get the view...
 			view = readView;
+
+			// No consumer yet, we are responsible to clean everything up. If
+			// one is available, the view is responsible is to clean up (see
+			// below).
+			if (view == null) {
+				buffers.clear();
+
+				// TODO This can block until all buffers are written out to
+				// disk if a spill is in-progress before deleting the file.
+				// It is possibly called from the Netty event loop threads,
+				// which can bring down the network.
+				if (spillWriter != null) {
+					spillWriter.closeAndDelete();
+				}
+			}
 			readView = null;
 
 			// Make sure that no further buffers are added to the subpartition
