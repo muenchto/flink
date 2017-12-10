@@ -83,6 +83,7 @@ import org.apache.flink.runtime.testingUtils.TestingTaskManagerMessages;
 import org.apache.flink.runtime.testingUtils.TestingUtils;
 import org.apache.flink.runtime.testutils.RecoverableCompletedCheckpointStore;
 import org.apache.flink.runtime.util.TestByteStreamStateHandleDeepCompare;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.util.InstantiationUtil;
 
@@ -592,12 +593,12 @@ public class JobManagerHARecoveryTest extends TestLogger {
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs) throws Exception {
+		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs, ModificationCoordinator.ModificationAction action) throws Exception {
 			return false;
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, long upcomingCheckpointID) throws Exception {
+		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, ModificationCoordinator.ModificationAction action, long upcomingCheckpointID) throws Exception {
 			return false;
 		}
 

@@ -46,7 +46,6 @@ import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
@@ -68,6 +67,7 @@ import org.apache.flink.streaming.api.operators.OperatorSnapshotResult;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.modification.statemigration.StateMigrationMetaData;
@@ -135,7 +135,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		NOT_MODIFIED,
 		WAITING_FOR_SPILLING_MARKER,
 		PAUSING,
-		PAUSED
 	}
 
 	private static final AtomicReferenceFieldUpdater<StreamTask, ModificationStatus> STATE_UPDATER =
@@ -195,6 +194,12 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	/** Thread pool for async snapshot workers. */
 	private ExecutorService asyncOperationsThreadPool;
 
+	private final Map<Long, AtomicLong> seenModificationMarker = new HashMap<>();
+
+	private final List<Long> pendingCheckpointIDsForModification = new ArrayList<>();
+
+	private volatile ModificationCoordinator.ModificationAction modificationAction;
+
 	// ------------------------------------------------------------------------
 	//  Life cycle methods for specific implementations
 	// ------------------------------------------------------------------------
@@ -217,6 +222,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	public void setPausedForModification(boolean pausedForModification) {
 		this.pausedForModification = pausedForModification;
+	}
+
+	public ModificationCoordinator.ModificationAction getModificationAction() {
+		return modificationAction;
 	}
 
 	/**
@@ -665,10 +674,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	protected abstract boolean pauseInputs();
 
-	private final Map<Long, AtomicLong> seenModificationMarker = new HashMap<>();
-
-	private final List<Long> pendingCheckpointIDsForModification = new ArrayList<>();
-
 	private boolean countAndCheckSeenAllModificationMarker(long modificationID) {
 
 		if (seenModificationMarker.get(modificationID) == null) {
@@ -682,13 +687,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	@Override
 	public boolean triggerModification(ModificationMetaData metaData,
-									   Set<ExecutionAttemptID> executionAttemptIDS) throws Exception {
-		return triggerModification(metaData, executionAttemptIDS, -1);
+									   Set<ExecutionAttemptID> executionAttemptIDS, ModificationCoordinator.ModificationAction action) throws Exception {
+		return triggerModification(metaData, executionAttemptIDS, action, -1);
 	}
 
 	@Override
 	public boolean triggerModification(ModificationMetaData metaData,
 									   Set<ExecutionAttemptID> executionAttemptIDS,
+									   ModificationCoordinator.ModificationAction action,
 									   long upcomingCheckpointID) throws Exception {
 		try {
 
@@ -714,6 +720,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 								}
 
 								pendingCheckpointIDsForModification.add(upcomingCheckpointID);
+
+								modificationAction = action;
 
 								for (InputGate inputGate : getEnvironment().getAllInputGates()) {
 									inputGate.sendTaskEvent(new PausingTaskEvent(getIndexInSubtaskGroup(), upcomingCheckpointID));
@@ -742,7 +750,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					// lock scope, they are an atomic operation regardless of the order in which they occur.
 					// Given this, we immediately emit the checkpoint barriers, so the downstream operators
 					// can start their checkpoint work as soon as possible
-					operatorChain.broadcastStartModificationEvent(metaData, executionAttemptIDS);
+					operatorChain.broadcastStartModificationEvent(metaData, executionAttemptIDS, action);
 
 					return true;
 				}

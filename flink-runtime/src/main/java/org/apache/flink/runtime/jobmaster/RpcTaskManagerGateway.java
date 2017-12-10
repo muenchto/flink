@@ -36,6 +36,7 @@ import org.apache.flink.runtime.messages.StackTrace;
 import org.apache.flink.runtime.messages.StackTraceSampleResponse;
 import org.apache.flink.runtime.taskexecutor.TaskExecutorGateway;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.util.Preconditions;
 
 import java.util.List;
@@ -136,11 +137,6 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public Future<Acknowledge> stopTaskForMigration(ExecutionAttemptID executionAttemptID, Time timeout) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
 	public Future<Acknowledge> startTaskFromMigration(TaskDeploymentDescriptor deployment,
 											   Time timeout){
 		throw new UnsupportedOperationException();
@@ -168,7 +164,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 									JobID jobId,
 									long modificationID,
 									long timestamp,
-									Set<ExecutionAttemptID> ids) {
+									Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action) {
 		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
 

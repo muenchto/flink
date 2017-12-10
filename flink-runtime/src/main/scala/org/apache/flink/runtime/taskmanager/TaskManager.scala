@@ -532,20 +532,6 @@ class TaskManager(
 
           introduceNewOperator(executionAttemptID, taskDeploymentDescriptor)
 
-        case StopTaskForMigration(executionAttemptID) =>
-          val task = runningTasks.get(executionAttemptID)
-          if (task != null) {
-
-            log.debug(s"Attempting to stop for task $executionAttemptID for migration")
-
-            task.stopForMigration()
-
-            sender ! decorateMessage(Acknowledge.get())
-          } else {
-            log.debug(s"Cannot find task to stop for migration for execution $executionAttemptID)")
-            sender ! decorateMessage(Acknowledge.get())
-          }
-
         case ResumeTaskFromMigration(taskDeploymentDescriptor) =>
           // TODO Masterthesis Not necessary to write custom start method?
           // Simply change creation tdd on JobManager to incorporate executionAttemptID in tdd
@@ -822,13 +808,14 @@ class TaskManager(
         val modificationID = message.getModificationID
         val timestamp = message.getTimestamp
         val ids = message.getExecutionAttempsToModify
+        val action = message.getModificationAction
 
         log.info(s"Receiver TriggerModification $modificationID@$timestamp for $taskExecutionId.")
 
         val task = runningTasks.get(taskExecutionId)
 
         if (task != null) {
-          task.triggerStartModificationMessage(modificationID, timestamp, ids)
+          task.triggerStartModificationMessage(modificationID, timestamp, ids, action)
         } else {
           log.info(s"TaskManager received a modification request for unknown task $taskExecutionId.")
         }

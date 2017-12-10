@@ -44,6 +44,7 @@ import org.apache.flink.runtime.messages.checkpoint.NotifyCheckpointComplete;
 import org.apache.flink.runtime.messages.checkpoint.TriggerCheckpoint;
 import org.apache.flink.runtime.messages.modification.TriggerModification;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -211,19 +212,6 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 		return new FlinkFuture<>(cancelResult);	}
 
 	@Override
-	public Future<Acknowledge> stopTaskForMigration(ExecutionAttemptID executionAttemptID, Time timeout) {
-		Preconditions.checkNotNull(executionAttemptID);
-		Preconditions.checkNotNull(timeout);
-
-		scala.concurrent.Future<Acknowledge> stopResult = actorGateway.ask(
-			new TaskMessages.StopTaskForMigration(executionAttemptID),
-			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
-			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
-
-		return new FlinkFuture<>(stopResult);
-	}
-
-	@Override
 	public Future<Acknowledge> startTaskFromMigration(TaskDeploymentDescriptor deployment,
 													  Time timeout){
 		Preconditions.checkNotNull(deployment);
@@ -293,11 +281,11 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 									JobID jobId,
 									long modificationID,
 									long timestamp,
-									Set<ExecutionAttemptID> ids) {
+									Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action) {
 		Preconditions.checkNotNull(attemptId);
 		Preconditions.checkNotNull(jobId);
 
-		actorGateway.tell(new TriggerModification(jobId, attemptId, modificationID, timestamp, ids));
+		actorGateway.tell(new TriggerModification(jobId, attemptId, modificationID, timestamp, ids, action));
 	}
 
 	@Override

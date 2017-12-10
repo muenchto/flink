@@ -47,6 +47,7 @@ import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.io.StreamRecordWriter;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
@@ -236,10 +237,10 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		}
 	}
 
-	public void broadcastStartModificationEvent(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS) throws IOException {
+	public void broadcastStartModificationEvent(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, ModificationCoordinator.ModificationAction action) throws IOException {
 		try {
 			StartModificationMarker startModificationMarker =
-				new StartModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), executionAttemptIDS);
+				new StartModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), executionAttemptIDS, action);
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
 				streamOutput.broadcastEvent(startModificationMarker);
 			}

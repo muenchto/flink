@@ -51,6 +51,7 @@ import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.runtime.util.TestingTaskManagerRuntimeInfo;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.SerializedValue;
@@ -60,7 +61,6 @@ import org.junit.Test;
 
 import java.net.URL;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -273,12 +273,12 @@ public class TaskAsyncCallTest {
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs) throws Exception {
+		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs, ModificationCoordinator.ModificationAction action) throws Exception {
 			return false;
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, long upcomingCheckpointID) throws Exception {
+		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, ModificationCoordinator.ModificationAction action, long upcomingCheckpointID) throws Exception {
 			return false;
 		}
 

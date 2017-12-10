@@ -22,11 +22,10 @@ import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.state.TaskStateHandles;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -100,9 +99,10 @@ public interface StatefulTask {
 	 *
 	 * @param jobVertexIDs Options for performing this modification
 	 *
+	 * @param action
 	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
 	 */
-	boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs) throws Exception;
+	boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs, ModificationCoordinator.ModificationAction action) throws Exception;
 
 	/**
 	 * This method is called to trigger a modification of the graph.
@@ -114,11 +114,12 @@ public interface StatefulTask {
 	 * @param metaData
 	 * @param executionAttemptIDS Options for performing this modification
 	 *
+	 * @param action
 	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
 	 */
 	boolean triggerModification(ModificationMetaData metaData,
 								Set<ExecutionAttemptID> executionAttemptIDS,
-								long upcomingCheckpointID) throws Exception;
+								ModificationCoordinator.ModificationAction action, long upcomingCheckpointID) throws Exception;
 
 	/**
 	 * This method is called to trigger a acknowledge the spilling of the graph.

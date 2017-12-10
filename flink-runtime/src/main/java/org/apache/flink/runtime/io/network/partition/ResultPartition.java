@@ -409,7 +409,7 @@ public class ResultPartition implements BufferPoolOwner {
 	@Override
 	public String toString() {
 		return "ResultPartition with id '" + partitionId + "' Type: [" + partitionType + ", "
-				+ subpartitions.length + " subpartitions, ]";
+				+ subpartitions.length + " subpartitions]";
 	}
 
 	// ------------------------------------------------------------------------

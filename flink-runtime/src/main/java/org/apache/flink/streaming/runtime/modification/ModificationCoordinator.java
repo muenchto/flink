@@ -38,6 +38,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class ModificationCoordinator {
 
+	public enum ModificationAction {
+		PAUSING,
+		STOPPING
+	}
+
 	private static final long MODIFICATION_TIMEOUT = 30;
 
 	private static final Logger LOG = LoggerFactory.getLogger(ModificationCoordinator.class);
@@ -67,8 +72,6 @@ public class ModificationCoordinator {
 	private ExecutionAttemptID stoppedMapExecutionAttemptID;
 
 	private int stoppedMapSubTaskIndex;
-
-	private ExecutionAttemptID newMapOperatorExecutionAttemptID;
 
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
@@ -305,15 +308,15 @@ public class ModificationCoordinator {
 		}
 	}
 
-	private void triggerModification(ExecutionJobVertex instancesToPause, final String description) {
+	private void triggerModification(ExecutionJobVertex instancesToPause, final String description, ModificationAction action) {
 
 		ArrayList<ExecutionVertex> objects = new ArrayList<>(instancesToPause.getTaskVertices().length);
 		objects.addAll(Arrays.asList(instancesToPause.getTaskVertices()));
 
-		triggerModification(objects, description);
+		triggerModification(objects, description, action);
 	}
 
-	private void triggerModification(List<ExecutionVertex> instancesToPause, final String description) {
+	private void triggerModification(List<ExecutionVertex> instancesToPause, final String description, ModificationAction action) {
 
 		Preconditions.checkNotNull(instancesToPause);
 		Preconditions.checkNotNull(description);
@@ -388,7 +391,8 @@ public class ModificationCoordinator {
 					execution.getCurrentExecutionAttempt().triggerModification(
 						modificationId,
 						timestamp,
-						new HashSet<>(ackTasks.keySet())); // KeySet not serializable
+						new HashSet<>(ackTasks.keySet()),
+						action); // KeySet not serializable
 				}
 
 			}
@@ -435,19 +439,6 @@ public class ModificationCoordinator {
 		}
 
 		return null;
-	}
-
-	public void stopMapInstance(ResourceID taskManagerID) throws OperatorNotFoundException {
-		ExecutionVertex operatorInstanceToStop = getMapExecutionVertexToStop(taskManagerID);
-
-		if (operatorInstanceToStop == null) {
-			throw new OperatorNotFoundException("Map", executionGraph.getJobID(), taskManagerID);
-		}
-
-		stoppedMapExecutionAttemptID = operatorInstanceToStop.getCurrentExecutionAttempt().getAttemptId();
-		stoppedMapSubTaskIndex = operatorInstanceToStop.getCurrentExecutionAttempt().getParallelSubtaskIndex();
-
-		operatorInstanceToStop.getCurrentExecutionAttempt().stopForMigration();
 	}
 
 	public void increaseDOPOfSink() {
@@ -541,8 +532,6 @@ public class ModificationCoordinator {
 				currentExecutionAttempt.setInitialState(taskStateHandles);
 			}
 
-			newMapOperatorExecutionAttemptID = currentExecutionAttempt.getAttemptId();
-
 			currentExecutionAttempt
 				.scheduleForMigration(
 					executionGraph.getSlotProvider(),
@@ -566,7 +555,7 @@ public class ModificationCoordinator {
 	public void pauseSink() {
 		ExecutionJobVertex sink = findSink();
 
-		triggerModification(sink, "Pause Sink");
+		triggerModification(sink, "Pause Sink", ModificationAction.PAUSING);
 	}
 
 	public void modifySinkInstance() {
@@ -631,13 +620,13 @@ public class ModificationCoordinator {
 	public void pauseFilter() {
 		ExecutionJobVertex filter = findFilter();
 
-		triggerModification(filter, "Pause Filter");
+		triggerModification(filter, "Pause Filter", ModificationAction.PAUSING);
 	}
 
 	public void pauseMap() {
 		ExecutionJobVertex map = findMap();
 
-		triggerModification(map, "Pause map");
+		triggerModification(map, "Pause map", ModificationAction.PAUSING);
 	}
 
 	public void pauseMap(ExecutionAttemptID mapAttemptID) {
@@ -647,7 +636,11 @@ public class ModificationCoordinator {
 
 		for (ExecutionVertex vertex : taskVertices) {
 			if (vertex.getCurrentExecutionAttempt().getAttemptId().equals(mapAttemptID)) {
-				triggerModification(Collections.singletonList(vertex), "Pause single map instance");
+
+				stoppedMapExecutionAttemptID = vertex.getCurrentExecutionAttempt().getAttemptId();
+				stoppedMapSubTaskIndex = vertex.getCurrentExecutionAttempt().getParallelSubtaskIndex();
+
+				triggerModification(Collections.singletonList(vertex), "Pause single map instance", ModificationAction.STOPPING);
 				return;
 			}
 		}

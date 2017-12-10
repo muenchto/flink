@@ -35,6 +35,7 @@ import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTrace;
 import org.apache.flink.runtime.messages.StackTraceSampleResponse;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 
 import java.util.List;
 import java.util.Set;
@@ -163,22 +164,10 @@ public interface TaskManagerGateway {
 	/**
 	 * Stop the given task for migration.
 	 *
-	 * @param executionAttemptID identifying the task
 	 * @param timeout of the submit operation
 	 * @return Future acknowledge if the task is successfully stopped
 	 */
-	Future<Acknowledge> stopTaskForMigration(
-		ExecutionAttemptID executionAttemptID,
-		Time timeout);
-
-	/**
-	 * Stop the given task for migration.
-	 *
-	 * @param timeout of the submit operation
-	 * @return Future acknowledge if the task is successfully stopped
-	 */
-	Future<Acknowledge> startTaskFromMigration(TaskDeploymentDescriptor deployment,
-											   Time timeout);
+	Future<Acknowledge> startTaskFromMigration(TaskDeploymentDescriptor deployment, Time timeout);
 
 	/**
 	 * Update the task where the given partitions can be found.
@@ -234,17 +223,18 @@ public interface TaskManagerGateway {
 	 * Trigger for the source tasks, that is should send out
 	 * {@link org.apache.flink.streaming.runtime.modification.events.StartModificationMarker}
 	 * to pause the job.
-	 *  @param attemptId identifying the task
+	 * @param attemptId identifying the task
 	 * @param jobId identifying the job to which the task belongs
 	 * @param modificationID of the modification to trigger
 	 * @param timestamp of the modification to trigger
 	 * @param ids The vertexIDs, that should be paused
+	 * @param action
 	 */
 	void triggerModification(ExecutionAttemptID attemptId,
 							 JobID jobId,
 							 long modificationID,
 							 long timestamp,
-							 Set<ExecutionAttemptID> ids);
+							 Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action);
 
 	/**
 	 * Request the task manager log from the task manager.
