@@ -89,15 +89,6 @@ object TaskMessages {
     extends TaskMessage with RequiresLeaderSessionID
 
   /**
-    * Stops the task associated with [[attemptID]] for migration.
-    * The result is sent back to the sender as a [[TaskOperationResult]] message.
-    *
-    * @param attemptID The execution attempt ID of the source operator
-    */
-  case class StopTaskForMigration(attemptID: ExecutionAttemptID)
-    extends TaskMessage with RequiresLeaderSessionID
-
-  /**
     * Informs the stopped task, that it should prepare itself for a new consumer.
     *
     * @param attemptID The execution attempt ID of the source operator

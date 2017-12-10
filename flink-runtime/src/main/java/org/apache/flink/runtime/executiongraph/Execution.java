@@ -47,6 +47,7 @@ import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.StackTraceSampleResponse;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.util.ExceptionUtils;
 
 import org.slf4j.Logger;
@@ -880,17 +881,18 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 
 	/**
 	 * Trigger a new modification on the task of this execution.
-	 *  @param modificationID of the modification to trigger
+	 * @param modificationID of the modification to trigger
 	 * @param timestamp of the modification to trigger
 	 * @param ids
+	 * @param action
 	 */
-	public void triggerModification(long modificationID, long timestamp, Set<ExecutionAttemptID> ids) {
+	public void triggerModification(long modificationID, long timestamp, Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action) {
 		final SimpleSlot slot = assignedResource;
 
 		if (slot != null) {
 			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
-			taskManagerGateway.triggerModification(attemptId, getVertex().getJobId(), modificationID, timestamp, ids);
+			taskManagerGateway.triggerModification(attemptId, getVertex().getJobId(), modificationID, timestamp, ids, action);
 		} else {
 			LOG.debug("The execution has no slot assigned. This indicates that the execution is " +
 				"no longer running.");
@@ -1402,33 +1404,6 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	@Override
 	public ArchivedExecution archive() {
 		return new ArchivedExecution(this);
-	}
-
-	public void stopForMigration() {
-		final SimpleSlot slot = assignedResource;
-
-		if (slot != null) {
-			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
-
-			Future<Acknowledge> stopResultFuture = FutureUtils.retry(
-				new Callable<Future<Acknowledge>>() {
-
-					@Override
-					public Future<Acknowledge> call() throws Exception {
-						return taskManagerGateway.stopTaskForMigration(attemptId, timeout);
-					}
-				},
-				NUM_STOP_CALL_TRIES,
-				executor);
-
-			stopResultFuture.exceptionally(new ApplyFunction<Throwable, Void>() {
-				@Override
-				public Void apply(Throwable failure) {
-					LOG.info("Stopping task was not successful.", failure);
-					return null;
-				}
-			});
-		}
 	}
 
 	public void scheduleForMigration(SlotProvider slotProvider, boolean queuedSchedulingAllowed, ResourceID taskmanagerID) {

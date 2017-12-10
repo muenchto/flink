@@ -21,9 +21,6 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
@@ -418,6 +415,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 			statefulTask.triggerModification(
 				checkpointMetaData,
 				startModificationMarker.getJobVertexIDs(),
+				startModificationMarker.getModificationAction(),
 				currentCheckpointId + 5);
 
 		} else {

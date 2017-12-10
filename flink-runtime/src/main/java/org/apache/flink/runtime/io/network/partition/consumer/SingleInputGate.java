@@ -935,7 +935,6 @@ public class SingleInputGate implements InputGate {
 
 			oldChannel.releaseAllResources();
 
-
 			LOG.debug("Updated existing input channel to {}.", newChannel);
 
 			if (requestedPartitionsFlag) {

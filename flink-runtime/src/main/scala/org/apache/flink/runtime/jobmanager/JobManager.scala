@@ -1058,23 +1058,6 @@ class JobManager(
             case "start" => modificationCoordinator.startFilterOperator()
               (true, "Starting new operator submitted")
 
-            case msg if msg.startsWith("stopMapInstance") =>
-
-              val m = msg.split(":")
-
-              if (m.length != 2) {
-                (false, s"Jar command $command")
-
-              } else {
-
-                val taskmanagerID: ResourceID = new ResourceID(m(1))
-
-                log.info(s"Attempting to stop map for id '$taskmanagerID'")
-
-                modificationCoordinator.stopMapInstance(taskmanagerID)
-                (true, "Stopping map submitted")
-              }
-
             case msg if msg.startsWith("restartMapInstance") =>
 
               val m = msg.split(":")

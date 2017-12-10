@@ -29,7 +29,6 @@ import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
-import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
@@ -150,7 +149,9 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 			ModificationMetaData checkpointMetaData =
 				new ModificationMetaData(startModificationMarker.getModificationID(), startModificationMarker.getTimestamp());
 
-			statefulTask.triggerModification(checkpointMetaData, startModificationMarker.getJobVertexIDs());
+			statefulTask.triggerModification(checkpointMetaData,
+				startModificationMarker.getJobVertexIDs(),
+				startModificationMarker.getModificationAction());
 
 		} else {
 			throw new NullPointerException("statefulTask must not be null");

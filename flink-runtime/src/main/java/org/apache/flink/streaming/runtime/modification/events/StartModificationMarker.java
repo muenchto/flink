@@ -5,6 +5,7 @@ import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.runtime.event.RuntimeEvent;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 
 import java.io.IOException;
 import java.util.Set;
@@ -20,11 +21,13 @@ public class StartModificationMarker extends RuntimeEvent {
 	private final long modificationID;
 	private final long timestamp;
 	private final Set<ExecutionAttemptID> vertexIds;
+	private final ModificationCoordinator.ModificationAction modificationAction;
 
-	public StartModificationMarker(long modificationID, long timestamp, Set<ExecutionAttemptID> vertexIDs) {
+	public StartModificationMarker(long modificationID, long timestamp, Set<ExecutionAttemptID> vertexIDs, ModificationCoordinator.ModificationAction action) {
 		this.modificationID = modificationID;
 		this.timestamp = timestamp;
 		this.vertexIds = checkNotNull(vertexIDs);
+		this.modificationAction = checkNotNull(action);
 	}
 
 	public long getModificationID() {
@@ -66,5 +69,9 @@ public class StartModificationMarker extends RuntimeEvent {
 	public String toString() {
 		return String.format("StartModificationMarker %d with ids: %s @ %d",
 			modificationID, StringUtils.join(vertexIds, ","), timestamp);
+	}
+
+	public ModificationCoordinator.ModificationAction getModificationAction() {
+		return modificationAction;
 	}
 }

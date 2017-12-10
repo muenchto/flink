@@ -74,6 +74,7 @@ import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.streaming.runtime.io.InputGateUtil;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationHandler;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
@@ -475,7 +476,9 @@ public class Task implements Runnable, TaskActions {
 			partitionLocation.isLocal() ? "Local" : "Remote", stoppedMapSubTaskIndex);
 
 		if (icdd.getConsumedPartitionLocation().isLocal()) {
-			inputChannel = new LocalInputChannel(inputGate, stoppedMapSubTaskIndex, partitionId,
+			inputChannel = new LocalInputChannel(inputGate,
+				stoppedMapSubTaskIndex,
+				partitionId,
 				networkEnvironment.getResultPartitionManager(),
 				networkEnvironment.getTaskEventDispatcher(),
 				networkEnvironment.getPartitionRequestInitialBackoff(),
@@ -890,19 +893,38 @@ public class Task implements Runnable, TaskActions {
 			// Check if Task has been paused for modification
 			if (this.invokable instanceof StreamTask) {
 
-				boolean fromModification = ((StreamTask) this.invokable).getPausedForModification();
+				final boolean fromModification = ((StreamTask) this.invokable).getPausedForModification();
+				final ModificationCoordinator.ModificationAction action = ((StreamTask) this.invokable).getModificationAction();
 
 				if (fromModification) {
-					if (transitionState(ExecutionState.RUNNING, ExecutionState.PAUSING)) {
-						LOG.info("StreamTask {} successfully entered new state {}", taskNameWithSubtask, ExecutionState.PAUSING);
 
-						taskManagerActions.updateTaskExecutionState(
-							new TaskExecutionState(jobId, executionId, ExecutionState.PAUSING));
+					switch (action) {
+						case PAUSING: {
+							if (!transitionState(ExecutionState.RUNNING, ExecutionState.PAUSING)) {
+								throw new RuntimeException("Failed to TransitionState to " + ExecutionState.PAUSING);
+							}
+							LOG.info("StreamTask {} successfully entered new state {}", taskNameWithSubtask, ExecutionState.PAUSING);
 
-						// Do not finish the partitions
-						return;
-					} else {
-						LOG.info("StreamTask {} could not enter new state {}", taskNameWithSubtask, ExecutionState.PAUSING);
+							taskManagerActions.updateTaskExecutionState(
+								new TaskExecutionState(jobId, executionId, ExecutionState.PAUSING));
+
+							// Do not finish the partitions
+							return;
+						}
+
+						case STOPPING: {
+							// Do nothing special
+							LOG.info("StreamTask {} successfully entered new state {}", taskNameWithSubtask, ExecutionState.FINISHED);
+							break;
+						}
+
+						default: {
+							if (!transitionState(ExecutionState.RUNNING, ExecutionState.FAILED)) {
+								throw new RuntimeException("Failed to TransitionState to " + ExecutionState.FAILED);
+							}
+							LOG.info("Unknown execution state {} for {}", action, taskNameWithSubtask);
+						}
+
 					}
 				} else {
 					LOG.info("StreamTask {} stopped but not for {}", taskNameWithSubtask, ExecutionState.PAUSING);
@@ -1337,23 +1359,6 @@ public class Task implements Runnable, TaskActions {
 		writers[0].reconfigureKeySelectorForNewConsumer();
 	}
 
-	public void stopForMigration() {
-		// TODO Masterthesis Slot has be returned by JobManager
-
-		network.unregisterTask(this);
-
-		// un-register the metrics at the end so that the task may already be
-		// counted as finished when this happens
-		// errors here will only be logged
-		try {
-			metrics.close();
-		} catch (Throwable t) {
-			LOG.error("Error during metrics de-registration of task {} ({}).", taskNameWithSubtask, executionId, t);
-		}
-
-		LOG.info("Stopped task {} for migration to different task manager ({}).", taskNameWithSubtask, executionId);
-	}
-
 	private void changeRuntimeState(ExecutionState targetState) {
 		ExecutionState current = executionState;
 
@@ -1688,7 +1693,8 @@ public class Task implements Runnable, TaskActions {
 	public void triggerStartModificationMessage(
 		final long modificationID,
 		long modificationTimestamp,
-		final Set<ExecutionAttemptID> vertexIDS) {
+		final Set<ExecutionAttemptID> vertexIDS,
+		final ModificationCoordinator.ModificationAction action) {
 
 		final AbstractInvokable invokable = this.invokable;
 
@@ -1708,11 +1714,11 @@ public class Task implements Runnable, TaskActions {
 						LOG.debug("Creating FileSystem stream leak safety net for {}", Thread.currentThread().getName());
 						FileSystemSafetyNet.setSafetyNetCloseableRegistryForThread(safetyNetCloseableRegistry);
 
-						LOG.debug("Triggering StartModificationMessage for {} with vertices {}.",
-							modificationID, Joiner.on(",").join(vertexIDS));
+						LOG.debug("Triggering StartModificationMessage for {} with vertices {} for action {}.",
+							modificationID, Joiner.on(",").join(vertexIDS), action);
 
 						try {
-							boolean success = statefulTask.triggerModification(metaData, vertexIDS);
+							boolean success = statefulTask.triggerModification(metaData, vertexIDS, action);
 							if (!success) {
 								modificationResponder.declineModification(jobId, executionId, modificationID,
 									new TaskNotStatefulModificationException(taskNameWithSubtask));
