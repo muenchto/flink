@@ -27,6 +27,7 @@ import org.apache.flink.runtime.jobgraph.JobStatus;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -130,6 +131,11 @@ public class ZooKeeperCheckpointIDCounter implements CheckpointIDCounter {
 				return current.getValue();
 			}
 		}
+	}
+
+	@Override
+	public long getCurrent() throws Exception {
+		throw new NotImplementedException();
 	}
 
 	@Override

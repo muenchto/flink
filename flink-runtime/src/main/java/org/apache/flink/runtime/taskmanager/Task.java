@@ -1703,7 +1703,9 @@ public class Task implements Runnable, TaskActions {
 		final long modificationID,
 		long modificationTimestamp,
 		final Set<ExecutionAttemptID> vertexIDS,
-		final ModificationCoordinator.ModificationAction action) {
+		final Set<Integer> subTasksToPause,
+		final ModificationCoordinator.ModificationAction action,
+		final long upcomingCheckpointID) {
 
 		final AbstractInvokable invokable = this.invokable;
 
@@ -1727,7 +1729,7 @@ public class Task implements Runnable, TaskActions {
 							modificationID, Joiner.on(",").join(vertexIDS), action);
 
 						try {
-							boolean success = statefulTask.triggerModification(metaData, vertexIDS, action);
+							boolean success = statefulTask.triggerModification(metaData, vertexIDS, subTasksToPause, action, upcomingCheckpointID);
 							if (!success) {
 								modificationResponder.declineModification(jobId, executionId, modificationID,
 									new TaskNotStatefulModificationException(taskNameWithSubtask));

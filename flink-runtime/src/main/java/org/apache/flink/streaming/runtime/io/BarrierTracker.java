@@ -151,6 +151,7 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 
 			statefulTask.triggerModification(checkpointMetaData,
 				startModificationMarker.getJobVertexIDs(),
+				startModificationMarker.getSubTasksToPause(),
 				startModificationMarker.getModificationAction());
 
 		} else {

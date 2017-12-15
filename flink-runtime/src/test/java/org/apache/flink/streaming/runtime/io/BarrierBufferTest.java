@@ -1519,12 +1519,12 @@ public class BarrierBufferTest {
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs, ModificationCoordinator.ModificationAction action) throws Exception {
+		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs, Set<Integer> subTasksToPause, ModificationCoordinator.ModificationAction action) throws Exception {
 			return false;
 		}
 
 		@Override
-		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, ModificationCoordinator.ModificationAction action, long upcomingCheckpointID) throws Exception {
+		public boolean triggerModification(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, Set<Integer> subTasksToPause, ModificationCoordinator.ModificationAction action, long upcomingCheckpointID) throws Exception {
 			return false;
 		}
 

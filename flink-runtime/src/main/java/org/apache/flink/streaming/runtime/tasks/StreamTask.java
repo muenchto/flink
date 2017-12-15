@@ -44,8 +44,6 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
-import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
-import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
@@ -196,9 +194,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	private final Map<Long, AtomicLong> seenModificationMarker = new HashMap<>();
 
-	private final List<Long> pendingCheckpointIDsForModification = new ArrayList<>();
-
-	private volatile ModificationCoordinator.ModificationAction modificationAction;
+	private volatile ModificationCoordinator.ModificationAction modificationAction = ModificationCoordinator.ModificationAction.STOPPING;
 
 	// ------------------------------------------------------------------------
 	//  Life cycle methods for specific implementations
@@ -674,26 +670,28 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	protected abstract boolean pauseInputs();
 
-	private boolean countAndCheckSeenAllModificationMarker(long modificationID) {
+	private boolean checkIfModificationAlreadyOngoing(long modificationID) {
 
 		if (seenModificationMarker.get(modificationID) == null) {
 			seenModificationMarker.put(modificationID, new AtomicLong(0));
+			return true;
+		} else {
+			return false;
 		}
-
-		long currentlySeenModificationMarker = seenModificationMarker.get(modificationID).incrementAndGet();
-
-		return currentlySeenModificationMarker == getEnvironment().getAllInputGates()[0].getNumberOfInputChannels();
-	}
-
-	@Override
-	public boolean triggerModification(ModificationMetaData metaData,
-									   Set<ExecutionAttemptID> executionAttemptIDS, ModificationCoordinator.ModificationAction action) throws Exception {
-		return triggerModification(metaData, executionAttemptIDS, action, -1);
 	}
 
 	@Override
 	public boolean triggerModification(ModificationMetaData metaData,
 									   Set<ExecutionAttemptID> executionAttemptIDS,
+									   Set<Integer> subTasksToPause,
+									   ModificationCoordinator.ModificationAction action) throws Exception {
+		return triggerModification(metaData, executionAttemptIDS, subTasksToPause, action, -1);
+	}
+
+	@Override
+	public boolean triggerModification(ModificationMetaData metaData,
+									   Set<ExecutionAttemptID> executionAttemptIDS,
+									   Set<Integer> subTasksToPause,
 									   ModificationCoordinator.ModificationAction action,
 									   long upcomingCheckpointID) throws Exception {
 		try {
@@ -712,19 +710,22 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						LOG.info("Found {} in vertices for {}, that should be modified. Past modifications: {}",
 							getEnvironment().getJobVertexId(), getName(), Joiner.on(",").join(getEnvironment().getModificationHandler().getHandledModifications()));
 
-						if (countAndCheckSeenAllModificationMarker(metaData.getModificationID())) {
+						if (checkIfModificationAlreadyOngoing(metaData.getModificationID())) {
 							if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER)) {
 
 								if (upcomingCheckpointID == -1) {
 									throw new IllegalArgumentException("UpcomingCheckpointID must not be -1. Error in Modification logic.");
 								}
 
-								pendingCheckpointIDsForModification.add(upcomingCheckpointID);
-
 								modificationAction = action;
 
-								for (InputGate inputGate : getEnvironment().getAllInputGates()) {
-									inputGate.sendTaskEvent(new PausingTaskEvent(getIndexInSubtaskGroup(), upcomingCheckpointID));
+								for (RecordWriterOutput<?> recordWriterOutput : getStreamOutputs()) {
+									for (Integer subTaskIndex : subTasksToPause) {
+										recordWriterOutput
+											.getRecordWriter()
+											.getResultPartitionWriter()
+											.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex);
+									}
 								}
 
 								LOG.info("Operator {} successfully started modification sequence for {}.",
@@ -736,7 +737,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 								throw new IllegalStateException("Could not transitionState. Current status is: " + modificationStatus);
 							}
 						} else {
-							LOG.info("Registered modification marker {} for {} for modification {}.",
+							LOG.info("Already received modification marker {} for {} for modification {}.",
 								seenModificationMarker.get(metaData.getModificationID()).get(), getName(), metaData.getModificationID());
 						}
 
@@ -750,7 +751,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					// lock scope, they are an atomic operation regardless of the order in which they occur.
 					// Given this, we immediately emit the checkpoint barriers, so the downstream operators
 					// can start their checkpoint work as soon as possible
-					operatorChain.broadcastStartModificationEvent(metaData, executionAttemptIDS, action);
+					operatorChain.broadcastStartModificationEvent(metaData, executionAttemptIDS, subTasksToPause, action);
 
 					return true;
 				}
@@ -815,7 +816,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						return true;
 					} else {
 
-						LOG.info("Operator {} successfully acknowledged SpillingToDisk but failed to pause Inputs: {}.",
+						LOG.info("Operator {} successfully acknowledged SpillingToDisk but failed to transition state: {}.",
 							getName(), getEnvironment().getJobVertexId());
 
 						return false;

@@ -28,14 +28,11 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.serialization.RecordSerializer;
 import org.apache.flink.runtime.io.network.api.serialization.SpanningRecordSerializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
-import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.util.XORShiftRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 import static org.apache.flink.runtime.io.network.api.serialization.RecordSerializer.SerializationResult;
@@ -99,6 +96,10 @@ public class RecordWriter<T extends IOReadableWritable> {
 		for (int targetChannel : channelSelector.selectChannels(record, numChannels)) {
 			sendToTarget(record, targetChannel);
 		}
+	}
+
+	public ResultPartitionWriter getResultPartitionWriter() {
+		return targetPartition;
 	}
 
 	public ChannelSelector<T> getChannelSelector() {

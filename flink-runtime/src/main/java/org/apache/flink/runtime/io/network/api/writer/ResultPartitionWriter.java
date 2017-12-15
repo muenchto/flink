@@ -18,7 +18,6 @@
 
 package org.apache.flink.runtime.io.network.api.writer;
 
-import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.runtime.event.TaskEvent;
 import org.apache.flink.runtime.io.network.api.TaskEventHandler;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
@@ -29,13 +28,11 @@ import org.apache.flink.runtime.io.network.partition.ResultSubpartition;
 import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartition;
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.util.event.EventListener;
-import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -128,7 +125,7 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 	public void onEvent(TaskEvent event) {
 
 		if (event.getClass() == PausingTaskEvent.class) {
-			spillAfterUpcomingCheckpoint((PausingTaskEvent) event);
+			registerSpillingAfterUpcomingCheckpoint((PausingTaskEvent) event);
 			return;
 		}
 
@@ -138,9 +135,11 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 	// Upcoming to-pause CheckpointID maps to list of subpartitions, that should spill to disk afterwards
 	private final Map<Long, List<Integer>> upcomingCheckpointIDsToPausingPartitions = new ConcurrentHashMap<>();
 
-	private void spillAfterUpcomingCheckpoint(PausingTaskEvent pausingTaskEvent) {
-		int taskIndex = pausingTaskEvent.getTaskIndex();
+	private void registerSpillingAfterUpcomingCheckpoint(PausingTaskEvent event) {
+		registerSpillingAfterUpcomingCheckpoint(event.getUpcomingCheckpointID(), event.getTaskIndex());
+	}
 
+	public void registerSpillingAfterUpcomingCheckpoint(long upcomingCheckpointID, int taskIndex) {
 		ResultSubpartition[] allPartitions = partition.getAllPartitions();
 
 		if (taskIndex >= allPartitions.length) {
@@ -150,7 +149,7 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 //		Preconditions.checkArgument(
 //			upcomingCheckpointIDsToPausingPartitions.get(pausingTaskEvent.getUpcomingCheckpointID()) == null);
 
-		List<Integer> toPauseTaskIndices = upcomingCheckpointIDsToPausingPartitions.get(pausingTaskEvent.getUpcomingCheckpointID());
+		List<Integer> toPauseTaskIndices = upcomingCheckpointIDsToPausingPartitions.get(upcomingCheckpointID);
 
 		if (toPauseTaskIndices == null) {
 			toPauseTaskIndices = new ArrayList<>();
@@ -159,7 +158,7 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 			toPauseTaskIndices.add(taskIndex);
 		}
 
-		upcomingCheckpointIDsToPausingPartitions.put(pausingTaskEvent.getUpcomingCheckpointID(), toPauseTaskIndices);
+		upcomingCheckpointIDsToPausingPartitions.put(upcomingCheckpointID, toPauseTaskIndices);
 	}
 
 	void checkForSpillingAfterCheckpointBarrier(long checkpointID, int taskIndex) {

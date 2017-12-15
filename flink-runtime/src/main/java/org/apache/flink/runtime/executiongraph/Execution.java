@@ -883,16 +883,31 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	 * Trigger a new modification on the task of this execution.
 	 * @param modificationID of the modification to trigger
 	 * @param timestamp of the modification to trigger
-	 * @param ids
+	 * @param operatorInstancesToSpill
+	 * @param operatorSubTaskIndices
 	 * @param action
+	 * @param checkpointIDToModify
 	 */
-	public void triggerModification(long modificationID, long timestamp, Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action) {
+	public void triggerModification(long modificationID,
+									long timestamp,
+									Set<ExecutionAttemptID> operatorInstancesToSpill,
+									Set<Integer> operatorSubTaskIndices,
+									ModificationCoordinator.ModificationAction action,
+									long checkpointIDToModify) {
 		final SimpleSlot slot = assignedResource;
 
 		if (slot != null) {
 			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
-			taskManagerGateway.triggerModification(attemptId, getVertex().getJobId(), modificationID, timestamp, ids, action);
+			taskManagerGateway.triggerModification(
+				attemptId,
+				getVertex().getJobId(),
+				modificationID,
+				timestamp,
+				operatorInstancesToSpill,
+				operatorSubTaskIndices,
+				action,
+				checkpointIDToModify);
 		} else {
 			LOG.debug("The execution has no slot assigned. This indicates that the execution is " +
 				"no longer running.");

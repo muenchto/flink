@@ -141,7 +141,7 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 									JobID jobId,
 									long modificationID,
 									long timestamp,
-									Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action) {}
+									Set<ExecutionAttemptID> ids, Set<Integer> operatorSubTaskIndices, ModificationCoordinator.ModificationAction action, long checkpointIDToModify) {}
 
 	@Override
 	public Future<BlobKey> requestTaskManagerLog(Time timeout) {

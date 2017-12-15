@@ -808,14 +808,16 @@ class TaskManager(
         val modificationID = message.getModificationID
         val timestamp = message.getTimestamp
         val ids = message.getExecutionAttempsToModify
+        val subTaskIndices = message.getSubTaskIndicesToSpill
         val action = message.getModificationAction
+        val upcomingCheckpointID = message.getCheckpointIDToModify
 
         log.info(s"Receiver TriggerModification $modificationID@$timestamp for $taskExecutionId.")
 
         val task = runningTasks.get(taskExecutionId)
 
         if (task != null) {
-          task.triggerStartModificationMessage(modificationID, timestamp, ids, action)
+          task.triggerStartModificationMessage(modificationID, timestamp, ids, subTaskIndices, action, upcomingCheckpointID)
         } else {
           log.info(s"TaskManager received a modification request for unknown task $taskExecutionId.")
         }

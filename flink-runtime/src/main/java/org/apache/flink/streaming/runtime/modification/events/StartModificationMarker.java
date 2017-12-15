@@ -21,12 +21,18 @@ public class StartModificationMarker extends RuntimeEvent {
 	private final long modificationID;
 	private final long timestamp;
 	private final Set<ExecutionAttemptID> vertexIds;
+	private final Set<Integer> subTasksToPause;
 	private final ModificationCoordinator.ModificationAction modificationAction;
 
-	public StartModificationMarker(long modificationID, long timestamp, Set<ExecutionAttemptID> vertexIDs, ModificationCoordinator.ModificationAction action) {
+	public StartModificationMarker(long modificationID,
+								   long timestamp,
+								   Set<ExecutionAttemptID> vertexIDs,
+								   Set<Integer> subTasksToPause,
+								   ModificationCoordinator.ModificationAction action) {
 		this.modificationID = modificationID;
 		this.timestamp = timestamp;
 		this.vertexIds = checkNotNull(vertexIDs);
+		this.subTasksToPause = checkNotNull(subTasksToPause);
 		this.modificationAction = checkNotNull(action);
 	}
 
@@ -40,6 +46,14 @@ public class StartModificationMarker extends RuntimeEvent {
 
 	public long getTimestamp() {
 		return timestamp;
+	}
+
+	public ModificationCoordinator.ModificationAction getModificationAction() {
+		return modificationAction;
+	}
+
+	public Set<Integer> getSubTasksToPause() {
+		return subTasksToPause;
 	}
 
 	// ------------------------------------------------------------------------
@@ -69,9 +83,5 @@ public class StartModificationMarker extends RuntimeEvent {
 	public String toString() {
 		return String.format("StartModificationMarker %d with ids: %s @ %d",
 			modificationID, StringUtils.join(vertexIds, ","), timestamp);
-	}
-
-	public ModificationCoordinator.ModificationAction getModificationAction() {
-		return modificationAction;
 	}
 }

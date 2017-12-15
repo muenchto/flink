@@ -99,10 +99,13 @@ public interface StatefulTask {
 	 *
 	 * @param jobVertexIDs Options for performing this modification
 	 *
-	 * @param action
-	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
+	 * @param subTasksToPause
+	 *@param action  @return {@code false} if the modification can not be carried out, {@code true} otherwise
 	 */
-	boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs, ModificationCoordinator.ModificationAction action) throws Exception;
+	boolean triggerModification(ModificationMetaData modificationMetaData,
+								Set<ExecutionAttemptID> jobVertexIDs,
+								Set<Integer> subTasksToPause,
+								ModificationCoordinator.ModificationAction action) throws Exception;
 
 	/**
 	 * This method is called to trigger a modification of the graph.
@@ -114,12 +117,14 @@ public interface StatefulTask {
 	 * @param metaData
 	 * @param executionAttemptIDS Options for performing this modification
 	 *
-	 * @param action
-	 * @return {@code false} if the modification can not be carried out, {@code true} otherwise
+	 * @param subTasksToPause
+	 *@param action  @return {@code false} if the modification can not be carried out, {@code true} otherwise
 	 */
 	boolean triggerModification(ModificationMetaData metaData,
 								Set<ExecutionAttemptID> executionAttemptIDS,
-								ModificationCoordinator.ModificationAction action, long upcomingCheckpointID) throws Exception;
+								Set<Integer> subTasksToPause,
+								ModificationCoordinator.ModificationAction action,
+								long upcomingCheckpointID) throws Exception;
 
 	/**
 	 * This method is called to trigger a acknowledge the spilling of the graph.
