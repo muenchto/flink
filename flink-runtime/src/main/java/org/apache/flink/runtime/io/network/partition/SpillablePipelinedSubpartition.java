@@ -20,11 +20,11 @@ package org.apache.flink.runtime.io.network.partition;
 
 import org.apache.flink.runtime.io.disk.iomanager.BufferFileWriter;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
-import org.apache.flink.runtime.io.disk.iomanager.SynchronousBufferFileReader;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,8 +148,8 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 		}
 	}
 
-	public void spillToDisk() throws IOException {
-		final Buffer buffer = EventSerializer.toBuffer(SpillToDiskMarker.INSTANCE);
+	public void spillToDisk(ModificationCoordinator.ModificationAction modificationAction) throws IOException {
+		final Buffer buffer = EventSerializer.toBuffer(new SpillToDiskMarker(modificationAction));
 
 		isSpilling = true;
 

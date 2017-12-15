@@ -78,7 +78,14 @@ public class EventSerializer {
 		if (eventClass == EndOfPartitionEvent.class) {
 			return ByteBuffer.wrap(new byte[] { 0, 0, 0, END_OF_PARTITION_EVENT });
 		} else if (eventClass == SpillToDiskMarker.class) {
-			return ByteBuffer.wrap(new byte[] { 0, 0, 0, SPILL_TO_DISK_MARKER });
+
+			SpillToDiskMarker marker = (SpillToDiskMarker) event;
+
+			ByteBuffer buf = ByteBuffer.allocate(8);
+			buf.putInt(0, SPILL_TO_DISK_MARKER);
+			buf.putInt(4, marker.getAction().ordinal());
+
+			return buf;
 		} else if (eventClass == PausingOperatorMarker.class) {
 			return ByteBuffer.wrap(new byte[] { 0, 0, 0, PAUSED_OPERATOR_EVENT });
 		} else if (eventClass == PausingTaskEvent.class) {
@@ -292,7 +299,11 @@ public class EventSerializer {
 			if (type == END_OF_PARTITION_EVENT) {
 				return EndOfPartitionEvent.INSTANCE;
 			} else if (type == SPILL_TO_DISK_MARKER) {
-				return SpillToDiskMarker.INSTANCE;
+
+				ModificationCoordinator.ModificationAction action =
+					ModificationCoordinator.ModificationAction.values()[buffer.getInt()];
+
+				return new SpillToDiskMarker(action);
 			} else if (type == PAUSED_OPERATOR_EVENT) {
 				return PausingOperatorMarker.INSTANCE;
 			} else if (type == PAUSING_TASK_EVENT) {

@@ -28,6 +28,7 @@ import org.apache.flink.runtime.io.network.partition.ResultSubpartition;
 import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartition;
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.util.event.EventListener;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,12 +135,13 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 
 	// Upcoming to-pause CheckpointID maps to list of subpartitions, that should spill to disk afterwards
 	private final Map<Long, List<Integer>> upcomingCheckpointIDsToPausingPartitions = new ConcurrentHashMap<>();
+	private final Map<Long, ModificationCoordinator.ModificationAction> modificationActions = new ConcurrentHashMap<>();
 
 	private void registerSpillingAfterUpcomingCheckpoint(PausingTaskEvent event) {
-		registerSpillingAfterUpcomingCheckpoint(event.getUpcomingCheckpointID(), event.getTaskIndex());
+//		registerSpillingAfterUpcomingCheckpoint(event.getUpcomingCheckpointID(), event.getTaskIndex());
 	}
 
-	public void registerSpillingAfterUpcomingCheckpoint(long upcomingCheckpointID, int taskIndex) {
+	public void registerSpillingAfterUpcomingCheckpoint(long upcomingCheckpointID, int taskIndex, ModificationCoordinator.ModificationAction action) {
 		ResultSubpartition[] allPartitions = partition.getAllPartitions();
 
 		if (taskIndex >= allPartitions.length) {
@@ -159,6 +161,7 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 		}
 
 		upcomingCheckpointIDsToPausingPartitions.put(upcomingCheckpointID, toPauseTaskIndices);
+		modificationActions.put(upcomingCheckpointID, action);
 	}
 
 	void checkForSpillingAfterCheckpointBarrier(long checkpointID, int taskIndex) {
@@ -185,7 +188,9 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
 		} else {
 			try {
-				((SpillablePipelinedSubpartition) resultSubpartition).spillToDisk();
+				ModificationCoordinator.ModificationAction modificationAction = modificationActions.get(checkpointID);
+
+				((SpillablePipelinedSubpartition) resultSubpartition).spillToDisk(modificationAction);
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}

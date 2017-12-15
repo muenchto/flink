@@ -10,10 +10,9 @@ import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.BufferProvider;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.util.*;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -188,7 +187,7 @@ public class SpillablePipelinedSubpartitionTest extends SubpartitionTestBase {
 		// Wait for producer and consumer to finish
 		producerResult.get();
 		System.out.println("Producer of InMemory-Phase done");
-		subpartition.spillToDisk();
+		subpartition.spillToDisk(ModificationCoordinator.ModificationAction.STOPPING);
 
 		consumerResult.get();
 
