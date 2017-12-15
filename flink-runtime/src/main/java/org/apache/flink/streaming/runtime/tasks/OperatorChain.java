@@ -237,10 +237,13 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		}
 	}
 
-	public void broadcastStartModificationEvent(ModificationMetaData metaData, Set<ExecutionAttemptID> executionAttemptIDS, ModificationCoordinator.ModificationAction action) throws IOException {
+	public void broadcastStartModificationEvent(ModificationMetaData metaData,
+												Set<ExecutionAttemptID> executionAttemptIDS,
+												Set<Integer> subTasksToPause,
+												ModificationCoordinator.ModificationAction action) throws IOException {
 		try {
 			StartModificationMarker startModificationMarker =
-				new StartModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), executionAttemptIDS, action);
+				new StartModificationMarker(metaData.getModificationID(), metaData.getTimestamp(), executionAttemptIDS, subTasksToPause, action);
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
 				streamOutput.broadcastEvent(startModificationMarker);
 			}

@@ -136,9 +136,10 @@ public class EventSerializer {
 			StartModificationMarker marker = (StartModificationMarker) event;
 
 			Set<ExecutionAttemptID> executionAttemptIDS = marker.getJobVertexIDs();
+			Set<Integer> subTaskIndices = marker.getSubTasksToPause();
 
 			// 28 for all base field and dynamic size for the list of objects
-			int bufferSize = executionAttemptIDS.size() * 16 + 28;
+			int bufferSize = executionAttemptIDS.size() * 16 + subTaskIndices.size() * 4 + 32;
 
 			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
 			buf.putInt(0, MODIFICATION_START_EVENT);
@@ -146,14 +147,22 @@ public class EventSerializer {
 			buf.putLong(12, marker.getTimestamp());
 			buf.putInt(20, marker.getModificationAction().ordinal());
 			buf.putInt(24, executionAttemptIDS.size());
+			buf.putInt(28, subTaskIndices.size());
 
 			ExecutionAttemptID[] executionAttempts =
 				executionAttemptIDS.toArray(new ExecutionAttemptID[executionAttemptIDS.size()]);
 
-			for (int index = 28, i = 0; i < executionAttemptIDS.size(); i++, index += 16) {
+			for (int index = 32, i = 0; i < executionAttemptIDS.size(); i++, index += 16) {
 				ExecutionAttemptID vertexID = executionAttempts[i];
 				buf.putLong(index, vertexID.getLowerPart());
 				buf.putLong(index + 8, vertexID.getUpperPart());
+			}
+
+			Integer[] subTaskIndicesArray = subTaskIndices.toArray(new Integer[subTaskIndices.size()]);
+
+			for (int index = 32 + executionAttemptIDS.size() * 16, i = 0; i < subTaskIndices.size(); i++, index += 4) {
+				Integer taskIndex = subTaskIndicesArray[i];
+				buf.putInt(index, taskIndex);
 			}
 
 			return buf;
@@ -326,17 +335,25 @@ public class EventSerializer {
 				long timestamp = buffer.getLong();
 				ModificationCoordinator.ModificationAction action =
 					ModificationCoordinator.ModificationAction.values()[buffer.getInt()];
-				int size = buffer.getInt();
+				int instancesToPauseSize = buffer.getInt();
+				int subTaskIndicesSize = buffer.getInt();
 
-				Set<ExecutionAttemptID> ids = new HashSet<>(size);
+				Set<ExecutionAttemptID> ids = new HashSet<>(instancesToPauseSize);
 
-				for (int i = 0; i < size; i++) {
+				for (int i = 0; i < instancesToPauseSize; i++) {
 					long lower = buffer.getLong();
 					long upper = buffer.getLong();
 					ids.add(new ExecutionAttemptID(lower, upper));
 				}
 
-				return new StartModificationMarker(modificationID, timestamp, ids, action);
+				Set<Integer> subTasksToPause = new HashSet<>(subTaskIndicesSize);
+
+				for (int i = 0; i < subTaskIndicesSize; i++) {
+					int index = buffer.getInt();
+					subTasksToPause.add(index);
+				}
+
+				return new StartModificationMarker(modificationID, timestamp, ids, subTasksToPause, action);
 
 			} else if (type == MODIFICATION_CANCEL_EVENT) {
 

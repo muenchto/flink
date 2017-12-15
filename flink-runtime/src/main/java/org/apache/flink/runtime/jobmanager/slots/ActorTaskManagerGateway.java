@@ -281,11 +281,15 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 									JobID jobId,
 									long modificationID,
 									long timestamp,
-									Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action) {
+									Set<ExecutionAttemptID> ids,
+									Set<Integer> operatorSubTaskIndices,
+									ModificationCoordinator.ModificationAction action,
+									long checkpointIDToModify) {
 		Preconditions.checkNotNull(attemptId);
 		Preconditions.checkNotNull(jobId);
 
-		actorGateway.tell(new TriggerModification(jobId, attemptId, modificationID, timestamp, ids, action));
+		actorGateway.tell(
+			new TriggerModification(jobId, attemptId, modificationID, timestamp, ids, operatorSubTaskIndices, action, checkpointIDToModify));
 	}
 
 	@Override

@@ -6,6 +6,7 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
+import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
@@ -313,21 +314,28 @@ public class ModificationCoordinator {
 		ArrayList<ExecutionVertex> objects = new ArrayList<>(instancesToPause.getTaskVertices().length);
 		objects.addAll(Arrays.asList(instancesToPause.getTaskVertices()));
 
-		triggerModification(objects, description, action);
+//		triggerModification(objects, description, action); // TODO Masterthesis
 	}
 
-	private void triggerModification(List<ExecutionVertex> instancesToPause, final String description, ModificationAction action) {
+	private void triggerModification(ArrayList<ExecutionAttemptID> operatorsIdsToSpill,
+									 List<ExecutionVertex> subtaskIndicesToPause,
+									 final String description,
+									 ModificationAction action) {
 
-		Preconditions.checkNotNull(instancesToPause);
+		Preconditions.checkNotNull(operatorsIdsToSpill);
+		Preconditions.checkNotNull(subtaskIndicesToPause);
 		Preconditions.checkNotNull(description);
-		Preconditions.checkArgument(instancesToPause.size() >= 1);
+		Preconditions.checkArgument(subtaskIndicesToPause.size() >= 1);
+		Preconditions.checkArgument(operatorsIdsToSpill.size() >= 1);
 
-		LOG.info("Triggering modification '{}' for ExecutionJobVertex {}.", description, instancesToPause.get(0).getTaskName());
+		LOG.info("Triggering modification '{}'.", description);
 
-		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>(instancesToPause.size());
+		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>(subtaskIndicesToPause.size());
+		Set<Integer> operatorSubTaskIndices = new HashSet<>();
 
-		for (ExecutionVertex executionVertex : instancesToPause) {
+		for (ExecutionVertex executionVertex : subtaskIndicesToPause) {
 			ackTasks.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), executionVertex);
+			operatorSubTaskIndices.add(executionVertex.getCurrentExecutionAttempt().getParallelSubtaskIndex());
 
 			if (executionVertex.getExecutionState() != ExecutionState.RUNNING) {
 				throw new RuntimeException("ExecutionVertex " + executionVertex + " is not in running state.");
@@ -384,6 +392,9 @@ public class ModificationCoordinator {
 					modification.setCancellerHandle(cancellerHandle);
 				}
 
+				long currentCheckpointID = executionGraph.getCheckpointCoordinator().getCheckpointIdCounter().getCurrent();
+				long checkpointIDToModify = currentCheckpointID + 2;
+
 				ExecutionJobVertex source = findSource();
 
 				// send the messages to the tasks that trigger their modification
@@ -391,8 +402,10 @@ public class ModificationCoordinator {
 					execution.getCurrentExecutionAttempt().triggerModification(
 						modificationId,
 						timestamp,
-						new HashSet<>(ackTasks.keySet()),
-						action); // KeySet not serializable
+						new HashSet<ExecutionAttemptID>(operatorsIdsToSpill),
+						operatorSubTaskIndices,
+						action,
+						checkpointIDToModify); // KeySet not serializable
 				}
 
 			}
@@ -637,10 +650,20 @@ public class ModificationCoordinator {
 		for (ExecutionVertex vertex : taskVertices) {
 			if (vertex.getCurrentExecutionAttempt().getAttemptId().equals(mapAttemptID)) {
 
+				// TODO Masterthesis Generalize getting of upstream operator
+
+				ArrayList<ExecutionAttemptID> sourceIds = new ArrayList<>();
+				for (ExecutionVertex executionVertex : findSource().getTaskVertices()) {
+					sourceIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+				}
+
 				stoppedMapExecutionAttemptID = vertex.getCurrentExecutionAttempt().getAttemptId();
 				stoppedMapSubTaskIndex = vertex.getCurrentExecutionAttempt().getParallelSubtaskIndex();
 
-				triggerModification(Collections.singletonList(vertex), "Pause single map instance", ModificationAction.STOPPING);
+				triggerModification(sourceIds,
+					Collections.singletonList(vertex),
+					"Pause single map instance",
+					ModificationAction.STOPPING);
 				return;
 			}
 		}

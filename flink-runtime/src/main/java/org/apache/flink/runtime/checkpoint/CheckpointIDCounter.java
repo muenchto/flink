@@ -48,6 +48,13 @@ public interface CheckpointIDCounter {
 	long getAndIncrement() throws Exception;
 
 	/**
+	 * Atomically increments the current checkpoint ID.
+	 *
+	 * @return The previous checkpoint ID
+	 */
+	long getCurrent() throws Exception;
+
+	/**
 	 * Sets the current checkpoint ID.
 	 *
 	 * @param newId The new ID

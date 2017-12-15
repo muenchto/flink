@@ -164,7 +164,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 									JobID jobId,
 									long modificationID,
 									long timestamp,
-									Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action) {
+									Set<ExecutionAttemptID> ids, Set<Integer> operatorSubTaskIndices, ModificationCoordinator.ModificationAction action, long checkpointIDToModify) {
 		throw new UnsupportedOperationException("Operation is not yet supported.");
 	}
 

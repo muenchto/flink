@@ -93,6 +93,10 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 		LOG.info("Creating RecordWriterOutput for " + name);
 	}
 
+	public StreamRecordWriter<SerializationDelegate<StreamElement>> getRecordWriter() {
+		return recordWriter;
+	}
+
 	@Override
 	public void collect(StreamRecord<OUT> record) {
 		if (this.outputTag != null) {

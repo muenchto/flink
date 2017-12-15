@@ -415,8 +415,9 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 			statefulTask.triggerModification(
 				checkpointMetaData,
 				startModificationMarker.getJobVertexIDs(),
+				startModificationMarker.getSubTasksToPause(),
 				startModificationMarker.getModificationAction(),
-				currentCheckpointId + 5);
+				startModificationMarker.getModificationID());
 
 		} else {
 			throw new NullPointerException("statefulTask must not be null");

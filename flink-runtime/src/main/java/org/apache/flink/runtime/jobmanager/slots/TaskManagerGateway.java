@@ -228,13 +228,17 @@ public interface TaskManagerGateway {
 	 * @param modificationID of the modification to trigger
 	 * @param timestamp of the modification to trigger
 	 * @param ids The vertexIDs, that should be paused
+	 * @param operatorSubTaskIndices
 	 * @param action
+	 * @param checkpointIDToModify
 	 */
 	void triggerModification(ExecutionAttemptID attemptId,
 							 JobID jobId,
 							 long modificationID,
 							 long timestamp,
-							 Set<ExecutionAttemptID> ids, ModificationCoordinator.ModificationAction action);
+							 Set<ExecutionAttemptID> ids, Set<Integer> operatorSubTaskIndices,
+							 ModificationCoordinator.ModificationAction action,
+							 long checkpointIDToModify);
 
 	/**
 	 * Request the task manager log from the task manager.
