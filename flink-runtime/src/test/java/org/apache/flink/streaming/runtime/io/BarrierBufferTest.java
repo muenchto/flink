@@ -1529,7 +1529,7 @@ public class BarrierBufferTest {
 		}
 
 		@Override
-		public boolean acknowledgeSpillingToDisk() throws Exception {
+		public boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception {
 			return false;
 		}
 

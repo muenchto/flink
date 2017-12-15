@@ -203,7 +203,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 					numberOfSpillingToDiskMarker += 1;
 
 					if (numberOfSpillingToDiskMarker == inputGate.getNumberOfInputChannels()) {
-						pauseInputAfterSpillingAcknowledged();
+						pauseInputAfterSpillingAcknowledged((SpillToDiskMarker) next.getEvent());
 					} else {
 						LOG.info("Received SpillToDiskMarker #{}", numberOfSpillingToDiskMarker);
 					}
@@ -236,12 +236,12 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 
 	private volatile int numberOfSpillingToDiskMarker = 0;
 
-	private void pauseInputAfterSpillingAcknowledged() throws Exception {
+	private void pauseInputAfterSpillingAcknowledged(SpillToDiskMarker event) throws Exception {
 		if (statefulTask != null) {
 
 			LOG.debug("Received all SpillToDisk-Marker and now spilling to disk");
 
-			statefulTask.acknowledgeSpillingToDisk();
+			statefulTask.acknowledgeSpillingToDisk(event.getAction());
 
 		} else {
 			throw new NullPointerException("statefulTask must not be null");

@@ -3,19 +3,25 @@ package org.apache.flink.runtime.io.network.api;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.runtime.event.RuntimeEvent;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 
 /**
  * This event marks a subpartition as spilling to disk.
  */
 public class SpillToDiskMarker extends RuntimeEvent {
 
-	/** The singleton instance of this event */
-	public static final SpillToDiskMarker INSTANCE = new SpillToDiskMarker();
+	private final ModificationCoordinator.ModificationAction action;
 
 	// ------------------------------------------------------------------------
 
 	// not instantiable
-	private SpillToDiskMarker() {}
+	public SpillToDiskMarker(ModificationCoordinator.ModificationAction action) {
+		this.action = action;
+	}
+
+	public ModificationCoordinator.ModificationAction getAction() {
+		return action;
+	}
 
 	// ------------------------------------------------------------------------
 

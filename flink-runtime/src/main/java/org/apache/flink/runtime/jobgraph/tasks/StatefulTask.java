@@ -131,8 +131,9 @@ public interface StatefulTask {
 	 * This should trigger the pausing of the operator.
 	 *
 	 * @return {@code false} if pausing can not be carried out, {@code true} otherwise
+	 * @param action
 	 */
-	boolean acknowledgeSpillingToDisk() throws Exception;
+	boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception;
 
 	/**
 	 * This method is called to abort a modification of the graph.

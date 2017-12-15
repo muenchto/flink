@@ -195,7 +195,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	private final Map<Long, AtomicLong> seenModificationMarker = new HashMap<>();
 
-	private volatile ModificationCoordinator.ModificationAction modificationAction = ModificationCoordinator.ModificationAction.STOPPING;
+	private volatile ModificationCoordinator.ModificationAction modificationAction;
 
 	// ------------------------------------------------------------------------
 	//  Life cycle methods for specific implementations
@@ -725,7 +725,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 										recordWriterOutput
 											.getRecordWriter()
 											.getResultPartitionWriter()
-											.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex);
+											.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex, action);
 									}
 								}
 
@@ -798,12 +798,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	}
 
 	@Override
-	public boolean acknowledgeSpillingToDisk() throws Exception {
+	public boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception {
 
 		LOG.info("Operator {} acknowledges SpillingToDisk {}.", getName(), getEnvironment().getJobVertexId());
 
 		synchronized (lock) {
 			if (isRunning) {
+
+				modificationAction = action;
 
 				operatorChain.broadcastOperatorPausedEvent();
 
