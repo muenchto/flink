@@ -915,7 +915,14 @@ public class Task implements Runnable, TaskActions {
 						case STOPPING: {
 							// Do nothing special
 							LOG.info("StreamTask {} successfully entered new state {}", taskNameWithSubtask, ExecutionState.FINISHED);
-							break;
+
+							if (!transitionState(ExecutionState.RUNNING, ExecutionState.PAUSING)) {
+								throw new RuntimeException("Failed to TransitionState to " + ExecutionState.PAUSING);
+							}
+
+							taskManagerActions.updateTaskExecutionState(
+								new TaskExecutionState(jobId, executionId, ExecutionState.PAUSING));
+							return;
 						}
 
 						default: {
