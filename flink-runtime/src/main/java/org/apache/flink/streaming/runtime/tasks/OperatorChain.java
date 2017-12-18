@@ -108,15 +108,15 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		Map<Integer, StreamConfig> chainedConfigs = configuration.getTransitiveChainedTaskConfigs(userCodeClassloader);
 		chainedConfigs.put(configuration.getVertexID(), configuration);
 
-		LOG.info("ChainedConfig key for {}: {}", containingTask.getName(), Joiner.on(",").join(chainedConfigs.keySet()));
-		LOG.info("ChainedConfig values for {}: {}", containingTask.getName(), Joiner.on(",").join(chainedConfigs.values()));
+//		LOG.info("ChainedConfig key for {}: {}", containingTask.getName(), Joiner.on(",").join(chainedConfigs.keySet()));
+//		LOG.info("ChainedConfig values for {}: {}", containingTask.getName(), Joiner.on(",").join(chainedConfigs.values()));
 
 		// create the final output stream writers
 		// we iterate through all the out edges from this job vertex and create a stream output
 		List<StreamEdge> outEdgesInOrder = configuration.getOutEdgesInOrder(userCodeClassloader);
 
-		LOG.info("OutputEdges for {}: {}", containingTask.getName(), Joiner.on("\t").join(outEdgesInOrder));
-		LOG.info("OutputInOrderEdges for {}: {}", containingTask.getName(), Joiner.on("\t").join(outEdgesInOrder));
+//		LOG.info("OutputEdges for {}: {}", containingTask.getName(), Joiner.on("\t").join(outEdgesInOrder));
+//		LOG.info("OutputInOrderEdges for {}: {}", containingTask.getName(), Joiner.on("\t").join(outEdgesInOrder));
 
 		Map<StreamEdge, RecordWriterOutput<?>> streamOutputMap = new HashMap<>(outEdgesInOrder.size());
 		this.streamOutputs = new RecordWriterOutput<?>[outEdgesInOrder.size()];
@@ -130,7 +130,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 				// TODO Masterthesis chainedConfig returns null as getVertexID and outEdge.getSourceId do not match
 				StreamConfig tmpStreamConfig = chainedConfigs.get(outEdge.getSourceId());
 
-				LOG.info("Creating StreamOutput for {} for edge {} with config {}", name, outEdge, tmpStreamConfig);
+//				LOG.info("Creating StreamOutput for {} for edge {} with config {}", name, outEdge, tmpStreamConfig);
 
 				if (tmpStreamConfig == null) {
 					LOG.info("Creating StreamOutput for {} for edge {} is null", name, outEdge);
@@ -158,15 +158,15 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			List<StreamEdge> nonChainedOutputs = configuration.getNonChainedOutputs(userCodeClassloader);
 
 			LOG.debug("Custom Edge: {}", customEdge);
-			LOG.debug("StreamConfig: {}", streamConfig);
-			LOG.debug("NonChainedOutputs: {}", Joiner.on(",").join(nonChainedOutputs));
+//			LOG.debug("StreamConfig: {}", streamConfig);
+//			LOG.debug("NonChainedOutputs: {}", Joiner.on(",").join(nonChainedOutputs));
 
 			// we create the chain of operators and grab the collector that leads into the chain
 			List<StreamOperator<?>> allOps = new ArrayList<>(chainedConfigs.size());
 			this.chainEntryPoint = createOutputCollector(containingTask, configuration,
 					chainedConfigs, userCodeClassloader, streamOutputMap, allOps);
 
-			LOG.info("OperatorChain with {} and {}", chainEntryPoint, headOperator);
+//			LOG.info("OperatorChain with {} and {}", chainEntryPoint, headOperator);
 
 			if (headOperator != null) {
 				Output output = getChainEntryPoint();
@@ -179,7 +179,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 
 			this.allOperators = allOps.toArray(new StreamOperator<?>[allOps.size()]);
 
-			LOG.info("{} OperatorChain size {} ", name, allOperators.length);
+//			LOG.info("{} OperatorChain size {} ", name, allOperators.length);
 
 			success = true;
 		} finally {
@@ -455,7 +455,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 
 		TypeSerializer outSerializer = null;
 
-		LOG.info("CreateStreamOutput for {}: {}", name, upStreamConfig);
+//		LOG.info("CreateStreamOutput for {}: {}", name, upStreamConfig);
 
 		if (edge.getOutputTag() != null) {
 			// side output
@@ -469,7 +469,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		@SuppressWarnings("unchecked")
 		StreamPartitioner<T> outputPartitioner = (StreamPartitioner<T>) edge.getPartitioner();
 
-		LOG.info("Using partitioner {} for output {} of task with partitioner {} and class {}",
+		LOG.info("Using partitioner {} for output j{} of task with partitioner {} and class {}",
 			outputPartitioner, outputIndex, taskName, outputPartitioner, outputPartitioner.getClass().getName());
 
 		ResultPartitionWriter bufferWriter = taskEnvironment.getWriter(outputIndex);
