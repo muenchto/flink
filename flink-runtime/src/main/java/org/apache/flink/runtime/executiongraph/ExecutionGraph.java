@@ -417,7 +417,7 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 	}
 
 	public void addNumVertices(int numVertices) {
-		this.numVerticesTotal += numVerticesTotal;
+		this.numVerticesTotal += numVertices;
 	}
 
 	public AtomicInteger getVerticesFinished() {

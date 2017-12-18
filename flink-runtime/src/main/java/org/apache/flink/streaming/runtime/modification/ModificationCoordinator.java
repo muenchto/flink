@@ -2,14 +2,15 @@ package org.apache.flink.streaming.runtime.modification;
 
 import com.google.common.base.Joiner;
 import org.apache.commons.lang.StringUtils;
+import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
+import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
-import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
-import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.executiongraph.*;
@@ -24,13 +25,16 @@ import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
+import org.apache.flink.streaming.api.operators.StreamFilter;
 import org.apache.flink.streaming.runtime.modification.exceptions.OperatorNotFoundException;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.Preconditions;
+import org.codehaus.jackson.map.TypeSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -692,56 +696,21 @@ public class ModificationCoordinator {
 		}
 	}
 
-	public void startFilterOperator() {
+	public void startFilterOperator(int parallelism) {
 
-		ExecutionJobVertex mapOperator = findMap();
 		ExecutionJobVertex sourceOperator = findSource();
-
-		if (mapOperator == null) {
-			executionGraph.failGlobal(new OperatorNotFoundException("Map", executionGraph.getJobID()));
-			return;
-		}
 
 		if (sourceOperator == null) {
 			executionGraph.failGlobal(new OperatorNotFoundException("Source", executionGraph.getJobID()));
 			return;
 		}
 
-		List<ExecutionAttemptID> mapExecutionAttemptIDs = new ArrayList<>();
-		for (ExecutionVertex executionVertex : mapOperator.getTaskVertices()) {
-			mapExecutionAttemptIDs.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
-		}
-
-		// TODO Masterthesis Currently only one ExecutionVertex for the source is supported
-		ExecutionVertex[] sourceTaskVertices = sourceOperator.getTaskVertices();
-
-		if (sourceTaskVertices.length != 1) {
-			LOG.info("Found {} ExecutionVertices. Expected {}.", sourceTaskVertices.length, 1);
-		} else {
-			LOG.info("Found {} ExecutionVertices as expected.", sourceTaskVertices.length);
-		}
-
-		ExecutionJobVertex filterExecutionJobVertex = buildFilterExecutionJobVertex(sourceOperator, mapOperator);
+		ExecutionJobVertex filterExecutionJobVertex = buildFilterExecutionJobVertex(sourceOperator, parallelism);
 
 		if (filterExecutionJobVertex == null) {
 			throw new IllegalStateException("Could not create FilterExecutionJobVertex");
 		} else {
 			LOG.debug("Starting {} instances of the filter operator", filterExecutionJobVertex.getTaskVertices().length);
-		}
-
-		LOG.debug("SourceOperator");
-		for (ExecutionVertex executionVertex : sourceOperator.getTaskVertices()) {
-			LOG.debug("Found ExecutionVertex {} with location {}", executionVertex, executionVertex.getCurrentAssignedResourceLocation());
-		}
-
-		LOG.debug("MapOperator");
-		for (ExecutionVertex executionVertex : mapOperator.getTaskVertices()) {
-			LOG.debug("Found ExecutionVertex {} with location {}", executionVertex, executionVertex.getCurrentAssignedResourceLocation());
-		}
-
-		LOG.debug("FilterOperator");
-		for (ExecutionVertex executionVertex : filterExecutionJobVertex.getTaskVertices()) {
-			LOG.debug("Found ExecutionVertex {} with location {}", executionVertex, executionVertex.getCurrentAssignedResourceLocation());
 		}
 
 		Configuration sourceConfiguration = sourceOperator.getJobVertex().getConfiguration();
@@ -753,25 +722,43 @@ public class ModificationCoordinator {
 		Configuration configuration = filterExecutionJobVertex.getJobVertex().getConfiguration();
 		StreamConfig filterStreamConfig = new StreamConfig(configuration);
 
+		filterStreamConfig.setOperatorName("NewFilterFUnctionConfigName");
 		filterStreamConfig.setNonChainedOutputs(sourceStreamConfig.getNonChainedOutputs(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setOutEdges(sourceStreamConfig.getOutEdges(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setVertexID(42);
-		filterStreamConfig.setTypeSerializerIn1(sourceStreamConfig.getTypeSerializerIn1(executionGraph.getUserClassLoader()));
+		try {
+			filterStreamConfig.setTypeSerializerIn1(BasicTypeInfo.STRING_TYPE_INFO.createSerializer(executionGraph.getJobInformation().getSerializedExecutionConfig().deserializeValue(executionGraph.getUserClassLoader())));
+		} catch (IOException | ClassNotFoundException e) {
+			executionGraph.failGlobal(e);
+			e.printStackTrace();
+		}
 		filterStreamConfig.setTypeSerializerOut(sourceStreamConfig.getTypeSerializerOut(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setNumberOfInputs(1);
 		filterStreamConfig.setNumberOfOutputs(1);
 		filterStreamConfig.setTransitiveChainedTaskConfigs(sourceStreamConfig.getTransitiveChainedTaskConfigs(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setOutEdgesInOrder(sourceStreamConfig.getOutEdgesInOrder(executionGraph.getUserClassLoader()));
+
 		filterStreamConfig.setChainedOutputs(sourceStreamConfig.getChainedOutputs(executionGraph.getUserClassLoader()));
+		filterStreamConfig.setStreamOperator(new StreamFilter<>(clean(new FilterFunction<String>() {
+			@Override
+			public boolean filter(String value) throws Exception {
+				return Long.parseLong(value) % 2 == 0;
+			}
+		})));
 
 		for (ExecutionVertex executionVertex : filterExecutionJobVertex.getTaskVertices()) {
 			boolean successful = executionVertex.getCurrentExecutionAttempt()
-				.scheduleForRuntimeExecution(
+				.scheduleForExecution(
 					executionGraph.getSlotProvider(),
 					executionGraph.isQueuedSchedulingAllowed());
 		}
 	}
 
+	private <F> F clean(F f) {
+		ClosureCleaner.clean(f, true);
+		ClosureCleaner.ensureSerializable(f);
+		return f;
+	}
 
 	public String getDetails() throws JobException {
 
@@ -915,33 +902,25 @@ public class ModificationCoordinator {
 		}
 	}
 
-	private ExecutionJobVertex buildFilterExecutionJobVertex(ExecutionJobVertex source, ExecutionJobVertex map) {
+	private ExecutionJobVertex buildFilterExecutionJobVertex(ExecutionJobVertex source, int parallelism) {
 
 		String operatorName = "IntroducedFilterOperator";
 
 		JobVertex filterJobVertex = new JobVertex(operatorName, new JobVertexID());
-		filterJobVertex.setParallelism(map.getParallelism());
 		filterJobVertex.setInvokableClass(OneInputStreamTask.class);
 
-		LOG.info("Creating new operator '{}' with parallelism {}", operatorName, map.getParallelism());
+		LOG.info("Creating new operator '{}' with parallelism {}", operatorName, parallelism);
 
-		IntermediateDataSet filterProducingDataset = new IntermediateDataSet(
-			new IntermediateDataSetID(),
-			ResultPartitionType.PIPELINED,
-			filterJobVertex);
+		filterJobVertex.createAndAddResultDataSet(new IntermediateDataSetID(), ResultPartitionType.PIPELINED);
 
-		LOG.info("Created intermediateDataSet with id {}", filterProducingDataset.getId());
+		List<IntermediateDataSet> sourceProducedDatasets = source.getJobVertex().getProducedDataSets();
 
-		filterJobVertex.createAndAddResultDataSet(filterProducingDataset.getId(), ResultPartitionType.PIPELINED);
-
-		List<IntermediateDataSet> producedDataSets = source.getJobVertex().getProducedDataSets();
-
-		if (producedDataSets.size() != 1) {
+		if (sourceProducedDatasets.size() != 1) {
 			executionGraph.failGlobal(new IllegalStateException("Source has more than one producing dataset"));
 			throw new IllegalStateException("Source has more than one producing dataset");
 		}
 
-		IntermediateDataSet sourceProducedDataset = producedDataSets.get(0);
+		IntermediateDataSet sourceProducedDataset = sourceProducedDatasets.get(0);
 
 		// Connect source IDS as input for FilterOperator
 		filterJobVertex.connectDataSetAsInput(sourceProducedDataset, DistributionPattern.ALL_TO_ALL);
@@ -950,7 +929,7 @@ public class ModificationCoordinator {
 			ExecutionJobVertex vertex =
 				new ExecutionJobVertex(executionGraph,
 					filterJobVertex,
-					map.getParallelism(),
+					parallelism,
 					rpcCallTimeout,
 					executionGraph.getGlobalModVersion(),
 					System.currentTimeMillis());

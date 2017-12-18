@@ -1055,8 +1055,19 @@ class JobManager(
 
               (true, details)
 
-            case "start" => modificationCoordinator.startFilterOperator()
-              (true, "Starting new operator submitted")
+            case msg if msg.startsWith("startFilter") =>
+
+              val m = msg.split(":")
+
+              if (m.length != 2) {
+                (false, s"Jar command $command")
+              } else {
+
+                val paralelism: Int = Integer.parseInt(m(1))
+
+                modificationCoordinator.startFilterOperator(paralelism)
+                (true, s"Starting filer operator submitted with parallelism $paralelism")
+              }
 
             case msg if msg.startsWith("restartMapInstance") =>
 
