@@ -301,6 +301,22 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public FlinkFuture<Acknowledge> triggerResumeWithNewInputs(Time rpcCallTimeout,
+															   ExecutionAttemptID attemptId,
+															   List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
+		Preconditions.checkNotNull(rpcCallTimeout);
+		Preconditions.checkNotNull(inputGateDeploymentDescriptor);
+
+		scala.concurrent.Future<Acknowledge> resumeResult = actorGateway.ask(
+			new TaskMessages.ResumeWithNewInputs(attemptId,
+				inputGateDeploymentDescriptor),
+			new FiniteDuration(rpcCallTimeout.getSize(), rpcCallTimeout.getUnit()))
+			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+
+		return new FlinkFuture<>(resumeResult);
+	}
+
+	@Override
 	public Future<BlobKey> requestTaskManagerLog(Time timeout) {
 		return requestTaskManagerLog((TaskManagerMessages.RequestTaskManagerLog) TaskManagerMessages.getRequestTaskManagerLog(), timeout);
 	}

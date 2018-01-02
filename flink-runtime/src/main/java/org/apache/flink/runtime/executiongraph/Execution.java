@@ -1476,4 +1476,25 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 				connectionIndex,
 				parallelSubTaskIndex);
 	}
+
+	public void triggerResumeWithNewInput(Time rpcCallTimeout, List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
+		FlinkFuture<Acknowledge> acknowledgeFlinkFuture = getAssignedResource()
+			.getTaskManagerGateway()
+			.triggerResumeWithNewInputs(
+				rpcCallTimeout,
+				getAttemptId(),
+				inputGateDeploymentDescriptor);
+
+		acknowledgeFlinkFuture.handle(new BiFunction<Acknowledge, Throwable, Object>() {
+			@Override
+			public Object apply(Acknowledge acknowledge, Throwable throwable) {
+				if (acknowledge != null) {
+					LOG.info("Successfully submitted triggering resume with new inputs");
+				} else {
+					LOG.info("Failed to submit resume with new inputs");
+				}
+				return null;
+			}
+		});
+	}
 }

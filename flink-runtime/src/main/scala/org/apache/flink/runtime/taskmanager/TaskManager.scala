@@ -552,6 +552,20 @@ class TaskManager(
             sender ! decorateMessage(Acknowledge.get())
           }
 
+        case ResumeWithNewInputs(currentSinkAttempt, inputGateDeploymentDescriptor) =>
+          val task = runningTasks.get(currentSinkAttempt)
+          if (task != null) {
+
+            log.debug(s"Attempting to change inputs for sink $currentSinkAttempt")
+
+            task.connectToNewInputAfterMigration(network, inputGateDeploymentDescriptor)
+
+            sender ! decorateMessage(Acknowledge.get())
+          } else {
+            log.debug(s"Cannot find task to resume with different inputs for execution $currentSinkAttempt)")
+            sender ! decorateMessage(Acknowledge.get())
+          }
+
         case ResumeWithIncreasedDoP(currentSinkAttempt, executionAttemptID, irpid, tmLocation, connectionIndex, subTaskIndex) =>
           val task = runningTasks.get(currentSinkAttempt)
           if (task != null) {

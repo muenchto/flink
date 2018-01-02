@@ -318,6 +318,8 @@ public class ModificationCoordinator {
 		ArrayList<ExecutionVertex> objects = new ArrayList<>(instancesToPause.getTaskVertices().length);
 		objects.addAll(Arrays.asList(instancesToPause.getTaskVertices()));
 
+
+
 //		triggerModification(objects, description, action); // TODO Masterthesis
 	}
 
@@ -406,7 +408,7 @@ public class ModificationCoordinator {
 					execution.getCurrentExecutionAttempt().triggerModification(
 						modificationId,
 						timestamp,
-						new HashSet<ExecutionAttemptID>(operatorsIdsToSpill),
+						new HashSet<>(operatorsIdsToSpill),
 						operatorSubTaskIndices,
 						action,
 						checkpointIDToModify); // KeySet not serializable
@@ -514,6 +516,54 @@ public class ModificationCoordinator {
 		taskVertex.scheduleForExecution(executionGraph.getSlotProvider(), executionGraph.isQueuedSchedulingAllowed());
 	}
 
+	public void pauseAll(String operatorName) {
+		Iterable<ExecutionVertex> allExecutionVertices = executionGraph.getAllExecutionVertices();
+
+		LOG.info("Attempting to pause all instances for operator {}.", operatorName);
+
+		List<ExecutionVertex> operatorsIDs = new ArrayList<>();
+		for (ExecutionVertex vertex : allExecutionVertices) {
+			if (vertex.getTaskName().toLowerCase().contains(operatorName)) {
+				operatorsIDs.add(vertex);
+			}
+		}
+
+		// TODO Assume single producer
+		ExecutionJobVertex previousOperator =
+			operatorsIDs.get(0).getInputEdges(0)[0].getSource().getIntermediateResult().getProducer();
+
+		ArrayList<ExecutionAttemptID> sourceIds = new ArrayList<>();
+		for (ExecutionVertex executionVertex : previousOperator.getTaskVertices()) {
+			sourceIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+		}
+
+		triggerModification(sourceIds, operatorsIDs,"Pause " + operatorName + " instances", ModificationAction.PAUSING);
+	}
+
+	public void resumeAll(String operatorName) {
+		Iterable<ExecutionVertex> allExecutionVertices = executionGraph.getAllExecutionVertices();
+
+		LOG.info("Attempting to resume all instances for operator {}.", operatorName);
+
+		boolean foundOperator = false;
+
+		for (ExecutionVertex vertex : allExecutionVertices) {
+			if (vertex.getTaskName().toLowerCase().contains(operatorName)) {
+				Execution execution = vertex.getCurrentExecutionAttempt();
+
+				execution.getAssignedResource()
+					.getTaskManagerGateway()
+					.resumeTask(execution.getAttemptId(), rpcCallTimeout);
+
+				foundOperator = true;
+			}
+		}
+
+		if (!foundOperator) {
+			throw new RuntimeException("Could not find any operator, that contains: " + operatorName);
+		}
+	}
+
 	public void restartMapInstance(ResourceID taskmanagerID) {
 		ExecutionJobVertex map = findMap();
 
@@ -606,6 +656,34 @@ public class ModificationCoordinator {
 		}
 	}
 
+	public void modifyMapInstanceForFilter() {
+		ExecutionJobVertex map = findMap();
+		ExecutionJobVertex filter = findFilter();
+
+		Preconditions.checkNotNull(map);
+
+		List<IntermediateDataSet> producedDataSets = filter.getJobVertex().getProducedDataSets();
+		assert producedDataSets.size() == 1;
+
+		ExecutionVertex[] mapTaskVertices = map.getTaskVertices();
+
+		for (ExecutionVertex executionVertex : mapTaskVertices) {
+
+			List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor;
+			try {
+				inputGateDeploymentDescriptor =
+					executionVertex.createInputGateDeploymentDescriptor(executionVertex.getCurrentAssignedResource());
+			} catch (ExecutionGraphException e) {
+				throw new RuntimeException(e);
+			}
+
+			executionVertex.getCurrentExecutionAttempt()
+				.triggerResumeWithNewInput(
+					rpcCallTimeout,
+					inputGateDeploymentDescriptor);
+		}
+	}
+
 	public void resumeSink() {
 		ExecutionJobVertex source = findSink();
 
@@ -651,15 +729,15 @@ public class ModificationCoordinator {
 
 		ExecutionVertex[] taskVertices = map.getTaskVertices();
 
+		ArrayList<ExecutionAttemptID> sourceIds = new ArrayList<>();
+		for (ExecutionVertex executionVertex : findSource().getTaskVertices()) {
+			sourceIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+		}
+
 		for (ExecutionVertex vertex : taskVertices) {
 			if (vertex.getCurrentExecutionAttempt().getAttemptId().equals(mapAttemptID)) {
 
 				// TODO Masterthesis Generalize getting of upstream operator
-
-				ArrayList<ExecutionAttemptID> sourceIds = new ArrayList<>();
-				for (ExecutionVertex executionVertex : findSource().getTaskVertices()) {
-					sourceIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
-				}
 
 				stoppedMapExecutionAttemptID = vertex.getCurrentExecutionAttempt().getAttemptId();
 				stoppedMapSubTaskIndex = vertex.getCurrentExecutionAttempt().getParallelSubtaskIndex();
@@ -727,7 +805,7 @@ public class ModificationCoordinator {
 		filterStreamConfig.setOutEdges(sourceStreamConfig.getOutEdges(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setVertexID(42);
 		try {
-			filterStreamConfig.setTypeSerializerIn1(BasicTypeInfo.STRING_TYPE_INFO.createSerializer(executionGraph.getJobInformation().getSerializedExecutionConfig().deserializeValue(executionGraph.getUserClassLoader())));
+			filterStreamConfig.setTypeSerializerIn1(BasicTypeInfo.LONG_TYPE_INFO.createSerializer(executionGraph.getJobInformation().getSerializedExecutionConfig().deserializeValue(executionGraph.getUserClassLoader())));
 		} catch (IOException | ClassNotFoundException e) {
 			executionGraph.failGlobal(e);
 			e.printStackTrace();
@@ -739,10 +817,10 @@ public class ModificationCoordinator {
 		filterStreamConfig.setOutEdgesInOrder(sourceStreamConfig.getOutEdgesInOrder(executionGraph.getUserClassLoader()));
 
 		filterStreamConfig.setChainedOutputs(sourceStreamConfig.getChainedOutputs(executionGraph.getUserClassLoader()));
-		filterStreamConfig.setStreamOperator(new StreamFilter<>(clean(new FilterFunction<String>() {
+		filterStreamConfig.setStreamOperator(new StreamFilter<>(clean(new FilterFunction<Long>() {
 			@Override
-			public boolean filter(String value) throws Exception {
-				return Long.parseLong(value) % 2 == 0;
+			public boolean filter(Long value) throws Exception {
+				return value % 2 == 0;
 			}
 		})));
 
@@ -911,7 +989,7 @@ public class ModificationCoordinator {
 
 		LOG.info("Creating new operator '{}' with parallelism {}", operatorName, parallelism);
 
-		filterJobVertex.createAndAddResultDataSet(new IntermediateDataSetID(), ResultPartitionType.PIPELINED);
+		IntermediateDataSet filterIDS = filterJobVertex.createAndAddResultDataSet(new IntermediateDataSetID(), ResultPartitionType.PIPELINED);
 
 		List<IntermediateDataSet> sourceProducedDatasets = source.getJobVertex().getProducedDataSets();
 
@@ -956,6 +1034,18 @@ public class ModificationCoordinator {
 
 			executionGraph.getVerticesInCreationOrder().add(vertex);
 			executionGraph.addNumVertices(vertex.getParallelism());
+
+			// TODO Masterthesis Job specific, that filter is introduce between source and map
+			// Clear all current inputs and add new inputs
+			ExecutionJobVertex map = findMap();
+			map.getJobVertex().getInputs().clear();
+			map.getJobVertex().connectDataSetAsInput(filterIDS, DistributionPattern.ALL_TO_ALL);
+			try {
+				map.connectToPredecessors(executionGraph.getAllIntermediateResults());
+			} catch (JobException e) {
+				executionGraph.failGlobal(e);
+				LOG.error("Failed to connectToPredecessors.", e);
+			}
 
 			return vertex;
 		} catch (JobException jobException) {

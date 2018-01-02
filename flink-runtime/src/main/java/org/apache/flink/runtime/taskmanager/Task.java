@@ -194,7 +194,7 @@ public class Task implements Runnable, TaskActions {
 	private final ResultPartitionWriter[] writers;
 	private final TaskMetricGroup taskMetricGroup;
 
-	private final InputGateDeploymentDescriptor[] inputGateDeploymentDescriptor;
+	private InputGateDeploymentDescriptor[] inputGateDeploymentDescriptor;
 
 	private SingleInputGate[] inputGates;
 
@@ -504,6 +504,45 @@ public class Task implements Runnable, TaskActions {
 		}
 
 		LOG.debug("Successfully connected {} to new Input", taskNameWithSubtask);
+	}
+
+	public void connectToNewInputAfterMigration(NetworkEnvironment networkEnvironment,
+												List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptors) {
+
+		LOG.info("{} Setting new IGDD: {}", taskNameWithSubtask, inputGateDeploymentDescriptors);
+
+		this.inputGateDeploymentDescriptor =
+			inputGateDeploymentDescriptors.toArray(new InputGateDeploymentDescriptor[inputGateDeploymentDescriptors.size()]);
+
+		// Consumed intermediate result partitions
+		this.inputGates = new SingleInputGate[inputGateDeploymentDescriptors.size()];
+
+		int counter = 0;
+
+		for (InputGateDeploymentDescriptor inputGateDeploymentDescriptor: inputGateDeploymentDescriptors) {
+			SingleInputGate gate = SingleInputGate.create(
+				taskNameWithSubtask,
+				jobId,
+				executionId,
+				inputGateDeploymentDescriptor,
+				networkEnvironment,
+				this,
+				taskMetricGroup.getIOMetricGroup());
+
+			inputGates[counter] = gate;
+			inputGatesById.put(gate.getConsumedResultId(), gate);
+
+			++counter;
+		}
+
+		LOG.info("{} IGDD size: {} Current input gates: {}",
+			inputGateDeploymentDescriptors.size(),
+			taskNameWithSubtask,
+			Arrays.toString(inputGates));
+
+		networkEnvironment.registerInputGates(this);
+
+		LOG.debug("Successfully connected {} to new completely InputGate.", taskNameWithSubtask);
 	}
 
 

@@ -159,6 +159,11 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public FlinkFuture<Acknowledge> triggerResumeWithNewInputs(Time rpcCallTimeout, ExecutionAttemptID attemptId, List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 																	 ExecutionAttemptID currentSinkAttempt,
 																	 int stoppedMapSubTaskIndex, List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
