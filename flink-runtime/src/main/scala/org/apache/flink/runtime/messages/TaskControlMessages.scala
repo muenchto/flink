@@ -110,6 +110,10 @@ object TaskMessages {
                                        inputGateDeploymentDescriptor: util.List[InputGateDeploymentDescriptor] )
     extends TaskMessage with RequiresLeaderSessionID
 
+  case class ResumeWithNewInputs(sinkExecutionAttemptID: ExecutionAttemptID,
+                                       inputGateDeploymentDescriptor: util.List[InputGateDeploymentDescriptor] )
+    extends TaskMessage with RequiresLeaderSessionID
+
   case class ResumeWithIncreasedDoP(sinkExecutionAttemptID: ExecutionAttemptID,
                                     newInput: ExecutionAttemptID,
                                     irpid: IntermediateResultPartitionID,

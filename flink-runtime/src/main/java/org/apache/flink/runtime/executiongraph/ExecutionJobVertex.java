@@ -455,9 +455,7 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 		
 		List<JobEdge> inputs = jobVertex.getInputs();
 		
-		if (LOG.isDebugEnabled()) {
-			LOG.debug(String.format("Connecting ExecutionJobVertex %s (%s) to %d predecessors.", jobVertex.getID(), jobVertex.getName(), inputs.size()));
-		}
+		LOG.debug(String.format("Connecting ExecutionJobVertex %s (%s) to %d predecessors.", jobVertex.getID(), jobVertex.getName(), inputs.size()));
 		
 		for (int num = 0; num < inputs.size(); num++) {
 			JobEdge edge = inputs.get(num);

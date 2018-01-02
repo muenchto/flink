@@ -267,4 +267,8 @@ public interface TaskManagerGateway {
 														   int connectionIndex, int subTaskIndex);
 
 	void addNewConsumer(ExecutionAttemptID attemptId, JobID jobId);
+
+	FlinkFuture<Acknowledge> triggerResumeWithNewInputs(Time rpcCallTimeout,
+														ExecutionAttemptID attemptId,
+														List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor);
 }

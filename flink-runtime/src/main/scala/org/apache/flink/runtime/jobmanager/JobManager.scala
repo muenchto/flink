@@ -1049,11 +1049,52 @@ class JobManager(
               modificationCoordinator.modifySinkInstance()
               (true, "Modify sink submitted")
 
+            case "modifyMapForFilter" =>
+
+              log.info(s"Attempting to modify sink for new filter input")
+
+              modificationCoordinator.modifyMapInstanceForFilter()
+              (true, "Modify sink for filter submitted")
+
             case "jobmanagerIDs" =>
 
               val details = modificationCoordinator.getTMDetails()
 
               (true, details)
+
+            case msg if msg.startsWith("pauseAll:") =>
+
+              val m = msg.split(":")
+
+              if (m.length != 2) {
+                (false, s"Jar command $command")
+
+              } else {
+
+                val operatorName = m(1)
+
+                log.info(s"Pausing all instances from TaskManager: '$operatorName'")
+
+                modificationCoordinator.pauseAll(operatorName)
+                (true, s"Pausing all instances $operatorName instances")
+              }
+
+            case msg if msg.startsWith("resumeAll:") =>
+
+              val m = msg.split(":")
+
+              if (m.length != 2) {
+                (false, s"Jar command $command")
+
+              } else {
+
+                val operatorName = m(1)
+
+                log.info(s"Resuming all instances from TaskManager: '$operatorName'")
+
+                modificationCoordinator.resumeAll(operatorName)
+                (true, s"Pausing all $operatorName instances")
+              }
 
             case msg if msg.startsWith("startFilter") =>
 

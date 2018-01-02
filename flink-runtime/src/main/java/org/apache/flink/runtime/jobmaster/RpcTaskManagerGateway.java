@@ -196,4 +196,9 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	public void addNewConsumer(ExecutionAttemptID attemptId, JobID jobId) {
 		throw new UnsupportedOperationException();
 	}
+
+	@Override
+	public FlinkFuture<Acknowledge> triggerResumeWithNewInputs(Time rpcCallTimeout, ExecutionAttemptID attemptId, List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {
+		throw new UnsupportedOperationException();
+	}
 }
