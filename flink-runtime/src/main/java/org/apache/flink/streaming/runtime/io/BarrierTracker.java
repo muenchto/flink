@@ -82,6 +82,7 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 
 	/** The highest checkpoint ID encountered so far. */
 	private long latestPendingCheckpointID = -1;
+	private int numberOfSpillingToDiskMarker = 0;
 
 	// ------------------------------------------------------------------------
 
@@ -123,8 +124,13 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 				return next;
 			} else if (next.getEvent().getClass() == SpillToDiskMarker.class) {
 
-				// TODO ERROR!!!!
-				notifyStartModification((StartModificationMarker) next.getEvent());
+				numberOfSpillingToDiskMarker += 1;
+
+				if (numberOfSpillingToDiskMarker == inputGate.getNumberOfInputChannels()) {
+					pauseInputAfterSpillingAcknowledged((SpillToDiskMarker) next.getEvent());
+				} else {
+					LOG.info("Received SpillToDiskMarker #{}", numberOfSpillingToDiskMarker);
+				}
 
 				return next;
 
@@ -140,6 +146,18 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 				// some other event
 				return next;
 			}
+		}
+	}
+
+	private void pauseInputAfterSpillingAcknowledged(SpillToDiskMarker event) throws Exception {
+		if (statefulTask != null) {
+
+			LOG.debug("Received all SpillToDisk-Marker and now spilling to disk");
+
+			statefulTask.acknowledgeSpillingToDisk(event.getAction());
+
+		} else {
+			throw new NullPointerException("statefulTask must not be null");
 		}
 	}
 

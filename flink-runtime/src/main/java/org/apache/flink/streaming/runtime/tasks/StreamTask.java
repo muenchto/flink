@@ -713,18 +713,21 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						if (checkIfModificationAlreadyOngoing(metaData.getModificationID())) {
 							if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER)) {
 
-								if (upcomingCheckpointID == -1) {
-									throw new IllegalArgumentException("UpcomingCheckpointID must not be -1. Error in Modification logic.");
-								}
-
 								modificationAction = action;
 
 								for (RecordWriterOutput<?> recordWriterOutput : getStreamOutputs()) {
 									for (Integer subTaskIndex : subTasksToPause) {
-										recordWriterOutput
+
+										ResultPartitionWriter resultPartitionWriter = recordWriterOutput
 											.getRecordWriter()
-											.getResultPartitionWriter()
-											.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex, action);
+											.getResultPartitionWriter();
+
+										if (upcomingCheckpointID == -1) {
+											resultPartitionWriter.spillImmediately(subTaskIndex, action);
+										} else {
+											resultPartitionWriter
+												.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex, action);
+										}
 									}
 								}
 

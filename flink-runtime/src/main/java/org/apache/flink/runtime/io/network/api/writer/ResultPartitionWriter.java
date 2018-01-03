@@ -215,4 +215,24 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 			responsibleRecordWriter.setNumChannels(responsibleRecordWriter.getNumChannels() + 1);
 		}
 	}
+
+	public void spillImmediately(Integer taskIndex, ModificationCoordinator.ModificationAction action) {
+		ResultSubpartition[] allPartitions = partition.getAllPartitions();
+
+		if (taskIndex >= allPartitions.length) {
+			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
+		}
+
+		ResultSubpartition resultSubpartition = allPartitions[taskIndex];
+
+		if (resultSubpartition.getClass() != SpillablePipelinedSubpartition.class) {
+			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
+		} else {
+			try {
+				((SpillablePipelinedSubpartition) resultSubpartition).spillToDisk(action);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
 }

@@ -1007,7 +1007,7 @@ class JobManager(
             case "pauseMap" => modificationCoordinator.pauseMap()
               (true, "Pausing Map submitted")
 
-            case msg if msg.startsWith("pauseSingleMap") =>
+            case msg if msg.startsWith("pauseSingleOperatorInstance") =>
 
               val m = msg.split(":")
 
@@ -1020,7 +1020,7 @@ class JobManager(
 
                 log.info(s"Attempting to pause map for id '$mapAttempt'")
 
-                modificationCoordinator.pauseMap(mapAttempt)
+                modificationCoordinator.pauseSingleOperatorInstance(mapAttempt)
                 (true, "Stopping map submitted")
               }
 
@@ -1110,7 +1110,7 @@ class JobManager(
                 (true, s"Starting filer operator submitted with parallelism $paralelism")
               }
 
-            case msg if msg.startsWith("restartMapInstance") =>
+            case msg if msg.startsWith("restartOperatorInstance") =>
 
               val m = msg.split(":")
 
@@ -1121,9 +1121,9 @@ class JobManager(
 
                 val taskmanagerID: ResourceID = new ResourceID(m(1))
 
-                log.info(s"Attempting to restart map on taskmanager id '$taskmanagerID'")
+                log.info(s"Attempting to restart operator on taskmanager id '$taskmanagerID'")
 
-                modificationCoordinator.restartMapInstance(taskmanagerID)
+                modificationCoordinator.restartOperatorInstance(taskmanagerID)
                 (true, "Starting new operator submitted")
               }
 
