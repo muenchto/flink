@@ -9,6 +9,7 @@ import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
+import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
@@ -29,7 +30,6 @@ import org.apache.flink.streaming.api.operators.StreamFilter;
 import org.apache.flink.streaming.runtime.modification.exceptions.OperatorNotFoundException;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.Preconditions;
-import org.codehaus.jackson.map.TypeSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,9 +74,9 @@ public class ModificationCoordinator {
 
 	private final ScheduledThreadPoolExecutor timer;
 
-	private ExecutionAttemptID stoppedMapExecutionAttemptID;
+	private ExecutionAttemptID stoppedExecutionAttemptID;
 
-	private int stoppedMapSubTaskIndex;
+	private int stoppedSubTaskIndex;
 
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
@@ -315,12 +315,17 @@ public class ModificationCoordinator {
 
 	private void triggerModification(ExecutionJobVertex instancesToPause, final String description, ModificationAction action) {
 
-		ArrayList<ExecutionVertex> objects = new ArrayList<>(instancesToPause.getTaskVertices().length);
-		objects.addAll(Arrays.asList(instancesToPause.getTaskVertices()));
+		ArrayList<ExecutionVertex> indicesToPause = new ArrayList<>(instancesToPause.getTaskVertices().length);
+		indicesToPause.addAll(Arrays.asList(instancesToPause.getTaskVertices()));
 
+		ExecutionJobVertex upstreamOperator = getUpstreamOperator(indicesToPause.get(0));
 
+		ArrayList<ExecutionAttemptID> upstream = new ArrayList<>();
+		for (ExecutionVertex executionVertex : upstreamOperator.getTaskVertices()) {
+			upstream.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+		}
 
-//		triggerModification(objects, description, action); // TODO Masterthesis
+		triggerModification(upstream, indicesToPause, description, action);
 	}
 
 	private void triggerModification(ArrayList<ExecutionAttemptID> operatorsIdsToSpill,
@@ -398,8 +403,13 @@ public class ModificationCoordinator {
 					modification.setCancellerHandle(cancellerHandle);
 				}
 
-				long currentCheckpointID = executionGraph.getCheckpointCoordinator().getCheckpointIdCounter().getCurrent();
-				long checkpointIDToModify = currentCheckpointID + 2;
+				long checkpointIDToModify = -1;
+				CheckpointIDCounter checkpointIdCounter = executionGraph.getCheckpointCoordinator().getCheckpointIdCounter();
+
+				// Check if checkpointing is enabled
+				if (checkpointIdCounter.getCurrent() >= 2) {
+				 	checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
+				}
 
 				ExecutionJobVertex source = findSource();
 
@@ -517,27 +527,48 @@ public class ModificationCoordinator {
 	}
 
 	public void pauseAll(String operatorName) {
-		Iterable<ExecutionVertex> allExecutionVertices = executionGraph.getAllExecutionVertices();
-
 		LOG.info("Attempting to pause all instances for operator {}.", operatorName);
 
-		List<ExecutionVertex> operatorsIDs = new ArrayList<>();
-		for (ExecutionVertex vertex : allExecutionVertices) {
-			if (vertex.getTaskName().toLowerCase().contains(operatorName)) {
-				operatorsIDs.add(vertex);
+		List<ExecutionVertex> operatorsIDs = getAllExecutionVerticesForName(operatorName);
+
+		ExecutionJobVertex previousOperator = getUpstreamOperator(operatorsIDs.get(0));
+
+		ArrayList<ExecutionAttemptID> upstreamIds = new ArrayList<>();
+		for (ExecutionVertex executionVertex : previousOperator.getTaskVertices()) {
+			upstreamIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+		}
+
+		triggerModification(upstreamIds, operatorsIDs,"Pause " + operatorName + " instances", ModificationAction.PAUSING);
+	}
+
+	private List<ExecutionVertex> getAllExecutionVerticesForName(String operatorName) {
+		Collection<ExecutionJobVertex> vertices = executionGraph.getAllVertices().values();
+
+		for (ExecutionJobVertex vertex : vertices) {
+			if (vertex.getName().contains(operatorName)) {
+				return new ArrayList<>(Arrays.asList(vertex.getTaskVertices()));
 			}
 		}
 
-		// TODO Assume single producer
-		ExecutionJobVertex previousOperator =
-			operatorsIDs.get(0).getInputEdges(0)[0].getSource().getIntermediateResult().getProducer();
+		throw new IllegalStateException("Could not find any operator, who's name contains: " + operatorName);
+	}
 
-		ArrayList<ExecutionAttemptID> sourceIds = new ArrayList<>();
-		for (ExecutionVertex executionVertex : previousOperator.getTaskVertices()) {
-			sourceIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+	private ExecutionJobVertex getUpstreamOperator(ExecutionVertex jobVertex) {
+		Preconditions.checkNotNull(jobVertex);
+
+		return getUpstreamOperator(jobVertex.getJobVertex());
+	}
+
+	private ExecutionJobVertex getUpstreamOperator(ExecutionJobVertex jobVertex) {
+		Preconditions.checkNotNull(jobVertex);
+
+		ExecutionVertex[] taskVertices = jobVertex.getTaskVertices();
+		if (taskVertices == null || taskVertices.length == 0) {
+			throw new IllegalStateException("Failed to retrieve upstream operator. Operator has no task vertices.");
 		}
 
-		triggerModification(sourceIds, operatorsIDs,"Pause " + operatorName + " instances", ModificationAction.PAUSING);
+		// TODO Assume single producer
+		return taskVertices[0].getInputEdges(0)[0].getSource().getProducer().getJobVertex();
 	}
 
 	public void resumeAll(String operatorName) {
@@ -564,13 +595,11 @@ public class ModificationCoordinator {
 		}
 	}
 
-	public void restartMapInstance(ResourceID taskmanagerID) {
-		ExecutionJobVertex map = findMap();
-
+	public void restartOperatorInstance(ResourceID taskmanagerID) {
 		ExecutionVertex stoppedExecutionVertex = null;
 
-		for (ExecutionVertex executionVertex : map.getTaskVertices()) {
-			if (executionVertex.getCurrentExecutionAttempt().getAttemptId().equals(stoppedMapExecutionAttemptID)) {
+		for (ExecutionVertex executionVertex : executionGraph.getAllExecutionVertices()) {
+			if (executionVertex.getCurrentExecutionAttempt().getAttemptId().equals(stoppedExecutionAttemptID)) {
 				stoppedExecutionVertex = executionVertex;
 				break;
 			}
@@ -588,11 +617,11 @@ public class ModificationCoordinator {
 
 			Execution currentExecutionAttempt = stoppedExecutionVertex.getCurrentExecutionAttempt();
 
-			SubtaskState storedState = this.storedState.get(stoppedMapExecutionAttemptID);
+			SubtaskState storedState = this.storedState.get(stoppedExecutionAttemptID);
 
 			if (storedState == null) {
 				throw new IllegalStateException("Could not find state to restore for ExecutionAttempt: "
-					+ stoppedMapExecutionAttemptID);
+					+ stoppedExecutionAttemptID);
 			} else {
 				TaskStateHandles taskStateHandles = new TaskStateHandles(storedState);
 
@@ -632,9 +661,9 @@ public class ModificationCoordinator {
 
 		ExecutionVertex[] taskVertices = findMap().getTaskVertices();
 		assert taskVertices != null;
-		assert taskVertices.length >= stoppedMapSubTaskIndex;
-		Execution newMapExecutionAttemptId = taskVertices[stoppedMapSubTaskIndex].getCurrentExecutionAttempt();
-		assert newMapExecutionAttemptId.getAttemptId() != stoppedMapExecutionAttemptID;
+		assert taskVertices.length >= stoppedSubTaskIndex;
+		Execution newMapExecutionAttemptId = taskVertices[stoppedSubTaskIndex].getCurrentExecutionAttempt();
+		assert newMapExecutionAttemptId.getAttemptId() != stoppedExecutionAttemptID;
 
 		ExecutionVertex[] sinkTaskVertices = sink.getTaskVertices();
 
@@ -651,7 +680,7 @@ public class ModificationCoordinator {
 			executionVertex.getCurrentExecutionAttempt()
 				.triggerResumeWithDifferentInputs(
 					rpcCallTimeout,
-					stoppedMapSubTaskIndex,
+					stoppedSubTaskIndex,
 					inputGateDeploymentDescriptor);
 		}
 	}
@@ -724,33 +753,33 @@ public class ModificationCoordinator {
 		triggerModification(map, "Pause map", ModificationAction.PAUSING);
 	}
 
-	public void pauseMap(ExecutionAttemptID mapAttemptID) {
-		ExecutionJobVertex map = findMap();
+	public void pauseSingleOperatorInstance(ExecutionAttemptID attemptID) {
 
-		ExecutionVertex[] taskVertices = map.getTaskVertices();
+		ExecutionVertex singleExecutionVertex = getSingleExecutionVertex(attemptID);
 
-		ArrayList<ExecutionAttemptID> sourceIds = new ArrayList<>();
-		for (ExecutionVertex executionVertex : findSource().getTaskVertices()) {
-			sourceIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+		ArrayList<ExecutionAttemptID> upstreamIds = new ArrayList<>();
+		for (ExecutionVertex executionVertex : getUpstreamOperator(singleExecutionVertex).getTaskVertices()) {
+			upstreamIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
 		}
 
-		for (ExecutionVertex vertex : taskVertices) {
-			if (vertex.getCurrentExecutionAttempt().getAttemptId().equals(mapAttemptID)) {
+		stoppedExecutionAttemptID = singleExecutionVertex.getCurrentExecutionAttempt().getAttemptId();
+		stoppedSubTaskIndex = singleExecutionVertex.getCurrentExecutionAttempt().getParallelSubtaskIndex();
 
-				// TODO Masterthesis Generalize getting of upstream operator
+		triggerModification(upstreamIds,
+			Collections.singletonList(singleExecutionVertex),
+			"Pause single map instance",
+			ModificationAction.STOPPING);
+	}
 
-				stoppedMapExecutionAttemptID = vertex.getCurrentExecutionAttempt().getAttemptId();
-				stoppedMapSubTaskIndex = vertex.getCurrentExecutionAttempt().getParallelSubtaskIndex();
-
-				triggerModification(sourceIds,
-					Collections.singletonList(vertex),
-					"Pause single map instance",
-					ModificationAction.STOPPING);
-				return;
+	private ExecutionVertex getSingleExecutionVertex(ExecutionAttemptID attemptID) {
+		for (ExecutionVertex executionVertex : executionGraph.getAllExecutionVertices()) {
+			if (executionVertex.getCurrentExecutionAttempt().getAttemptId().equals(attemptID)) {
+				return executionVertex;
 			}
 		}
 
-		executionGraph.failGlobal(new Exception("Failed to find map operator instance for " + mapAttemptID));
+		executionGraph.failGlobal(new Exception("Failed to find map operator instance for " + attemptID));
+		throw new IllegalStateException("Could not find operator with ExecutionAttemptID: " + attemptID);
 	}
 
 	public void resumeMapOperator() {
@@ -763,7 +792,7 @@ public class ModificationCoordinator {
 
 			// TODO Masterthesis: Unnecessary, as getCurrentExecutionAttempt simply returns the last execution.
 			// TODO Masterthesis: Therefore, the old attempt never gets resumed
-			if (execution.getAttemptId().equals(stoppedMapExecutionAttemptID)) {
+			if (execution.getAttemptId().equals(stoppedExecutionAttemptID)) {
 				LOG.info("Skipping resuming of map operator for ExecutionAttemptID {}");
 				continue;
 			}
