@@ -8,8 +8,8 @@ savepoint_directory='savepoints'
 echo "Input: JobID to take savepoint and to resume"
 read jobID
 
-echo "Starting time:"
-date +%s:%N # Show starting time
+start=`date +%s` # Show starting time, with nanos +%s:%N
+echo "Starting time: $start"
 
 echo "Canceling job for ID $jobID"
 ./bin/flink cancel -s $savepoint_directory $jobID 
@@ -30,4 +30,6 @@ echo "Resuming job"
 
 echo "Waiting for complete resuming..."
 read ignored
-date +%s:%N # Show ending time
+
+end=`date +%s` # Show starting time, with nanos +%s:%N
+echo "Savepoint&Resume took "$(($end - $start))""
