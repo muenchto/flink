@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,28 +19,34 @@
 
 package org.apache.flink.runtime.io.network.api.serialization;
 
+import java.net.InetAddress;
 import java.nio.charset.Charset;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions.CheckpointType;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.*;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.FreeingBufferRecycler;
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.runtime.util.DataInputDeserializer;
 import org.apache.flink.runtime.util.DataOutputSerializer;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
+import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.util.InstantiationUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.flink.util.Preconditions;
@@ -70,6 +77,8 @@ public class EventSerializer {
 	private static final int PAUSING_TASK_EVENT = 8;
 
 	private static final int PAUSED_OPERATOR_EVENT = 9;
+
+	private static final int MIGRATION_START_EVENT = 10;
 
 	// ------------------------------------------------------------------------
 
@@ -132,6 +141,77 @@ public class EventSerializer {
 			return buf;
 		} else if (eventClass == EndOfSuperstepEvent.class) {
 			return ByteBuffer.wrap(new byte[]{0, 0, 0, END_OF_SUPERSTEP_EVENT});
+		} else if (eventClass == StartMigrationMarker.class) {
+
+			StartMigrationMarker marker = (StartMigrationMarker) event;
+
+			Map<ExecutionAttemptID, Set<Integer>> spillingVertices = marker.getSpillingVertices();
+			Map<ExecutionAttemptID, TaskManagerLocation> stoppingVertices = marker.getStoppingVertices();
+
+			int bufferSize = 36;
+			bufferSize += spillingVertices.keySet().size() * 16;
+			for (Set<Integer> integers : spillingVertices.values()) {
+				bufferSize += integers.size() * 4 + 4;
+			}
+			bufferSize += stoppingVertices.keySet().size() * 16;
+			for (TaskManagerLocation location : stoppingVertices.values()) {
+				bufferSize += location.getResourceID().getResourceIdString().length() * 2;
+				bufferSize += location.address().getAddress().length;
+				bufferSize += 12;
+			}
+
+			int spillingSize = spillingVertices.keySet().size(), stoppingSize = stoppingVertices.size();
+
+			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
+			buf.putInt(MIGRATION_START_EVENT);
+			buf.putLong(marker.getModificationID());
+			buf.putLong(marker.getTimestamp());
+			buf.putLong(marker.getCheckpointIDToModify());
+			buf.putInt(spillingSize);
+
+			for (Map.Entry<ExecutionAttemptID, Set<Integer>> entry : spillingVertices.entrySet()) {
+
+				buf.putInt(entry.getValue().size());
+
+				ExecutionAttemptID vertexID = entry.getKey();
+				buf.putLong(vertexID.getLowerPart());
+				buf.putLong(vertexID.getUpperPart());
+
+				for (Integer integer : entry.getValue()) {
+					buf.putInt(integer);
+				}
+			}
+
+			buf.putInt(stoppingSize);
+
+			for (Map.Entry<ExecutionAttemptID, TaskManagerLocation> entry : stoppingVertices.entrySet()) {
+
+				ExecutionAttemptID vertexID = entry.getKey();
+				buf.putLong(vertexID.getLowerPart());
+				buf.putLong(vertexID.getUpperPart());
+
+				char[] chars = entry.getValue().getResourceID().getResourceIdString().toCharArray();
+				int charSize = chars.length;
+
+				buf.putInt(charSize);
+				for (char aChar : chars) {
+					buf.putChar(aChar);
+				}
+
+				byte[] address = entry.getValue().address().getAddress();
+				int addressSize = address.length;
+
+				buf.putInt(addressSize);
+				for (byte addres : address) {
+					buf.put(addres);
+				}
+
+				buf.putInt(entry.getValue().dataPort());
+			}
+
+			buf.position(0);
+
+			return buf;
 		} else if (eventClass == CancelCheckpointMarker.class) {
 			CancelCheckpointMarker marker = (CancelCheckpointMarker) event;
 
@@ -253,6 +333,8 @@ public class EventSerializer {
 					return eventClass.equals(PausingTaskEvent.class);
 				case PAUSED_OPERATOR_EVENT:
 					return eventClass.equals(PausingOperatorMarker.class);
+				case MIGRATION_START_EVENT:
+					return eventClass.equals(StartMigrationMarker.class);
 				case OTHER_EVENT:
 					try {
 						final DataInputDeserializer deserializer = new DataInputDeserializer(buffer);
@@ -382,6 +464,64 @@ public class EventSerializer {
 
 				return new CancelModificationMarker(modificationID, timestamp, ids);
 
+			} else if (type == MIGRATION_START_EVENT) {
+
+				Map<ExecutionAttemptID, Set<Integer>> spillingVertices = new HashMap<>();
+				Map<ExecutionAttemptID, TaskManagerLocation> stoppingVertices = new HashMap<>();
+
+				long modificationID = buffer.getLong();
+				long timestamp = buffer.getLong();
+				long checkpointToModify = buffer.getLong();
+				int size = buffer.getInt();
+
+				for (int i = 0; i < size; i++) {
+					int setSize = buffer.getInt();
+
+					long lower = buffer.getLong();
+					long upper = buffer.getLong();
+					ExecutionAttemptID executionAttemptID = new ExecutionAttemptID(lower, upper);
+
+					Set<Integer> set = new HashSet<>();
+					for (int j = 0; j < setSize; j++) {
+						set.add(buffer.getInt());
+					}
+
+					spillingVertices.put(executionAttemptID, set);
+				}
+
+				size = buffer.getInt();
+
+				for (int i = 0; i < size; i++) {
+
+					long lower = buffer.getLong();
+					long upper = buffer.getLong();
+					ExecutionAttemptID executionAttemptID = new ExecutionAttemptID(lower, upper);
+
+					int charSize = buffer.getInt();
+					char[] resourceID = new char[charSize];
+
+					for (int j = 0; j < charSize; j++) {
+						resourceID[j] = buffer.getChar();
+					}
+
+					int inetSize = buffer.getInt();
+					byte[] inetAddress = new byte[inetSize];
+
+					for (int j = 0; j < inetSize; j++) {
+						inetAddress[j] = buffer.get();
+					}
+
+					int dataPort = buffer.getInt();
+
+					TaskManagerLocation location = new TaskManagerLocation(
+						new ResourceID(new String(resourceID)),
+						InetAddress.getByAddress(inetAddress),
+						dataPort);
+
+					stoppingVertices.put(executionAttemptID, location);
+				}
+
+				return new StartMigrationMarker(modificationID, timestamp, spillingVertices, stoppingVertices, checkpointToModify);
 			} else if (type == OTHER_EVENT) {
 				try {
 					final DataInputDeserializer deserializer = new DataInputDeserializer(buffer);
@@ -442,8 +582,8 @@ public class EventSerializer {
 	 * @throws IOException
 	 */
 	public static boolean isEvent(final Buffer buffer,
-		final Class<?> eventClass,
-		final ClassLoader classLoader) throws IOException {
+								  final Class<?> eventClass,
+								  final ClassLoader classLoader) throws IOException {
 		return !buffer.isBuffer() &&
 			isEvent(buffer.getNioBuffer(), eventClass, classLoader);
 	}
