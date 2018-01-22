@@ -178,6 +178,108 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 		}
 	}
 
+	@Override
+	public Future<SimpleSlot> allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
+		try {
+			final Object ret = scheduleTaskExceptOnTaskmanager(task, allowQueued, taskManagerID);
+
+			if (ret instanceof SimpleSlot) {
+				return FlinkCompletableFuture.completed((SimpleSlot) ret);
+			} else {
+				// this should never happen, simply guard this case with an exception
+				throw new RuntimeException();
+			}
+		} catch (NoResourceAvailableException e) {
+			return FlinkCompletableFuture.completedExceptionally(e);
+		}
+	}
+
+	private Object scheduleTaskExceptOnTaskmanager(ScheduledUnit task, boolean queueIfNoResource, ResourceID taskManagerID)
+		throws NoResourceAvailableException {
+
+		if (task == null) {
+			throw new NullPointerException();
+		}
+
+		LOG.debug("Scheduling task " + task);
+
+		final ExecutionVertex vertex = task.getTaskToExecute().getVertex();
+
+		final Iterable<TaskManagerLocation> preferredLocations = vertex.getPreferredLocationsBasedOnInputs();
+		final boolean forceExternalLocation = false &&
+			preferredLocations != null && preferredLocations.iterator().hasNext();
+
+		synchronized (globalLock) {
+
+			// schedule without hints and sharing
+
+			SimpleSlot slot = getFreeSlotForTaskExceptTM(vertex, preferredLocations, forceExternalLocation, taskManagerID);
+			if (slot != null) {
+				updateLocalityCounters(slot, vertex);
+				return slot;
+			}
+			else {
+				// no resource available now, so queue the request
+				if (queueIfNoResource) {
+					CompletableFuture<SimpleSlot> future = new FlinkCompletableFuture<>();
+					this.taskQueue.add(new QueuedTask(task, future));
+					return future;
+				}
+				else if (forceExternalLocation) {
+					String hosts = getHostnamesFromInstances(preferredLocations);
+					throw new NoResourceAvailableException("Could not schedule task " + vertex
+						+ " to any of the required hosts: " + hosts);
+				}
+				else {
+					throw new NoResourceAvailableException(getNumberOfAvailableInstances(),
+						getTotalNumberOfSlots(), getNumberOfAvailableSlots());
+				}
+			}
+		}
+	}
+
+	private SimpleSlot getFreeSlotForTaskExceptTM(ExecutionVertex vertex,
+												  Iterable<TaskManagerLocation> preferredLocations,
+												  boolean forceExternalLocation,
+												  ResourceID taskManagerID) {
+		// we need potentially to loop multiple times, because there may be false positives
+		// in the set-with-available-instances
+		while (true) {
+
+			LOG.info("Looping to get freeSlot for a specific taskmanager");
+
+			Pair<Instance, Locality> instanceLocalityPair = findSpecificTaskmanagerInstance(taskManagerID);
+
+			if (instanceLocalityPair == null){
+				return null;
+			}
+
+			Instance instanceToUse = instanceLocalityPair.getLeft();
+			Locality locality = instanceLocalityPair.getRight();
+
+			try {
+				SimpleSlot slot = instanceToUse.allocateSimpleSlot(vertex.getJobId());
+
+				// if the instance has further available slots, re-add it to the set of available resources.
+				if (instanceToUse.hasResourcesAvailable()) {
+					this.instancesWithAvailableResources.put(instanceToUse.getTaskManagerID(), instanceToUse);
+				}
+
+				if (slot != null) {
+					slot.setLocality(locality);
+					return slot;
+				}
+			}
+			catch (InstanceDiedException e) {
+				// the instance died it has not yet been propagated to this scheduler
+				// remove the instance from the set of available instances
+				removeInstance(instanceToUse);
+			}
+
+			// if we failed to get a slot, fall through the loop
+		}
+	}
+
 	/**
 	 * Returns either a {@link SimpleSlot}, or a {@link Future}.
 	 */
@@ -285,6 +387,33 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 		Instance instanceToUse = instancesWithAvailableResources.remove(taskManagerID);
 
 		return new ImmutablePair<>(instanceToUse, Locality.UNCONSTRAINED);
+	}
+
+	private Pair<Instance, Locality> findTaskmanagerExceptSpecificInstance(ResourceID taskManagerID) {
+
+		// drain the queue of newly available instances
+		while (this.newlyAvailableInstances.size() > 0) {
+			Instance queuedInstance = this.newlyAvailableInstances.poll();
+			if (queuedInstance != null) {
+				this.instancesWithAvailableResources.put(queuedInstance.getTaskManagerID(), queuedInstance);
+			}
+		}
+
+		// if nothing is available at all, return null
+		if (this.instancesWithAvailableResources.isEmpty()) {
+			return null;
+		}
+
+		Instance instance = null;
+		for (Map.Entry<ResourceID, Instance> entry : this.instancesWithAvailableResources.entrySet()) {
+			if (entry.getKey().equals(taskManagerID)) {
+				continue;
+			}
+
+			instance = entry.getValue();
+		}
+
+		return new ImmutablePair<>(instance, Locality.UNCONSTRAINED);
 	}
 
 	/**

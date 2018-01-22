@@ -12,11 +12,15 @@ import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.executiongraph.*;
+import org.apache.flink.runtime.instance.SimpleSlot;
+import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
+import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
 import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
 import org.apache.flink.runtime.messages.modification.DeclineModification;
 import org.apache.flink.runtime.messages.modification.IgnoreModification;
@@ -454,6 +458,43 @@ public class ModificationCoordinator {
 		}
 
 		return details.toString();
+	}
+
+	public void migrateAllFromTaskmanager(ResourceID taskmanagerID) {
+		Collection<ExecutionJobVertex> allVertices = executionGraph.getAllVertices().values();
+
+		List<ExecutionVertex> allVerticesOnTM = new ArrayList<>();
+
+		for (ExecutionJobVertex vertex : allVertices) {
+			for (ExecutionVertex executionVertex : vertex.getTaskVertices()) {
+				if (executionVertex.getCurrentExecutionAttempt().getAssignedResource().getTaskManagerID().equals(taskmanagerID)) {
+					allVerticesOnTM.add(executionVertex);
+				}
+			}
+		}
+
+		List<Future<SimpleSlot>> reservedSlots = allocateSlotsOnDifferentTaskmanagers(taskmanagerID, allVerticesOnTM);
+
+		// TODO Order of migrating operators?
+		// TODO Transitive dependencies when migrating operators to new TM instance
+	}
+
+	private List<Future<SimpleSlot>> allocateSlotsOnDifferentTaskmanagers(ResourceID taskmanagerIDToExclude, List<ExecutionVertex> numberOfSlots) {
+		SlotProvider slotProvider = executionGraph.getSlotProvider();
+
+		List<Future<SimpleSlot>> slots = new ArrayList<>();
+
+		for (ExecutionVertex numberOfSlot : numberOfSlots) {
+
+			ScheduledUnit scheduledUnit = numberOfSlot.getCurrentExecutionAttempt().getScheduledUnit();
+
+			Future<SimpleSlot> simpleSlotFuture = slotProvider
+				.allocateSlotExceptOnTaskmanager(scheduledUnit, executionGraph.isQueuedSchedulingAllowed(), taskmanagerIDToExclude);
+
+			slots.add(simpleSlotFuture);
+		}
+
+		return slots;
 	}
 
 	private ExecutionVertex getMapExecutionVertexToStop(ResourceID taskManagerId) {

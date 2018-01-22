@@ -91,4 +91,9 @@ class ProgrammedSlotProvider implements SlotProvider {
 	public Future<SimpleSlot> allocateSlotOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
 		throw new NotImplementedException();
 	}
+
+	@Override
+	public Future<SimpleSlot> allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
+		throw new NotImplementedException();
+	}
 }

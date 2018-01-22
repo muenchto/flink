@@ -1124,7 +1124,24 @@ class JobManager(
                 log.info(s"Attempting to restart operator on taskmanager id '$taskmanagerID'")
 
                 modificationCoordinator.restartOperatorInstance(taskmanagerID)
-                (true, "Starting new operator submitted")
+                (true, "Restarting operator submitted")
+              }
+
+            case msg if msg.startsWith("migrateAll") =>
+
+              val m = msg.split(":")
+
+              if (m.length != 2) {
+                (false, s"migrateAll command $command")
+
+              } else {
+
+                val taskmanagerID: ResourceID = new ResourceID(m(1))
+
+                log.info(s"Attempting to migrate all operator instances on taskmanager '$taskmanagerID'")
+
+                modificationCoordinator.migrateAllFromTaskmanager(taskmanagerID)
+                (true, "Migrating all from taskmanager submitted")
               }
 
             case "jar" =>

@@ -97,6 +97,11 @@ public class SimpleSlotProvider implements SlotProvider, SlotOwner {
 	}
 
 	@Override
+	public Future<SimpleSlot> allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
+		throw new NotImplementedException();
+	}
+
+	@Override
 	public boolean returnAllocatedSlot(Slot slot) {
 		synchronized (slots) {
 			slots.add(slot.getAllocatedSlot());
