@@ -131,15 +131,47 @@ public class EventSerializerTest {
 
 	@Test
 	public void testPausingMarker() throws IOException {
-		InetAddress byName = InetAddress.getByName("java.sun.com");
-		TaskManagerLocation location = new TaskManagerLocation(ResourceID.generate(), byName, 1337);
+		ResultPartitionID resultPartitionID = new ResultPartitionID();
 
-		PausingOperatorMarker marker = new PausingOperatorMarker(location);
+		InetAddress byName = InetAddress.getByName("java.sun.com");
+
+		TaskManagerLocation tmLocation = new TaskManagerLocation(ResourceID.generate(), byName, 1337);
+
+		ConnectionID connectionID = new ConnectionID(tmLocation, 432);
+
+		ResultPartitionLocation location = ResultPartitionLocation.createRemote(connectionID);
+
+		InputChannelDeploymentDescriptor descriptor = new InputChannelDeploymentDescriptor(resultPartitionID, location);
+
+		PausingOperatorMarker marker = new PausingOperatorMarker(descriptor);
 
 		ByteBuffer serializedEvent = EventSerializer.toSerializedEvent(marker);
 		assertTrue(serializedEvent.hasRemaining());
 
 		AbstractEvent deserialized = EventSerializer.fromSerializedEvent(serializedEvent, getClass().getClassLoader());
+		assertNotNull(deserialized);
+		assertEquals(marker, deserialized);
+
+		marker = new PausingOperatorMarker(null);
+
+		serializedEvent = EventSerializer.toSerializedEvent(marker);
+		assertTrue(serializedEvent.hasRemaining());
+
+		deserialized = EventSerializer.fromSerializedEvent(serializedEvent, getClass().getClassLoader());
+		assertNotNull(deserialized);
+		assertEquals(marker, deserialized);
+
+
+		location = ResultPartitionLocation.createLocal();
+
+		descriptor = new InputChannelDeploymentDescriptor(resultPartitionID, location);
+
+		marker = new PausingOperatorMarker(descriptor);
+
+		serializedEvent = EventSerializer.toSerializedEvent(marker);
+		assertTrue(serializedEvent.hasRemaining());
+
+		deserialized = EventSerializer.fromSerializedEvent(serializedEvent, getClass().getClassLoader());
 		assertNotNull(deserialized);
 		assertEquals(marker, deserialized);
 
