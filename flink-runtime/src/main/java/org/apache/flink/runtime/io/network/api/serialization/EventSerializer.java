@@ -21,7 +21,6 @@ package org.apache.flink.runtime.io.network.api.serialization;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.charset.Charset;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.core.memory.MemorySegmentFactory;
@@ -103,40 +102,53 @@ public class EventSerializer {
 
 			PausingOperatorMarker marker = (PausingOperatorMarker) event;
 
-			boolean containsLocation = marker.getLocation() != null;
-			TaskManagerLocation location = marker.getLocation();
+			boolean containsLocation = marker.getDescriptor() != null;
+			InputChannelDeploymentDescriptor descriptor = marker.getDescriptor();
 
 			int bufferSize = 5;
+			if (descriptor != null) {
+				bufferSize += 33;
 
-			if (location != null) {
-				bufferSize += location.getResourceID().getResourceIdString().length() * 2;
-				bufferSize += location.address().getAddress().length;
-				bufferSize += 12;
+				if (descriptor.getConsumedPartitionLocation().isRemote()) {
+					bufferSize += 12;
+
+					bufferSize += descriptor.getConsumedPartitionLocation().getConnectionId().getAddress()
+						.getHostName().getBytes().length;
+				}
 			}
 
 			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
 			buf.putInt(PAUSED_OPERATOR_EVENT);
 			buf.put((byte) (containsLocation ? 1 : 0));
 
-			if (location != null) {
+			if (descriptor != null) {
 
-				char[] chars = location.getResourceID().getResourceIdString().toCharArray();
-				int charSize = chars.length;
+				ResultPartitionID partitionId = descriptor.getConsumedPartitionId();
 
-				buf.putInt(charSize);
-				for (char aChar : chars) {
-					buf.putChar(aChar);
+				buf.putLong(partitionId.getPartitionId().getLowerPart());
+				buf.putLong(partitionId.getPartitionId().getUpperPart());
+
+				buf.putLong(partitionId.getProducerId().getLowerPart());
+				buf.putLong(partitionId.getProducerId().getUpperPart());
+
+				ResultPartitionLocation location = descriptor.getConsumedPartitionLocation();
+				buf.put((byte) (location.isLocal() ? 1 : 0));
+
+				if (location.isRemote()) {
+					InetSocketAddress inetSocketAddress = location.getConnectionId().getAddress();
+
+					byte[] hostName = inetSocketAddress.getHostName().getBytes();
+					int hostNameSize = hostName.length;
+
+					buf.putInt(hostNameSize);
+					for (byte addres : hostName) {
+						buf.put(addres);
+					}
+
+					buf.putInt(inetSocketAddress.getPort());
+
+					buf.putInt(location.getConnectionId().getConnectionIndex());
 				}
-
-				byte[] address = location.address().getAddress();
-				int addressSize = address.length;
-
-				buf.putInt(addressSize);
-				for (byte addres : address) {
-					buf.put(addres);
-				}
-
-				buf.putInt(location.dataPort());
 			}
 
 			buf.position(0);
@@ -460,32 +472,49 @@ public class EventSerializer {
 
 				byte containsLocation = buffer.get();
 
-				TaskManagerLocation location = null;
-
 				if (containsLocation == 1) {
-					int charSize = buffer.getInt();
-					char[] resourceID = new char[charSize];
 
-					for (int j = 0; j < charSize; j++) {
-						resourceID[j] = buffer.getChar();
+					long lower = buffer.getLong();
+					long upper = buffer.getLong();
+
+					IntermediateResultPartitionID irpID = new IntermediateResultPartitionID(lower, upper);
+
+					lower = buffer.getLong();
+					upper = buffer.getLong();
+
+					ExecutionAttemptID attemptID = new ExecutionAttemptID(lower, upper);
+
+					ResultPartitionID id = new ResultPartitionID(irpID, attemptID);
+
+					boolean local = buffer.get() == 1;
+
+					ResultPartitionLocation location;
+
+					if (local) {
+						location = ResultPartitionLocation.createLocal();
+					} else {
+
+						int addressSize = buffer.getInt();
+						byte[] address = new byte[addressSize];
+						for (int k = 0; k < addressSize; k++) {
+							address[k] = buffer.get();
+						}
+
+						int port = buffer.getInt();
+
+						InetSocketAddress inetSocketAddress = new InetSocketAddress(new String(address), port);
+
+						int connectionIndex = buffer.getInt();
+
+						ConnectionID connectionID = new ConnectionID(inetSocketAddress, connectionIndex);
+
+						location = ResultPartitionLocation.createRemote(connectionID);
 					}
 
-					int inetSize = buffer.getInt();
-					byte[] inetAddress = new byte[inetSize];
-
-					for (int j = 0; j < inetSize; j++) {
-						inetAddress[j] = buffer.get();
-					}
-
-					int dataPort = buffer.getInt();
-
-					location = new TaskManagerLocation(
-						new ResourceID(new String(resourceID)),
-						InetAddress.getByAddress(inetAddress),
-						dataPort);
+					return new PausingOperatorMarker(new InputChannelDeploymentDescriptor(id, location));
 				}
 
-				return new PausingOperatorMarker(location);
+				return new PausingOperatorMarker();
 
 			} else if (type == PAUSING_TASK_EVENT) {
 				int subTaskIndex = buffer.getInt();
