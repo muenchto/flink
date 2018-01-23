@@ -30,13 +30,14 @@ import java.util.*;
 
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
+import org.apache.flink.runtime.deployment.ResultPartitionLocation;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
-import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
-import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
-import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
-import org.apache.flink.runtime.io.network.api.EndOfSuperstepEvent;
+import org.apache.flink.runtime.io.network.ConnectionID;
+import org.apache.flink.runtime.io.network.api.*;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
+import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.util.TestTaskEvent;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
@@ -44,7 +45,7 @@ import org.junit.Test;
 
 public class EventSerializerTest {
 
-//	@Test
+	@Test
 	public void testCheckpointBarrierSerialization() throws Exception {
 		long id = Integer.MAX_VALUE + 123123L;
 		long timestamp = Integer.MAX_VALUE + 1228L;
@@ -76,7 +77,7 @@ public class EventSerializerTest {
 		long modificationID = 123, upcoming = 123321, timestamp = 123434324234L;
 
 		Map<ExecutionAttemptID, Set<Integer>> spillingVertices = new HashMap<>();
-		Map<ExecutionAttemptID, TaskManagerLocation> stoppingVertices = new HashMap<>();
+		Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices = new HashMap<>();
 
 		for (int i = 0; i < 3; i++) {
 			ExecutionAttemptID executionAttemptID = new ExecutionAttemptID();
@@ -92,11 +93,30 @@ public class EventSerializerTest {
 		for (int i = 0; i < 4; i++) {
 			ExecutionAttemptID executionAttemptID = new ExecutionAttemptID();
 
-			InetAddress byName = InetAddress.getByName("java.sun.com");
+			List<InputChannelDeploymentDescriptor> list = new ArrayList<>();
+			for (int j = 0; j < 5; j++) {
 
-			TaskManagerLocation location = new TaskManagerLocation(ResourceID.generate(), byName, 1337);
+				ResultPartitionID resultPartitionID = new ResultPartitionID();
 
-			stoppingVertices.put(executionAttemptID, location);
+				ResultPartitionLocation location;
+				if (j % 2 == 0) {
+					location = ResultPartitionLocation.createLocal();
+				} else {
+
+					InetAddress byName = InetAddress.getByName("java.sun.com");
+
+					TaskManagerLocation tmLocation = new TaskManagerLocation(ResourceID.generate(), byName, 1337);
+
+					ConnectionID connectionID = new ConnectionID(tmLocation, 432);
+
+					location = ResultPartitionLocation.createRemote(connectionID);
+				}
+
+				InputChannelDeploymentDescriptor descriptor = new InputChannelDeploymentDescriptor(resultPartitionID, location);
+				list.add(descriptor);
+			}
+
+			stoppingVertices.put(executionAttemptID, list);
 		}
 
 		StartMigrationMarker marker = new StartMigrationMarker(modificationID, timestamp, spillingVertices, stoppingVertices, upcoming);
@@ -109,7 +129,31 @@ public class EventSerializerTest {
 		assertEquals(marker, deserialized);
 	}
 
-//	@Test
+	@Test
+	public void testPausingMarker() throws IOException {
+		InetAddress byName = InetAddress.getByName("java.sun.com");
+		TaskManagerLocation location = new TaskManagerLocation(ResourceID.generate(), byName, 1337);
+
+		PausingOperatorMarker marker = new PausingOperatorMarker(location);
+
+		ByteBuffer serializedEvent = EventSerializer.toSerializedEvent(marker);
+		assertTrue(serializedEvent.hasRemaining());
+
+		AbstractEvent deserialized = EventSerializer.fromSerializedEvent(serializedEvent, getClass().getClassLoader());
+		assertNotNull(deserialized);
+		assertEquals(marker, deserialized);
+
+		marker = new PausingOperatorMarker(null);
+
+		serializedEvent = EventSerializer.toSerializedEvent(marker);
+		assertTrue(serializedEvent.hasRemaining());
+
+		deserialized = EventSerializer.fromSerializedEvent(serializedEvent, getClass().getClassLoader());
+		assertNotNull(deserialized);
+		assertEquals(marker, deserialized);
+	}
+
+	@Test
 	public void testSerializeDeserializeEvent() throws Exception {
 		AbstractEvent[] events = {
 				EndOfPartitionEvent.INSTANCE,
@@ -137,7 +181,7 @@ public class EventSerializerTest {
 	 *
 	 * @throws Exception
 	 */
-//	@Test
+	@Test
 	public void testIsEventPeakOnly() throws Exception {
 		final Buffer serializedEvent =
 			EventSerializer.toBuffer(EndOfPartitionEvent.INSTANCE);
@@ -160,7 +204,7 @@ public class EventSerializerTest {
 	 *
 	 * @throws Exception
 	 */
-//	@Test
+	@Test
 	public void testIsEvent() throws Exception {
 		AbstractEvent[] events = {
 			EndOfPartitionEvent.INSTANCE,

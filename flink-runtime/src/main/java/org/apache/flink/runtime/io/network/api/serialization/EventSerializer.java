@@ -20,18 +20,25 @@
 package org.apache.flink.runtime.io.network.api.serialization;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.charset.Charset;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions.CheckpointType;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
+import org.apache.flink.runtime.deployment.ResultPartitionLocation;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
+import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.api.*;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.FreeingBufferRecycler;
+import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
+import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.runtime.util.DataInputDeserializer;
 import org.apache.flink.runtime.util.DataOutputSerializer;
@@ -44,10 +51,7 @@ import org.apache.flink.util.InstantiationUtil;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.flink.util.Preconditions;
 
@@ -96,7 +100,49 @@ public class EventSerializer {
 
 			return buf;
 		} else if (eventClass == PausingOperatorMarker.class) {
-			return ByteBuffer.wrap(new byte[] { 0, 0, 0, PAUSED_OPERATOR_EVENT });
+
+			PausingOperatorMarker marker = (PausingOperatorMarker) event;
+
+			boolean containsLocation = marker.getLocation() != null;
+			TaskManagerLocation location = marker.getLocation();
+
+			int bufferSize = 5;
+
+			if (location != null) {
+				bufferSize += location.getResourceID().getResourceIdString().length() * 2;
+				bufferSize += location.address().getAddress().length;
+				bufferSize += 12;
+			}
+
+			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
+			buf.putInt(PAUSED_OPERATOR_EVENT);
+			buf.put((byte) (containsLocation ? 1 : 0));
+
+			if (location != null) {
+
+				char[] chars = location.getResourceID().getResourceIdString().toCharArray();
+				int charSize = chars.length;
+
+				buf.putInt(charSize);
+				for (char aChar : chars) {
+					buf.putChar(aChar);
+				}
+
+				byte[] address = location.address().getAddress();
+				int addressSize = address.length;
+
+				buf.putInt(addressSize);
+				for (byte addres : address) {
+					buf.put(addres);
+				}
+
+				buf.putInt(location.dataPort());
+			}
+
+			buf.position(0);
+
+			return buf;
+
 		} else if (eventClass == PausingTaskEvent.class) {
 
 			PausingTaskEvent marker = (PausingTaskEvent) event;
@@ -146,7 +192,7 @@ public class EventSerializer {
 			StartMigrationMarker marker = (StartMigrationMarker) event;
 
 			Map<ExecutionAttemptID, Set<Integer>> spillingVertices = marker.getSpillingVertices();
-			Map<ExecutionAttemptID, TaskManagerLocation> stoppingVertices = marker.getStoppingVertices();
+			Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices = marker.getStoppingVertices();
 
 			int bufferSize = 36;
 			bufferSize += spillingVertices.keySet().size() * 16;
@@ -154,10 +200,21 @@ public class EventSerializer {
 				bufferSize += integers.size() * 4 + 4;
 			}
 			bufferSize += stoppingVertices.keySet().size() * 16;
-			for (TaskManagerLocation location : stoppingVertices.values()) {
-				bufferSize += location.getResourceID().getResourceIdString().length() * 2;
-				bufferSize += location.address().getAddress().length;
-				bufferSize += 12;
+			for (List<InputChannelDeploymentDescriptor> list : stoppingVertices.values()) {
+
+				bufferSize += 4;
+
+				for (InputChannelDeploymentDescriptor icdd : list) {
+
+					bufferSize += 33;
+
+					if (icdd.getConsumedPartitionLocation().isRemote()) {
+						bufferSize += 12;
+
+						bufferSize += icdd.getConsumedPartitionLocation().getConnectionId().getAddress()
+							.getHostName().getBytes().length;
+					}
+				}
 			}
 
 			int spillingSize = spillingVertices.keySet().size(), stoppingSize = stoppingVertices.size();
@@ -184,29 +241,42 @@ public class EventSerializer {
 
 			buf.putInt(stoppingSize);
 
-			for (Map.Entry<ExecutionAttemptID, TaskManagerLocation> entry : stoppingVertices.entrySet()) {
+			for (Map.Entry<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> entry : stoppingVertices.entrySet()) {
 
 				ExecutionAttemptID vertexID = entry.getKey();
 				buf.putLong(vertexID.getLowerPart());
 				buf.putLong(vertexID.getUpperPart());
 
-				char[] chars = entry.getValue().getResourceID().getResourceIdString().toCharArray();
-				int charSize = chars.length;
+				buf.putInt(entry.getValue().size());
 
-				buf.putInt(charSize);
-				for (char aChar : chars) {
-					buf.putChar(aChar);
+				for (InputChannelDeploymentDescriptor icdd : entry.getValue()) {
+					ResultPartitionID partitionId = icdd.getConsumedPartitionId();
+
+					buf.putLong(partitionId.getPartitionId().getLowerPart());
+					buf.putLong(partitionId.getPartitionId().getUpperPart());
+
+					buf.putLong(partitionId.getProducerId().getLowerPart());
+					buf.putLong(partitionId.getProducerId().getUpperPart());
+
+					ResultPartitionLocation location = icdd.getConsumedPartitionLocation();
+					buf.put((byte) (location.isLocal() ? 1 : 0));
+
+					if (location.isRemote()) {
+						InetSocketAddress inetSocketAddress = location.getConnectionId().getAddress();
+
+						byte[] hostName = inetSocketAddress.getHostName().getBytes();
+						int hostNameSize = hostName.length;
+
+						buf.putInt(hostNameSize);
+						for (byte addres : hostName) {
+							buf.put(addres);
+						}
+
+						buf.putInt(inetSocketAddress.getPort());
+
+						buf.putInt(location.getConnectionId().getConnectionIndex());
+					}
 				}
-
-				byte[] address = entry.getValue().address().getAddress();
-				int addressSize = address.length;
-
-				buf.putInt(addressSize);
-				for (byte addres : address) {
-					buf.put(addres);
-				}
-
-				buf.putInt(entry.getValue().dataPort());
 			}
 
 			buf.position(0);
@@ -387,7 +457,36 @@ public class EventSerializer {
 
 				return new SpillToDiskMarker(action);
 			} else if (type == PAUSED_OPERATOR_EVENT) {
-				return PausingOperatorMarker.INSTANCE;
+
+				byte containsLocation = buffer.get();
+
+				TaskManagerLocation location = null;
+
+				if (containsLocation == 1) {
+					int charSize = buffer.getInt();
+					char[] resourceID = new char[charSize];
+
+					for (int j = 0; j < charSize; j++) {
+						resourceID[j] = buffer.getChar();
+					}
+
+					int inetSize = buffer.getInt();
+					byte[] inetAddress = new byte[inetSize];
+
+					for (int j = 0; j < inetSize; j++) {
+						inetAddress[j] = buffer.get();
+					}
+
+					int dataPort = buffer.getInt();
+
+					location = new TaskManagerLocation(
+						new ResourceID(new String(resourceID)),
+						InetAddress.getByAddress(inetAddress),
+						dataPort);
+				}
+
+				return new PausingOperatorMarker(location);
+
 			} else if (type == PAUSING_TASK_EVENT) {
 				int subTaskIndex = buffer.getInt();
 				long upcomingModificationID = buffer.getLong();
@@ -467,7 +566,7 @@ public class EventSerializer {
 			} else if (type == MIGRATION_START_EVENT) {
 
 				Map<ExecutionAttemptID, Set<Integer>> spillingVertices = new HashMap<>();
-				Map<ExecutionAttemptID, TaskManagerLocation> stoppingVertices = new HashMap<>();
+				Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices = new HashMap<>();
 
 				long modificationID = buffer.getLong();
 				long timestamp = buffer.getLong();
@@ -497,28 +596,55 @@ public class EventSerializer {
 					long upper = buffer.getLong();
 					ExecutionAttemptID executionAttemptID = new ExecutionAttemptID(lower, upper);
 
-					int charSize = buffer.getInt();
-					char[] resourceID = new char[charSize];
+					int icddSize = buffer.getInt();
 
-					for (int j = 0; j < charSize; j++) {
-						resourceID[j] = buffer.getChar();
+					List<InputChannelDeploymentDescriptor> list = new ArrayList<>();
+
+					for (int j = 0; j < icddSize; j++) {
+
+						lower = buffer.getLong();
+						upper = buffer.getLong();
+
+						IntermediateResultPartitionID irpID = new IntermediateResultPartitionID(lower, upper);
+
+						lower = buffer.getLong();
+						upper = buffer.getLong();
+
+						ExecutionAttemptID attemptID = new ExecutionAttemptID(lower, upper);
+
+						ResultPartitionID id = new ResultPartitionID(irpID, attemptID);
+
+						boolean local = buffer.get() == 1;
+
+						ResultPartitionLocation location;
+
+						if (local) {
+							location = ResultPartitionLocation.createLocal();
+						} else {
+
+							int addressSize = buffer.getInt();
+							byte[] address = new byte[addressSize];
+							for (int k = 0; k < addressSize; k++) {
+								address[k] = buffer.get();
+							}
+
+							int port = buffer.getInt();
+
+							InetSocketAddress inetSocketAddress = new InetSocketAddress(new String(address), port);
+
+							int connectionIndex = buffer.getInt();
+
+							ConnectionID connectionID = new ConnectionID(inetSocketAddress, connectionIndex);
+
+							location = ResultPartitionLocation.createRemote(connectionID);
+						}
+
+						InputChannelDeploymentDescriptor descriptor = new InputChannelDeploymentDescriptor(id, location);
+
+						list.add(descriptor);
 					}
 
-					int inetSize = buffer.getInt();
-					byte[] inetAddress = new byte[inetSize];
-
-					for (int j = 0; j < inetSize; j++) {
-						inetAddress[j] = buffer.get();
-					}
-
-					int dataPort = buffer.getInt();
-
-					TaskManagerLocation location = new TaskManagerLocation(
-						new ResourceID(new String(resourceID)),
-						InetAddress.getByAddress(inetAddress),
-						dataPort);
-
-					stoppingVertices.put(executionAttemptID, location);
+					stoppingVertices.put(executionAttemptID, list);
 				}
 
 				return new StartMigrationMarker(modificationID, timestamp, spillingVertices, stoppingVertices, checkpointToModify);
