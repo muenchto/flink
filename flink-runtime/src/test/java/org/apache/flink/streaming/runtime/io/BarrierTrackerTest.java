@@ -22,6 +22,7 @@ import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
@@ -36,6 +37,8 @@ import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -559,6 +562,15 @@ public class BarrierTrackerTest {
 		@Override
 		public void abortModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> executionAttemptIDS, Throwable cause) throws Exception {
 			throw new UnsupportedOperationException("should never be called");
+		}
+
+		@Override
+		public boolean triggerMigration(ModificationMetaData metaData, Map<ExecutionAttemptID, Set<Integer>> spillingVertices, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices, long upcomingCheckpointID) {
+			return false;
+		}
+
+		@Override
+		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
 		}
 	}
 }

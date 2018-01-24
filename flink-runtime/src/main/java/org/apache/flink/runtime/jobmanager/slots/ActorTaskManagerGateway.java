@@ -26,6 +26,7 @@ import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.clusterframework.messages.StopCluster;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -42,6 +43,7 @@ import org.apache.flink.runtime.messages.TaskManagerMessages;
 import org.apache.flink.runtime.messages.TaskMessages;
 import org.apache.flink.runtime.messages.checkpoint.NotifyCheckpointComplete;
 import org.apache.flink.runtime.messages.checkpoint.TriggerCheckpoint;
+import org.apache.flink.runtime.messages.modification.TriggerMigration;
 import org.apache.flink.runtime.messages.modification.TriggerModification;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
@@ -52,6 +54,7 @@ import scala.concurrent.duration.FiniteDuration;
 import scala.reflect.ClassTag$;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -277,19 +280,37 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public void triggerModification(ExecutionAttemptID attemptId,
-									JobID jobId,
-									long modificationID,
-									long timestamp,
-									Set<ExecutionAttemptID> ids,
-									Set<Integer> operatorSubTaskIndices,
-									ModificationCoordinator.ModificationAction action,
-									long checkpointIDToModify) {
+	public void triggerMigration(ExecutionAttemptID attemptId,
+								 JobID jobId,
+								 long modificationID,
+								 long timestamp,
+								 Set<ExecutionAttemptID> ids,
+								 Set<Integer> operatorSubTaskIndices,
+								 ModificationCoordinator.ModificationAction action,
+								 long checkpointIDToModify) {
 		Preconditions.checkNotNull(attemptId);
 		Preconditions.checkNotNull(jobId);
 
 		actorGateway.tell(
 			new TriggerModification(jobId, attemptId, modificationID, timestamp, ids, operatorSubTaskIndices, action, checkpointIDToModify));
+	}
+
+	@Override
+	public void triggerMigration(ExecutionAttemptID attemptId,
+								 JobID jobId,
+								 long modificationId,
+								 long timestamp,
+								 Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
+								 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+								 long checkpointIDToModify) {
+		actorGateway.tell(
+			new TriggerMigration(jobId,
+				attemptId,
+				modificationId,
+				timestamp,
+				spillingToDiskIDs,
+				pausingIDs,
+				checkpointIDToModify));
 	}
 
 	@Override

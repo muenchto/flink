@@ -26,6 +26,7 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
@@ -35,6 +36,7 @@ import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.metrics.groups.OperatorMetricGroup;
 import org.apache.flink.runtime.plugable.SerializationDelegate;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.api.collector.selector.CopyingDirectedOutput;
 import org.apache.flink.streaming.api.collector.selector.DirectedOutput;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
@@ -50,6 +52,7 @@ import org.apache.flink.streaming.runtime.io.StreamRecordWriter;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
+import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.streaming.runtime.partitioner.ConfigurableStreamPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.ForwardPartitioner;
@@ -225,10 +228,20 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		}
 	}
 
-	public void broadcastOperatorPausedEvent() throws IOException {
+	public void broadcastOperatorPausedEvent(List<InputChannelDeploymentDescriptor> newLocation) throws IOException {
 		try {
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
-				streamOutput.broadcastEvent(PausingOperatorMarker.INSTANCE);
+
+				if (streamOutput.getRecordWriter().getNumChannels() != newLocation.size()) {
+					throw new IllegalStateException("Number of new icdd does not fit outgoing channels");
+				}
+
+				for (int i = 0; i < newLocation.size(); i++) {
+					InputChannelDeploymentDescriptor descriptor = newLocation.get(i);
+
+					streamOutput.sendToTarget(new PausingOperatorMarker(newLocation.get(i)), i);
+				}
+
 				streamOutput.flush();
 			}
 		}
@@ -487,6 +500,28 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		output.setMetricGroup(taskEnvironment.getMetricGroup().getIOMetricGroup());
 
 		return new RecordWriterOutput<>(output, outSerializer, sideOutputTag, this, name);
+	}
+
+	public void broadcastStartMigrationEvent(ModificationMetaData metaData,
+											 Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
+											 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
+											 long upcomingCheckpointID) throws Exception {
+
+		try {
+			StartMigrationMarker startMigrationMarker =
+				new StartMigrationMarker(
+					metaData.getModificationID(),
+					metaData.getTimestamp(),
+					spillingVertices,
+					stoppingVertices,
+					upcomingCheckpointID);
+			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
+				streamOutput.broadcastEvent(startMigrationMarker);
+			}
+		}
+		catch (InterruptedException e) {
+			throw new IOException("Interrupted while broadcasting checkpoint barrier");
+		}
 	}
 
 	// ------------------------------------------------------------------------

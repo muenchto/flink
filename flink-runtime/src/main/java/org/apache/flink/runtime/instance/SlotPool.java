@@ -996,7 +996,7 @@ public class SlotPool extends RpcEndpoint<SlotPoolGateway> {
 		}
 
 		@Override
-		public Future<SimpleSlot> allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
+		public SimpleSlot allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
 			throw new NotImplementedException();
 		}
 	}

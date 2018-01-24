@@ -28,6 +28,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.ResultPartitionDeploymentDescriptor;
 import org.apache.flink.runtime.execution.ExecutionState;
@@ -61,6 +62,8 @@ import org.junit.Test;
 
 import java.net.URL;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -290,6 +293,15 @@ public class TaskAsyncCallTest {
 		@Override
 		public void abortModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> executionAttemptIDS, Throwable cause) throws Exception {
 
+		}
+
+		@Override
+		public boolean triggerMigration(ModificationMetaData metaData, Map<ExecutionAttemptID, Set<Integer>> spillingVertices, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices, long upcomingCheckpointID) {
+			return false;
+		}
+
+		@Override
+		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
 		}
 	}
 }

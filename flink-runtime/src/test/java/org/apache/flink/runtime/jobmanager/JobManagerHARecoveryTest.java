@@ -47,6 +47,7 @@ import org.apache.flink.runtime.checkpoint.CompletedCheckpointStore;
 import org.apache.flink.runtime.checkpoint.StandaloneCheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.execution.librarycache.BlobLibraryCacheManager;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.restart.FixedDelayRestartStrategy;
@@ -610,6 +611,15 @@ public class JobManagerHARecoveryTest extends TestLogger {
 		@Override
 		public void abortModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> executionAttemptIDS, Throwable cause) throws Exception {
 
+		}
+
+		@Override
+		public boolean triggerMigration(ModificationMetaData metaData, Map<ExecutionAttemptID, Set<Integer>> spillingVertices, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices, long upcomingCheckpointID) {
+			return false;
+		}
+
+		@Override
+		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
 		}
 
 		public static void initializeStaticHelpers(int numSubtasks) {

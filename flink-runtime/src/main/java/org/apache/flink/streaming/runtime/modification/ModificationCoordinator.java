@@ -2,6 +2,7 @@ package org.apache.flink.streaming.runtime.modification;
 
 import com.google.common.base.Joiner;
 import org.apache.commons.lang.StringUtils;
+import org.apache.curator.shaded.com.google.common.collect.Sets;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
@@ -12,7 +13,7 @@ import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
-import org.apache.flink.runtime.concurrent.Future;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.executiongraph.*;
@@ -40,19 +41,17 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.GuardedBy;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ModificationCoordinator {
 
 	public enum ModificationAction {
-		PAUSING,
-		STOPPING
+		PAUSING, // For introducing operators to the job
+		STOPPING // For migrating state between TaskManagers
 	}
 
-	private static final long MODIFICATION_TIMEOUT = 30;
+	private static final long MODIFICATION_TIMEOUT = 90;
 
 	private static final Logger LOG = LoggerFactory.getLogger(ModificationCoordinator.class);
 
@@ -62,13 +61,15 @@ public class ModificationCoordinator {
 
 	private final AtomicLong modificationIdCounter = new AtomicLong(1);
 
-	private final Map<Long, PendingModification> pendingModifications = new LinkedHashMap<>(16);
+	private final Map<Long, PendingModification> pendingModifications = new LinkedHashMap<>();
 
-	private final Map<Long, CompletedModification> completedModifications = new LinkedHashMap<>(16);
+	private final Map<Long, CompletedModification> completedModifications = new LinkedHashMap<>();
 
-	private final Map<Long, PendingModification> failedModifications = new LinkedHashMap<Long, PendingModification>(16);
+	private final Map<Long, PendingModification> failedModifications = new LinkedHashMap<Long, PendingModification>();
 
-	private final Map<ExecutionAttemptID, SubtaskState> storedState = new LinkedHashMap<>(16);
+	private final Map<ExecutionAttemptID, SubtaskState> storedState = new ConcurrentHashMap<>();
+
+	private final Map<ExecutionAttemptID, ExecutionVertex> vertexToRestart = new LinkedHashMap<>();
 
 	private final ExecutionGraph executionGraph;
 
@@ -117,6 +118,13 @@ public class ModificationCoordinator {
 						if (modification.isFullyAcknowledged()) {
 							completePendingCheckpoint(modification);
 						}
+
+						ExecutionVertex executionVertex = vertexToRestart.get(message.getTaskExecutionId());
+
+						if (executionVertex != null) {
+							restartIfStoppedAndStateReceived(executionVertex);
+						}
+
 						break;
 					case DUPLICATE:
 						LOG.debug("Received a duplicate acknowledge message for modification {}, task {}, job {}.",
@@ -315,6 +323,49 @@ public class ModificationCoordinator {
 				LOG.debug("Received message for discarded but non-removed pendingModification {}.", modificationID);
 			}
 		}
+
+		ExecutionVertex executionVertex = vertexToRestart.get(message.getTaskExecutionId());
+
+		if (executionVertex != null) {
+			restartIfStoppedAndStateReceived(executionVertex);
+		}
+	}
+
+	private synchronized void restartIfStoppedAndStateReceived(ExecutionVertex vertex) {
+
+		ExecutionAttemptID attemptID = vertex.getCurrentExecutionAttempt().getAttemptId();
+
+		if (vertexToRestart.containsKey(attemptID) && storedState.containsKey(attemptID)) {
+
+			vertexToRestart.remove(attemptID);
+			SubtaskState state = storedState.remove(attemptID);
+
+			restartOperatorInstanceWithState(vertex, state);
+		}
+	}
+
+	private void restartOperatorInstanceWithState(ExecutionVertex vertex, SubtaskState state) {
+		try {
+
+			Execution currentExecutionAttempt = vertex.resetForNewExecutionMigration(
+				System.currentTimeMillis(),
+				executionGraph.getGlobalModVersion());
+
+			if (state == null) {
+				throw new IllegalStateException("Could not find state to restore for ExecutionAttempt: "
+					+ stoppedExecutionAttemptID);
+			} else {
+				TaskStateHandles taskStateHandles = new TaskStateHandles(state);
+
+				currentExecutionAttempt.setInitialState(taskStateHandles);
+			}
+
+			currentExecutionAttempt.scheduleForMigration();
+
+		} catch (Exception exception) {
+			executionGraph.failGlobal(exception);
+			LOG.error("Failed to restart operator from migration", exception);
+		}
 	}
 
 	private void triggerModification(ExecutionJobVertex instancesToPause, final String description, ModificationAction action) {
@@ -332,7 +383,7 @@ public class ModificationCoordinator {
 		triggerModification(upstream, indicesToPause, description, action);
 	}
 
-	private void triggerModification(ArrayList<ExecutionAttemptID> operatorsIdsToSpill,
+	private void triggerModification(List<ExecutionAttemptID> operatorsIdsToSpill,
 									 List<ExecutionVertex> subtaskIndicesToPause,
 									 final String description,
 									 ModificationAction action) {
@@ -412,14 +463,14 @@ public class ModificationCoordinator {
 
 				// Check if checkpointing is enabled
 				if (checkpointIdCounter.getCurrent() >= 2) {
-				 	checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
+					checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
 				}
 
 				ExecutionJobVertex source = findSource();
 
 				// send the messages to the tasks that trigger their modification
-				for (ExecutionVertex execution: source.getTaskVertices()) {
-					execution.getCurrentExecutionAttempt().triggerModification(
+				for (ExecutionVertex execution : source.getTaskVertices()) {
+					execution.getCurrentExecutionAttempt().triggerMigration(
 						modificationId,
 						timestamp,
 						new HashSet<>(operatorsIdsToSpill),
@@ -428,8 +479,7 @@ public class ModificationCoordinator {
 						checkpointIDToModify); // KeySet not serializable
 				}
 
-			}
-			catch (Throwable t) {
+			} catch (Throwable t) {
 				// guard the map against concurrent modifications
 				synchronized (lock) {
 					pendingModifications.remove(modificationId);
@@ -449,8 +499,6 @@ public class ModificationCoordinator {
 		for (ExecutionVertex executionVertex : executionGraph.getAllExecutionVertices()) {
 			details.append("\nAttemptID: ")
 				.append(executionVertex.getCurrentExecutionAttempt().getAttemptId())
-				.append(" - TM ID: ")
-				.append(executionVertex.getCurrentAssignedResource().getTaskManagerID())
 				.append(" - TM Location: ")
 				.append(executionVertex.getCurrentAssignedResource().getTaskManagerLocation())
 				.append(" - Name: ")
@@ -460,7 +508,7 @@ public class ModificationCoordinator {
 		return details.toString();
 	}
 
-	public void migrateAllFromTaskmanager(ResourceID taskmanagerID) {
+	public void migrateAllFromTaskmanager(ResourceID taskmanagerID) throws ExecutionGraphException {
 		Collection<ExecutionJobVertex> allVertices = executionGraph.getAllVertices().values();
 
 		List<ExecutionVertex> allVerticesOnTM = new ArrayList<>();
@@ -469,32 +517,185 @@ public class ModificationCoordinator {
 			for (ExecutionVertex executionVertex : vertex.getTaskVertices()) {
 				if (executionVertex.getCurrentExecutionAttempt().getAssignedResource().getTaskManagerID().equals(taskmanagerID)) {
 					allVerticesOnTM.add(executionVertex);
+					executionVertex.prepareForMigration();
+					vertexToRestart.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), executionVertex);
 				}
 			}
 		}
 
-		List<Future<SimpleSlot>> reservedSlots = allocateSlotsOnDifferentTaskmanagers(taskmanagerID, allVerticesOnTM);
+		Map<ExecutionAttemptID, SimpleSlot> reservedSlots = allocateSlotsOnDifferentTaskmanagers(taskmanagerID, allVerticesOnTM);
 
-		// TODO Order of migrating operators?
-		// TODO Transitive dependencies when migrating operators to new TM instance
+		Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs = new HashMap<>();
+		Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs = new HashMap<>();
+
+		for (ExecutionVertex vertex : allVerticesOnTM) {
+
+			ExecutionJobVertex upstreamOperator = getUpstreamOperator(vertex);
+
+			if (upstreamOperator != null) {
+				// Non-Source operator
+				ExecutionVertex[] executionVertices = upstreamOperator.getTaskVertices();
+				for (ExecutionVertex executionVertex : executionVertices) {
+					// spillingToDiskIDs.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+
+					Set<Integer> subIndices = spillingToDiskIDs.get(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+
+					if (subIndices == null) {
+						HashSet<Integer> indices = Sets.newHashSet(vertex.getParallelSubtaskIndex());
+						spillingToDiskIDs.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), indices);
+					} else {
+						subIndices.add(vertex.getParallelSubtaskIndex());
+					}
+				}
+			}
+
+			// Now create a list of icdd for the migrating task, that will be send downstream to all consuming tasks
+			List<InputChannelDeploymentDescriptor> list = new ArrayList<>();
+			ExecutionJobVertex downstreamOperator = getDownstreamOperator(vertex);
+
+			if (downstreamOperator != null) {
+				for (ExecutionVertex executionVertex : downstreamOperator.getTaskVertices()) {
+					// TODO Currently only works for one input streams
+
+					assert executionVertex.getNumberOfInputs() == 1;
+
+					InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForSpecificPartition(
+						executionVertex.getInputEdges(0),
+						executionVertex.getCurrentAssignedResource(),
+						executionGraph.isQueuedSchedulingAllowed(),
+						vertex.getParallelSubtaskIndex());
+
+					list.add(icdd);
+				}
+			}
+
+			ExecutionAttemptID attemptId = vertex.getCurrentExecutionAttempt().getAttemptId();
+			pausingIDs.put(attemptId, list);
+		}
+
+		for (ExecutionAttemptID executionAttemptID : pausingIDs.keySet()) {
+			spillingToDiskIDs.remove(executionAttemptID);
+		}
+
+		triggerMigration(spillingToDiskIDs, pausingIDs, "Migrating all operators from " + taskmanagerID);
 	}
 
-	private List<Future<SimpleSlot>> allocateSlotsOnDifferentTaskmanagers(ResourceID taskmanagerIDToExclude, List<ExecutionVertex> numberOfSlots) {
+	private Map<ExecutionAttemptID, SimpleSlot> allocateSlotsOnDifferentTaskmanagers(ResourceID taskmanagerIDToExclude, List<ExecutionVertex> vertices) {
 		SlotProvider slotProvider = executionGraph.getSlotProvider();
 
-		List<Future<SimpleSlot>> slots = new ArrayList<>();
+		Map<ExecutionAttemptID, SimpleSlot> slots = new HashMap<>();
 
-		for (ExecutionVertex numberOfSlot : numberOfSlots) {
+		for (ExecutionVertex executionVertex : vertices) {
 
-			ScheduledUnit scheduledUnit = numberOfSlot.getCurrentExecutionAttempt().getScheduledUnit();
+			ScheduledUnit scheduledUnit = executionVertex.getCurrentExecutionAttempt().getScheduledUnit();
 
-			Future<SimpleSlot> simpleSlotFuture = slotProvider
+			SimpleSlot simpleSlot = slotProvider
 				.allocateSlotExceptOnTaskmanager(scheduledUnit, executionGraph.isQueuedSchedulingAllowed(), taskmanagerIDToExclude);
 
-			slots.add(simpleSlotFuture);
+			executionVertex.assignSlotForMigration(simpleSlot);
+
+			slots.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), simpleSlot);
 		}
 
 		return slots;
+	}
+
+	private void triggerMigration(Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
+								  Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+								  final String description) {
+
+		Preconditions.checkNotNull(spillingToDiskIDs);
+		Preconditions.checkNotNull(pausingIDs);
+		Preconditions.checkNotNull(description);
+
+		LOG.info("Triggering modification '{}'.", description);
+
+		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>();
+
+		for (ExecutionVertex executionVertex : executionGraph.getAllExecutionVertices()) {
+			ackTasks.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), executionVertex);
+		}
+
+		synchronized (triggerLock) {
+
+			final long modificationId = modificationIdCounter.getAndIncrement();
+			final long timestamp = System.currentTimeMillis();
+
+			final PendingModification modification = new PendingModification(
+				executionGraph.getJobID(),
+				modificationId,
+				timestamp,
+				ackTasks,
+				description);
+
+			// schedule the timer that will clean up the expired checkpoints
+			final Runnable canceller = new Runnable() {
+				@Override
+				public void run() {
+					synchronized (lock) {
+
+						LOG.info("Checking if Modification {} ({}) is still ongoing.", description, modificationId);
+
+						// only do the work if the modification is not discarded anyways
+						// note that modification completion discards the pending modification object
+						if (!modification.isDiscarded()) {
+							LOG.info("Modification {} expired before completing.", description);
+
+							modification.abortExpired();
+							pendingModifications.remove(modificationId);
+							failedModifications.remove(modificationId);
+						} else {
+							LOG.info("Modification {} already completed.", description);
+						}
+					}
+				}
+			};
+
+			try {
+				// re-acquire the coordinator-wide lock
+				synchronized (lock) {
+
+					LOG.info("Triggering modification {}@{} - {}.", modificationId, timestamp, description);
+
+					pendingModifications.put(modificationId, modification);
+
+					ScheduledFuture<?> cancellerHandle =
+						timer.schedule(canceller, MODIFICATION_TIMEOUT, TimeUnit.SECONDS);
+
+					modification.setCancellerHandle(cancellerHandle);
+				}
+
+				long checkpointIDToModify = -1;
+				CheckpointIDCounter checkpointIdCounter = executionGraph.getCheckpointCoordinator().getCheckpointIdCounter();
+
+				// Check if checkpointing is enabled
+				if (checkpointIdCounter.getCurrent() >= 2) {
+					checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
+				}
+
+				ExecutionJobVertex source = findSource();
+
+				// send the messages to the tasks that trigger their modification
+				for (ExecutionVertex execution : source.getTaskVertices()) {
+					execution.getCurrentExecutionAttempt().triggerMigration(
+						modificationId,
+						timestamp,
+						spillingToDiskIDs,
+						pausingIDs,
+						checkpointIDToModify); // KeySet not serializable
+				}
+
+			} catch (Throwable t) {
+				// guard the map against concurrent modifications
+				synchronized (lock) {
+					pendingModifications.remove(modificationId);
+				}
+
+				if (!modification.isDiscarded()) {
+					modification.abortError(new Exception("Failed to trigger modification", t));
+				}
+			}
+		}
 	}
 
 	private ExecutionVertex getMapExecutionVertexToStop(ResourceID taskManagerId) {
@@ -579,7 +780,7 @@ public class ModificationCoordinator {
 			upstreamIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
 		}
 
-		triggerModification(upstreamIds, operatorsIDs,"Pause " + operatorName + " instances", ModificationAction.PAUSING);
+		triggerModification(upstreamIds, operatorsIDs, "Pause " + operatorName + " instances", ModificationAction.PAUSING);
 	}
 
 	private List<ExecutionVertex> getAllExecutionVerticesForName(String operatorName) {
@@ -605,11 +806,35 @@ public class ModificationCoordinator {
 
 		ExecutionVertex[] taskVertices = jobVertex.getTaskVertices();
 		if (taskVertices == null || taskVertices.length == 0) {
-			throw new IllegalStateException("Failed to retrieve upstream operator. Operator has no task vertices.");
+			return null;
 		}
 
 		// TODO Assume single producer
 		return taskVertices[0].getInputEdges(0)[0].getSource().getProducer().getJobVertex();
+	}
+
+	private ExecutionJobVertex getDownstreamOperator(ExecutionVertex jobVertex) {
+		Preconditions.checkNotNull(jobVertex);
+
+		return getDownstreamOperator(jobVertex.getJobVertex());
+	}
+
+	private ExecutionJobVertex getDownstreamOperator(ExecutionJobVertex jobVertex) {
+		Preconditions.checkNotNull(jobVertex);
+
+		ExecutionVertex[] taskVertices = jobVertex.getTaskVertices();
+		if (taskVertices == null || taskVertices.length == 0) {
+			return null;
+		}
+
+		Collection<IntermediateResultPartition> producedPartitions = taskVertices[0].getProducedPartitions().values();
+
+		if (producedPartitions.size() != 1) {
+			throw new IllegalStateException("Number of produced partitions is not 1");
+		}
+
+		// TODO Assume single producer
+		return producedPartitions.iterator().next().getConsumers().get(0).get(0).getTarget().getJobVertex();
 	}
 
 	public void resumeAll(String operatorName) {

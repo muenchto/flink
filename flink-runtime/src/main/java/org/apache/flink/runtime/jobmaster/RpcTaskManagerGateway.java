@@ -24,6 +24,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -40,6 +41,7 @@ import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.util.Preconditions;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -160,12 +162,16 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public void triggerModification(ExecutionAttemptID attemptId,
-									JobID jobId,
-									long modificationID,
-									long timestamp,
-									Set<ExecutionAttemptID> ids, Set<Integer> operatorSubTaskIndices, ModificationCoordinator.ModificationAction action, long checkpointIDToModify) {
+	public void triggerMigration(ExecutionAttemptID attemptId,
+								 JobID jobId,
+								 long modificationID,
+								 long timestamp,
+								 Set<ExecutionAttemptID> ids, Set<Integer> operatorSubTaskIndices, ModificationCoordinator.ModificationAction action, long checkpointIDToModify) {
 		throw new UnsupportedOperationException("Operation is not yet supported.");
+	}
+
+	@Override
+	public void triggerMigration(ExecutionAttemptID attemptId, JobID jobId, long modificationId, long timestamp, Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs, long checkpointIDToModify) {
 	}
 
 	@Override
