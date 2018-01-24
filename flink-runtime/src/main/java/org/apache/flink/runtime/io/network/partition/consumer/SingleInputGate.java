@@ -940,6 +940,8 @@ public class SingleInputGate implements InputGate {
 			if (requestedPartitionsFlag) {
 				newChannel.requestSubpartition(consumedSubpartitionIndex);
 			}
+//			Use this instead of direct requestSubpartition for exponential backoff
+//			retriggerPartitionRequest(partitionId);
 
 			for (TaskEvent event : pendingEvents) {
 				newChannel.sendTaskEvent(event);

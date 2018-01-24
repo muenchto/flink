@@ -30,6 +30,7 @@ import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
+import org.apache.flink.runtime.io.network.NetworkEnvironment;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
@@ -39,7 +40,6 @@ import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.streaming.runtime.modification.ModificationHandler;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -87,6 +87,8 @@ public class RuntimeEnvironment implements Environment {
 
 	private final Task containingTask;
 
+	private final NetworkEnvironment network;
+
 	// ------------------------------------------------------------------------
 
 	public RuntimeEnvironment(
@@ -107,7 +109,7 @@ public class RuntimeEnvironment implements Environment {
 		Map<String, Future<Path>> distCacheEntries,
 		ResultPartitionWriter[] writers,
 		InputGate[] inputGates,
-		CheckpointResponder checkpointResponder,
+		NetworkEnvironment network, CheckpointResponder checkpointResponder,
 		ModificationResponder modificationResponder,
 		ModificationHandler modificationHandler,
 		TaskManagerRuntimeInfo taskManagerInfo,
@@ -137,6 +139,11 @@ public class RuntimeEnvironment implements Environment {
 		this.taskManagerInfo = checkNotNull(taskManagerInfo);
 		this.containingTask = containingTask;
 		this.metrics = metrics;
+		this.network = network;
+	}
+
+	public NetworkEnvironment getNetworkEnvironment() {
+		return network;
 	}
 
 	// ------------------------------------------------------------------------
@@ -301,5 +308,9 @@ public class RuntimeEnvironment implements Environment {
 	@Override
 	public void failExternally(Throwable cause) {
 		this.containingTask.failExternally(cause);
+	}
+
+	public NetworkEnvironment getNetwork() {
+		return network;
 	}
 }

@@ -73,7 +73,6 @@ import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateHandles;
-import org.apache.flink.streaming.runtime.io.InputGateUtil;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationHandler;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
@@ -831,7 +830,7 @@ public class Task implements Runnable, TaskActions {
 					memoryManager, ioManager, broadcastVariableManager,
 					accumulatorRegistry, kvStateRegistry, inputSplitProvider,
 					distributedCacheEntries, writers, inputGates,
-					checkpointResponder, modificationResponder, modificationHandler,
+					network, checkpointResponder, modificationResponder, modificationHandler,
 					taskManagerConfig, metrics, this);
 
 				// let the task code create its readers and writers
@@ -882,7 +881,7 @@ public class Task implements Runnable, TaskActions {
 					jobConfiguration, taskConfiguration, userCodeClassLoader,
 					memoryManager, ioManager, broadcastVariableManager,
 					accumulatorRegistry, kvStateRegistry, inputSplitProvider,
-					distributedCacheEntries, writers, inputGates,
+					distributedCacheEntries, writers, inputGates, network,
 					checkpointResponder, modificationResponder, modificationHandler, taskManagerConfig, metrics, this);
 
 				// let the task code create its readers and writers
@@ -1811,6 +1810,85 @@ public class Task implements Runnable, TaskActions {
 		}
 	}
 
+	/**
+	 * Calls the invokable to trigger a modification, if the invokable implements the interface
+	 * {@link StatefulTask}.
+	 *
+	 * @param modificationID The ID identifying the modification.
+	 * @param modificationTimestamp The timestamp associated with the checkpoint.
+	 */
+	public void triggerStartMigrationMessage(
+		final long modificationID,
+		long modificationTimestamp,
+		final Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
+		final Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
+		final long upcomingCheckpointID) {
+
+		final AbstractInvokable invokable = this.invokable;
+
+		if (executionState == ExecutionState.RUNNING && invokable != null) {
+			if (invokable instanceof StatefulTask) {
+				// build a local closure
+				final StatefulTask statefulTask = (StatefulTask) invokable;
+
+				final ModificationMetaData metaData = new ModificationMetaData(modificationID, modificationTimestamp);
+
+				final SafetyNetCloseableRegistry safetyNetCloseableRegistry =
+					FileSystemSafetyNet.getSafetyNetCloseableRegistryForThread();
+				Runnable runnable = new Runnable() {
+					@Override
+					public void run() {
+						// activate safety net for checkpointing thread
+						LOG.debug("Creating FileSystem stream leak safety net for {}", Thread.currentThread().getName());
+						FileSystemSafetyNet.setSafetyNetCloseableRegistryForThread(safetyNetCloseableRegistry);
+
+						LOG.debug("Triggering StartMigrationMessage for {} with vertices {}",
+							modificationID, Joiner.on(",").join(spillingVertices.keySet()));
+
+						try {
+							boolean success = statefulTask.triggerMigration(metaData, spillingVertices, stoppingVertices, upcomingCheckpointID);
+							if (!success) {
+								modificationResponder.declineModification(jobId, executionId, modificationID,
+									new TaskNotStatefulModificationException(taskNameWithSubtask));
+							}
+						}
+						catch (Throwable t) {
+							if (getExecutionState() == ExecutionState.RUNNING) {
+								failExternally(new Exception(
+									"Error while triggering modification " + modificationID + " for " +
+										taskNameWithSubtask, t));
+							} else {
+								LOG.debug("Encountered error while triggering modification {} for " +
+										"{} ({}) while being not in state running.", modificationID,
+									taskNameWithSubtask, executionId, t);
+							}
+						} finally {
+							// close and de-activate safety net for checkpointing thread
+							LOG.debug("Ensuring all FileSystem streams are closed for {}",
+								Thread.currentThread().getName());
+						}
+					}
+				};
+
+				executeAsyncCallRunnable(runnable, String.format("Modification Trigger for %s (%s).",
+					taskNameWithSubtask, executionId));
+			}
+			else {
+				modificationResponder.declineModification(jobId, executionId, modificationID,
+					new TaskNotStatefulModificationException(taskNameWithSubtask));
+
+				LOG.error("Task received a modification request, but is not a stateful task - {} ({}).",
+					taskNameWithSubtask, executionId);
+			}
+		}
+		else {
+			LOG.debug("Declining modification request for non-running task {} ({}).", taskNameWithSubtask, executionId);
+
+			modificationResponder.declineModification(jobId, executionId, modificationID,
+				new TaskNotStatefulModificationException(taskNameWithSubtask));
+		}
+	}
+
 	// ------------------------------------------------------------------------
 
 	/**
@@ -1850,6 +1928,21 @@ public class Task implements Runnable, TaskActions {
 					}
 
 					cancelExecution();
+				} else if (producerState == ExecutionState.PAUSED || producerState == ExecutionState.PAUSING) {
+//					String msg = String.format("Producer with attempt ID %s of partition %s in pausing or paused state %s.",
+//						resultPartitionId.getProducerId(),
+//						resultPartitionId.getPartitionId(),
+//						producerState);
+
+//					failExternally(new IllegalStateException(msg));
+
+					LOG.debug("Producer with attempt ID {} of partition {} in pausing or paused state {}.",
+						resultPartitionId.getProducerId(),
+						resultPartitionId.getPartitionId(),
+						producerState);
+
+					inputGate.retriggerPartitionRequest(resultPartitionId.getPartitionId());
+
 				} else {
 					// Any other execution state is unexpected. Currently, only
 					// state CREATED is left out of the checked states. If we

@@ -96,6 +96,24 @@ public class ResultPartitionLocation implements Serializable {
 	}
 
 	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof ResultPartitionLocation)) return false;
+
+		ResultPartitionLocation location = (ResultPartitionLocation) o;
+
+		if (locationType != location.locationType) return false;
+		return connectionId != null ? connectionId.equals(location.connectionId) : location.connectionId == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = locationType != null ? locationType.hashCode() : 0;
+		result = 31 * result + (connectionId != null ? connectionId.hashCode() : 0);
+		return result;
+	}
+
+	@Override
 	public String toString() {
 		return "ResultPartitionLocation [" + locationType + (isRemote() ? " [" + connectionId + "]]" : "]");
 	}

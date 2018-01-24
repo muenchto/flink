@@ -171,6 +171,9 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 		recordWriter.broadcastEvent(event);
 	}
 
+	public void sendToTarget(AbstractEvent event, int targetChannel) throws IOException, InterruptedException {
+		recordWriter.sendEventToTarget(event, targetChannel);
+	}
 
 	public void flush() throws IOException {
 		recordWriter.flush();

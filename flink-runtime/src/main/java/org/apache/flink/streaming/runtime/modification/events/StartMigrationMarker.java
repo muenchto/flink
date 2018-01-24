@@ -1,15 +1,14 @@
 package org.apache.flink.streaming.runtime.modification.events;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.flink.api.common.JobID;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.event.RuntimeEvent;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
-import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
-import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,13 +19,13 @@ public class StartMigrationMarker extends RuntimeEvent {
 	private final long modificationID;
 	private final long timestamp;
 	private final Map<ExecutionAttemptID, Set<Integer>> spillingVertices; // Mutually exclusive, either one or the other
-	private final Map<ExecutionAttemptID, TaskManagerLocation> stoppingVertices;
+	private final Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices;
 	private final long checkpointIDToModify;
 
 	public StartMigrationMarker(long modificationID,
 								long timestamp,
 								Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
-								Map<ExecutionAttemptID, TaskManagerLocation> stoppingVertices,
+								Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
 								long checkpointIDToModify) {
 		this.modificationID = modificationID;
 		this.timestamp = timestamp;
@@ -52,7 +51,7 @@ public class StartMigrationMarker extends RuntimeEvent {
 		return spillingVertices;
 	}
 
-	public Map<ExecutionAttemptID, TaskManagerLocation> getStoppingVertices() {
+	public Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> getStoppingVertices() {
 		return stoppingVertices;
 	}
 

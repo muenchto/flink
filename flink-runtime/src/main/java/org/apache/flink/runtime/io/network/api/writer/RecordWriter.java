@@ -135,7 +135,7 @@ public class RecordWriter<T extends IOReadableWritable> {
 		sendToTarget(record, RNG.nextInt(numChannels));
 	}
 
-	private void sendToTarget(T record, int targetChannel) throws IOException, InterruptedException {
+	public void sendToTarget(T record, int targetChannel) throws IOException, InterruptedException {
 		RecordSerializer<T> serializer = serializers[targetChannel];
 
 		synchronized (serializer) {
@@ -161,6 +161,38 @@ public class RecordWriter<T extends IOReadableWritable> {
 					result = serializer.setNextBuffer(buffer);
 				}
 			}
+		}
+	}
+
+	public void sendEventToTarget(AbstractEvent event, int targetChannel) throws IOException, InterruptedException {
+		final Buffer eventBuffer = EventSerializer.toBuffer(event);
+
+		try {
+			RecordSerializer<T> serializer = serializers[targetChannel];
+
+			synchronized (serializer) {
+				Buffer buffer = serializer.getCurrentBuffer();
+				if (buffer != null) {
+					numBytesOut.inc(buffer.getSize());
+					writeAndClearBuffer(buffer, targetChannel, serializer);
+				} else if (serializer.hasData()) {
+					// sanity check
+					throw new IllegalStateException("No buffer, but serializer has buffered data.");
+				}
+
+				// retain the buffer so that it can be recycled by each channel of targetPartition
+				eventBuffer.retain();
+				targetPartition.writeBuffer(eventBuffer, targetChannel);
+
+				if (event.getClass() == CheckpointBarrier.class) {
+					CheckpointBarrier checkpointBarrier = (CheckpointBarrier) event;
+					targetPartition.checkForSpillingAfterCheckpointBarrier(checkpointBarrier.getId(), targetChannel);
+				}
+			}
+		} finally {
+			// we do not need to further retain the eventBuffer
+			// (it will be recycled after the last channel stops using it)
+			eventBuffer.recycle();
 		}
 	}
 

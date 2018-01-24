@@ -2,20 +2,30 @@ package org.apache.flink.runtime.io.network.api;
 
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.event.RuntimeEvent;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 /**
  * This event marks a operator to enter state Pausing.
  */
 public class PausingOperatorMarker extends RuntimeEvent {
 
-	/** The singleton instance of this event */
-	public static final PausingOperatorMarker INSTANCE = new PausingOperatorMarker();
+	private final InputChannelDeploymentDescriptor descriptor; // Nullable
 
 	// ------------------------------------------------------------------------
 
-	// not instantiable
-	private PausingOperatorMarker() {}
+	public PausingOperatorMarker() {
+		this(null);
+	}
+
+	public PausingOperatorMarker(InputChannelDeploymentDescriptor descriptor) {
+		this.descriptor = descriptor;
+	}
+
+	public InputChannelDeploymentDescriptor getDescriptor() {
+		return descriptor;
+	}
 
 	// ------------------------------------------------------------------------
 

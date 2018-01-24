@@ -101,12 +101,11 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 		}
 	}
 
-	@Override
-	public void broadcastEvent(AbstractEvent event) throws IOException, InterruptedException {
+	public void sendEventToTarget(AbstractEvent event, int targetChannel) throws IOException, InterruptedException {
 		checkErroneous();
 		LOG.info(name + " broadcast event: " + event);
 
-		super.broadcastEvent(event);
+		super.sendEventToTarget(event, targetChannel);
 		if (flushAlways) {
 			flush();
 		}
@@ -129,6 +128,17 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 		LOG.info(name + " random emmits: " + record);
 
 		super.randomEmit(record);
+		if (flushAlways) {
+			flush();
+		}
+	}
+
+	@Override
+	public void sendToTarget(T record, int targetChannel) throws IOException, InterruptedException {
+		checkErroneous();
+		LOG.info(name + " send to target emmits: " + record + " - " + targetChannel);
+
+		super.sendToTarget(record, targetChannel);
 		if (flushAlways) {
 			flush();
 		}

@@ -38,7 +38,6 @@ import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationConstraint;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
@@ -144,6 +143,16 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 
 	// --------------------------------------------------------------------------------------------
 
+	public Execution(
+		Executor executor,
+		ExecutionVertex vertex,
+		int attemptNumber,
+		long globalModVersion,
+		long startTimestamp,
+		Time timeout) {
+		this(executor, vertex, attemptNumber, globalModVersion, startTimestamp, timeout, null);
+	}
+
 	/**
 	 * Creates a new Execution attempt.
 	 * 
@@ -166,11 +175,12 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			int attemptNumber,
 			long globalModVersion,
 			long startTimestamp,
-			Time timeout) {
+			Time timeout,
+			ExecutionAttemptID executionAttemptID) {
 
 		this.executor = checkNotNull(executor);
 		this.vertex = checkNotNull(vertex);
-		this.attemptId = new ExecutionAttemptID();
+		this.attemptId = executionAttemptID == null ? new ExecutionAttemptID() : executionAttemptID;
 		this.timeout = checkNotNull(timeout);
 
 		this.globalModVersion = globalModVersion;
@@ -892,18 +902,18 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 	 * @param action
 	 * @param checkpointIDToModify
 	 */
-	public void triggerModification(long modificationID,
-									long timestamp,
-									Set<ExecutionAttemptID> operatorInstancesToSpill,
-									Set<Integer> operatorSubTaskIndices,
-									ModificationCoordinator.ModificationAction action,
-									long checkpointIDToModify) {
+	public void triggerMigration(long modificationID,
+								 long timestamp,
+								 Set<ExecutionAttemptID> operatorInstancesToSpill,
+								 Set<Integer> operatorSubTaskIndices,
+								 ModificationCoordinator.ModificationAction action,
+								 long checkpointIDToModify) {
 		final SimpleSlot slot = assignedResource;
 
 		if (slot != null) {
 			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
 
-			taskManagerGateway.triggerModification(
+			taskManagerGateway.triggerMigration(
 				attemptId,
 				getVertex().getJobId(),
 				modificationID,
@@ -1500,5 +1510,33 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 				return null;
 			}
 		});
+	}
+
+	public void triggerMigration(long modificationId,
+								 long timestamp,
+								 Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
+								 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+								 long checkpointIDToModify) {
+		final SimpleSlot slot = assignedResource;
+
+		if (slot != null) {
+			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
+
+			taskManagerGateway.triggerMigration(
+				attemptId,
+				getVertex().getJobId(),
+				modificationId,
+				timestamp,
+				spillingToDiskIDs,
+				pausingIDs,
+				checkpointIDToModify);
+		} else {
+			LOG.debug("The execution has no slot assigned. This indicates that the execution is " +
+				"no longer running.");
+		}
+	}
+
+	public void scheduleForMigration() throws JobException {
+		deployToSlot(vertex.getFutureSlot());
 	}
 }

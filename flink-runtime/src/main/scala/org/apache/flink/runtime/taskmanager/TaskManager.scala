@@ -65,7 +65,7 @@ import org.apache.flink.runtime.messages.StackTraceSampleMessages.{SampleTaskSta
 import org.apache.flink.runtime.messages.TaskManagerMessages._
 import org.apache.flink.runtime.messages.TaskMessages._
 import org.apache.flink.runtime.messages.checkpoint.{AbstractCheckpointMessage, NotifyCheckpointComplete, TriggerCheckpoint}
-import org.apache.flink.runtime.messages.modification.{AbstractModificationMessage, TriggerModification}
+import org.apache.flink.runtime.messages.modification.{AbstractModificationMessage, TriggerMigration, TriggerModification}
 import org.apache.flink.runtime.messages.{Acknowledge, StackTraceSampleResponse}
 import org.apache.flink.runtime.metrics.groups.TaskManagerMetricGroup
 import org.apache.flink.runtime.metrics.util.MetricUtils
@@ -817,7 +817,7 @@ class TaskManager(
 
   private def handleModificationMessage(actorMessage: AbstractModificationMessage): Unit = {
     actorMessage match {
-      case message: TriggerModification => {
+      case message: TriggerModification =>
         val taskExecutionId = message.getTaskExecutionId
         val modificationID = message.getModificationID
         val timestamp = message.getTimestamp
@@ -835,7 +835,24 @@ class TaskManager(
         } else {
           log.info(s"TaskManager received a modification request for unknown task $taskExecutionId.")
         }
-      }
+
+      case message: TriggerMigration =>
+        val taskExecutionId = message.getTaskExecutionId
+        val modificationID = message.getModificationID
+        val timestamp = message.getTimestamp
+        val spillingVertices = message.getSpillingVertices
+        val stoppingVertices = message.getStoppingVertices
+        val upcomingCheckpointID = message.getCheckpointIDToModify
+
+        log.info(s"Receiver TriggerModification $modificationID@$timestamp for $taskExecutionId.")
+
+        val task = runningTasks.get(taskExecutionId)
+
+        if (task != null) {
+          task.triggerStartMigrationMessage(modificationID, timestamp, spillingVertices, stoppingVertices, upcomingCheckpointID)
+        } else {
+          log.info(s"TaskManager received a modification request for unknown task $taskExecutionId.")
+        }
 
       case _ => unhandled(actorMessage)
     }

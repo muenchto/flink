@@ -62,5 +62,5 @@ public interface SlotProvider {
 	 * @param taskManagerID The id of the taskmanager, on where this task should be scheduled
 	 * @return The future of the allocation
 	 */
-	Future<SimpleSlot> allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID);
+	SimpleSlot allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID);
 }

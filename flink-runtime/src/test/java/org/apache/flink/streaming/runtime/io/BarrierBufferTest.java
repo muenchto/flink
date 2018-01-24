@@ -25,6 +25,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineOnCancellationBarrierException;
 import org.apache.flink.runtime.checkpoint.decline.CheckpointDeclineSubsumedException;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
 import org.apache.flink.runtime.io.disk.iomanager.IOManagerAsync;
@@ -45,9 +46,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -1536,6 +1535,15 @@ public class BarrierBufferTest {
 		@Override
 		public void abortModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> executionAttemptIDS, Throwable cause) throws Exception {
 
+		}
+
+		@Override
+		public boolean triggerMigration(ModificationMetaData metaData, Map<ExecutionAttemptID, Set<Integer>> spillingVertices, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices, long upcomingCheckpointID) {
+			return false;
+		}
+
+		@Override
+		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
 		}
 	}
 

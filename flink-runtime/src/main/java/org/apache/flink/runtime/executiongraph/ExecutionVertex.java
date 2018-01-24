@@ -96,6 +96,10 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 	/** The current or latest execution attempt of this vertex's task */
 	private volatile Execution currentExecution;	// this field must never be null
 
+	private ExecutionAttemptID reservedExecutionAtteptID;
+
+	private SimpleSlot slotForNewExecution;
+
 	// --------------------------------------------------------------------------------------------
 
 	/**
@@ -227,6 +231,10 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 
 	public int getNumberOfInputs() {
 		return this.inputEdges.length;
+	}
+
+	public ExecutionEdge[][] getInputEdges() {
+		return this.inputEdges;
 	}
 
 	public ExecutionEdge[] getInputEdges(int input) {
@@ -639,6 +647,54 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		}
 	}
 
+	public Execution resetForNewExecutionMigration(final long timestamp, final long originatingGlobalModVersion)
+		throws GlobalModVersionMismatch {
+
+		LOG.debug("Resetting execution vertex {} for new execution.", getTaskNameWithSubtaskIndex());
+
+		synchronized (priorExecutions) {
+			// check if another global modification has been triggered since the
+			// action that originally caused this reset/restart happened
+			final long actualModVersion = getExecutionGraph().getGlobalModVersion();
+			if (actualModVersion > originatingGlobalModVersion) {
+				// global change happened since, reject this action
+				throw new GlobalModVersionMismatch(originatingGlobalModVersion, actualModVersion);
+			}
+
+			final Execution oldExecution = currentExecution;
+			final ExecutionState oldState = oldExecution.getState();
+
+			priorExecutions.add(oldExecution);
+
+			final Execution newExecution = new Execution(
+				getExecutionGraph().getFutureExecutor(),
+				this,
+				oldExecution.getAttemptNumber() + 1,
+				originatingGlobalModVersion,
+				timestamp,
+				timeout,
+				reservedExecutionAtteptID);
+
+			this.currentExecution = newExecution;
+
+			CoLocationGroup grp = jobVertex.getCoLocationGroup();
+			if (grp != null) {
+				this.locationConstraint = grp.getLocationConstraint(subTaskIndex);
+			}
+
+			// register this execution at the execution graph, to receive call backs
+			getExecutionGraph().registerExecution(newExecution);
+
+			// if the execution was 'FINISHED' before, tell the ExecutionGraph that
+			// we take one step back on the road to reaching global FINISHED
+			if (oldState == FINISHED) {
+				getExecutionGraph().vertexUnFinished();
+			}
+
+			return newExecution;
+		}
+	}
+
 	public boolean scheduleForExecution(SlotProvider slotProvider, boolean queued) {
 		return this.currentExecution.scheduleForExecution(slotProvider, queued);
 	}
@@ -948,5 +1004,22 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		}
 
 		// TODO Masterthesis. Otherwise, check InputChannelDeploymentDescriptor.fromEdges
+	}
+
+	public ExecutionAttemptID prepareForMigration() {
+		this.reservedExecutionAtteptID = new ExecutionAttemptID();
+		return this.reservedExecutionAtteptID;
+	}
+
+	public ExecutionAttemptID getUpcomingExecutionAttemptID() {
+		return this.reservedExecutionAtteptID;
+	}
+
+	public void assignSlotForMigration(SimpleSlot slot) {
+		this.slotForNewExecution = slot;
+	}
+
+	public SimpleSlot getFutureSlot() {
+		return this.slotForNewExecution;
 	}
 }

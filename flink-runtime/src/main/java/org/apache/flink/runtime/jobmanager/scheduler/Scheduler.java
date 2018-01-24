@@ -33,7 +33,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -179,22 +178,15 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 	}
 
 	@Override
-	public Future<SimpleSlot> allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
+	public SimpleSlot allocateSlotExceptOnTaskmanager(ScheduledUnit task, boolean allowQueued, ResourceID taskManagerID) {
 		try {
-			final Object ret = scheduleTaskExceptOnTaskmanager(task, allowQueued, taskManagerID);
-
-			if (ret instanceof SimpleSlot) {
-				return FlinkCompletableFuture.completed((SimpleSlot) ret);
-			} else {
-				// this should never happen, simply guard this case with an exception
-				throw new RuntimeException();
-			}
+			return scheduleTaskExceptOnTaskmanager(task, taskManagerID);
 		} catch (NoResourceAvailableException e) {
-			return FlinkCompletableFuture.completedExceptionally(e);
+			throw new IllegalStateException("Not enought resources to allocate slot");
 		}
 	}
 
-	private Object scheduleTaskExceptOnTaskmanager(ScheduledUnit task, boolean queueIfNoResource, ResourceID taskManagerID)
+	private SimpleSlot scheduleTaskExceptOnTaskmanager(ScheduledUnit task, ResourceID taskManagerID)
 		throws NoResourceAvailableException {
 
 		if (task == null) {
@@ -206,49 +198,30 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 		final ExecutionVertex vertex = task.getTaskToExecute().getVertex();
 
 		final Iterable<TaskManagerLocation> preferredLocations = vertex.getPreferredLocationsBasedOnInputs();
-		final boolean forceExternalLocation = false &&
-			preferredLocations != null && preferredLocations.iterator().hasNext();
 
 		synchronized (globalLock) {
 
 			// schedule without hints and sharing
 
-			SimpleSlot slot = getFreeSlotForTaskExceptTM(vertex, preferredLocations, forceExternalLocation, taskManagerID);
+			SimpleSlot slot = getFreeSlotForTaskExceptTM(vertex, taskManagerID);
 			if (slot != null) {
 				updateLocalityCounters(slot, vertex);
 				return slot;
-			}
-			else {
-				// no resource available now, so queue the request
-				if (queueIfNoResource) {
-					CompletableFuture<SimpleSlot> future = new FlinkCompletableFuture<>();
-					this.taskQueue.add(new QueuedTask(task, future));
-					return future;
-				}
-				else if (forceExternalLocation) {
-					String hosts = getHostnamesFromInstances(preferredLocations);
-					throw new NoResourceAvailableException("Could not schedule task " + vertex
-						+ " to any of the required hosts: " + hosts);
-				}
-				else {
-					throw new NoResourceAvailableException(getNumberOfAvailableInstances(),
-						getTotalNumberOfSlots(), getNumberOfAvailableSlots());
-				}
+			} else {
+				throw new NoResourceAvailableException(getNumberOfAvailableInstances(),
+					getTotalNumberOfSlots(), getNumberOfAvailableSlots());
 			}
 		}
 	}
 
-	private SimpleSlot getFreeSlotForTaskExceptTM(ExecutionVertex vertex,
-												  Iterable<TaskManagerLocation> preferredLocations,
-												  boolean forceExternalLocation,
-												  ResourceID taskManagerID) {
+	private SimpleSlot getFreeSlotForTaskExceptTM(ExecutionVertex vertex, ResourceID taskManagerID) {
 		// we need potentially to loop multiple times, because there may be false positives
 		// in the set-with-available-instances
 		while (true) {
 
 			LOG.info("Looping to get freeSlot for a specific taskmanager");
 
-			Pair<Instance, Locality> instanceLocalityPair = findSpecificTaskmanagerInstance(taskManagerID);
+			Pair<Instance, Locality> instanceLocalityPair = findTaskmanagerExceptSpecificInstance(taskManagerID);
 
 			if (instanceLocalityPair == null){
 				return null;

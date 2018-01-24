@@ -25,6 +25,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.concurrent.impl.FlinkFuture;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -38,6 +39,7 @@ import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -232,13 +234,23 @@ public interface TaskManagerGateway {
 	 * @param action
 	 * @param checkpointIDToModify
 	 */
-	void triggerModification(ExecutionAttemptID attemptId,
-							 JobID jobId,
-							 long modificationID,
-							 long timestamp,
-							 Set<ExecutionAttemptID> ids, Set<Integer> operatorSubTaskIndices,
-							 ModificationCoordinator.ModificationAction action,
-							 long checkpointIDToModify);
+	void triggerMigration(ExecutionAttemptID attemptId,
+						  JobID jobId,
+						  long modificationID,
+						  long timestamp,
+						  Set<ExecutionAttemptID> ids,
+						  Set<Integer> operatorSubTaskIndices,
+						  ModificationCoordinator.ModificationAction action,
+						  long checkpointIDToModify);
+
+
+	void triggerMigration(ExecutionAttemptID attemptId,
+						  JobID jobId,
+						  long modificationId,
+						  long timestamp,
+						  Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
+						  Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+						  long checkpointIDToModify);
 
 	/**
 	 * Request the task manager log from the task manager.

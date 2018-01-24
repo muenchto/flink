@@ -21,11 +21,14 @@ package org.apache.flink.runtime.jobgraph.tasks;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -145,4 +148,11 @@ public interface StatefulTask {
 	void abortModification(ModificationMetaData modificationMetaData,
 						   Set<ExecutionAttemptID> executionAttemptIDS,
 						   Throwable cause) throws Exception;
+
+	boolean triggerMigration(ModificationMetaData metaData,
+							 Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
+							 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
+							 long upcomingCheckpointID) throws Exception;
+
+	void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location);
 }
