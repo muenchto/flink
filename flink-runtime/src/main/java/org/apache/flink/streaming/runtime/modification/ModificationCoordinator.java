@@ -28,6 +28,7 @@ import org.apache.flink.runtime.messages.modification.IgnoreModification;
 import org.apache.flink.runtime.messages.modification.StateMigrationModification;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
+import org.apache.flink.runtime.taskmanager.TaskExecutionState;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
@@ -331,11 +332,41 @@ public class ModificationCoordinator {
 		}
 	}
 
+	public void vertexUpdatedState(TaskExecutionState state) {
+
+		ExecutionVertex executionVertex = vertexToRestart.get(state.getID());
+
+		if (executionVertex == null) {
+			LOG.info("Informed about vertex, that should not be restarted {}", state.getID());
+			return;
+		}
+
+		switch (state.getExecutionState()) {
+			case RUNNING:
+			case FINISHED:
+			case CANCELED:
+			case FAILED:
+			case PAUSING:
+			case RESUMING:
+				return;
+
+			case PAUSED:
+				restartIfStoppedAndStateReceived(executionVertex);
+				break;
+
+			default:
+				// we mark as failed and return false, which triggers the TaskManager to remove the task
+				executionGraph.failGlobal(new Exception("TaskManager sent illegal state update: " + state.getExecutionState()));
+		}
+	}
+
 	private synchronized void restartIfStoppedAndStateReceived(ExecutionVertex vertex) {
 
 		ExecutionAttemptID attemptID = vertex.getCurrentExecutionAttempt().getAttemptId();
 
-		if (vertexToRestart.containsKey(attemptID) && storedState.containsKey(attemptID)) {
+		boolean correctState = vertex.getCurrentExecutionAttempt().getState() == ExecutionState.PAUSED;
+
+		if (vertexToRestart.containsKey(attemptID) && storedState.containsKey(attemptID) && correctState) {
 
 			vertexToRestart.remove(attemptID);
 			SubtaskState state = storedState.remove(attemptID);

@@ -292,6 +292,12 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		}
 	}
 
+	public int getPriorExecutionAttemptNumber() {
+		synchronized (priorExecutions) {
+			return priorExecutions.size();
+		}
+	}
+
 	/**
 	 * Gets the location where the latest completed/canceled/failed execution of the vertex's
 	 * task happened.

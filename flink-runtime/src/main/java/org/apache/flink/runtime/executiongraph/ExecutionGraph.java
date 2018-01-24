@@ -1486,44 +1486,56 @@ public class ExecutionGraph implements AccessExecutionGraph, Archiveable<Archive
 		if (attempt != null) {
 			try {
 				Map<String, Accumulator<?, ?>> accumulators;
+				boolean successful;
 
 				switch (state.getExecutionState()) {
 					case RUNNING:
-						return attempt.switchToRunning();
+						successful = attempt.switchToRunning();
+						break;
 
 					case FINISHED:
 						// this deserialization is exception-free
 						accumulators = deserializeAccumulators(state);
 						attempt.markFinished(accumulators, state.getIOMetrics());
-						return true;
+						successful = true;
+						break;
 
 					case CANCELED:
 						// this deserialization is exception-free
 						accumulators = deserializeAccumulators(state);
 						attempt.cancelingComplete(accumulators, state.getIOMetrics());
-						return true;
+						successful = true;
+						break;
 
 					case FAILED:
 						// this deserialization is exception-free
 						accumulators = deserializeAccumulators(state);
 						attempt.markFailed(state.getError(userClassLoader), accumulators, state.getIOMetrics());
-						return true;
+						successful = true;
+						break;
 
 					case PAUSING:
-						return attempt.switchToPausing();
+						successful = attempt.switchToPausing();
+						break;
 
 					case PAUSED:
-						return attempt.switchToPaused();
+						successful = attempt.switchToPaused();
+						break;
 
 					case RESUMING:
-						return attempt.switchToRunning();
+						successful = attempt.switchToRunning();
+						break;
 
 					default:
 						// we mark as failed and return false, which triggers the TaskManager
 						// to remove the task
 						attempt.fail(new Exception("TaskManager sent illegal state update: " + state.getExecutionState()));
-						return false;
+						successful = false;
 				}
+
+				modificationCoordinator.vertexUpdatedState(state);
+
+				return successful;
 			}
 			catch (Throwable t) {
 				ExceptionUtils.rethrowIfFatalErrorOrOOM(t);

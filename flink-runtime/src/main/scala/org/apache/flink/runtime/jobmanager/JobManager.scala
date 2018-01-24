@@ -1334,7 +1334,9 @@ class JobManager(
                   .getProducer
                   .getCurrentExecutionAttempt
 
-                if (producerExecution.getAttemptId() == resultPartitionId.getProducerId()) {
+                // Partition check may overtake execution update message, so that we have to also compare to future execution
+                if (producerExecution.getAttemptId() == resultPartitionId.getProducerId() ||
+                  producerExecution.getVertex.getUpcomingExecutionAttemptID == resultPartitionId.getProducerId) {
                   sender ! decorateMessage(producerExecution.getState)
                 } else {
                   val cause = new PartitionProducerDisposedException(resultPartitionId)
