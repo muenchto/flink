@@ -228,6 +228,10 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 			Instance instanceToUse = instanceLocalityPair.getLeft();
 			Locality locality = instanceLocalityPair.getRight();
 
+			if (instanceToUse == null) {
+				throw new IllegalStateException("Why?");
+			}
+
 			try {
 				SimpleSlot slot = instanceToUse.allocateSimpleSlot(vertex.getJobId());
 

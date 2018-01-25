@@ -237,8 +237,6 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 				}
 
 				for (int i = 0; i < newLocation.size(); i++) {
-					InputChannelDeploymentDescriptor descriptor = newLocation.get(i);
-
 					streamOutput.sendToTarget(new PausingOperatorMarker(newLocation.get(i)), i);
 				}
 

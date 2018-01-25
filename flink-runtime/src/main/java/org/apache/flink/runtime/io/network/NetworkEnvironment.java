@@ -262,6 +262,53 @@ public class NetworkEnvironment {
 		}
 	}
 
+	public void unregisterTaskForMigration(Task task) {
+		LOG.debug("Unregister task {} from network environment (state: {}).",
+			task.getTaskInfo().getTaskNameWithSubtasks(), task.getExecutionState());
+
+		final ExecutionAttemptID executionId = task.getExecutionId();
+
+		synchronized (lock) {
+			if (isShutdown) {
+				// no need to do anything when we are not operational
+				return;
+			}
+
+//			if (task.isCanceledOrFailed()) {
+//				resultPartitionManager.releasePartitionsProducedBy(executionId, task.getFailureCause());
+//			}
+//
+//			ResultPartitionWriter[] writers = task.getAllWriters();
+//			if (writers != null) {
+//				for (ResultPartitionWriter writer : writers) {
+//					taskEventDispatcher.unregisterWriter(writer);
+//				}
+//			}
+//
+//			ResultPartition[] partitions = task.getProducedPartitions();
+//			if (partitions != null) {
+//				for (ResultPartition partition : partitions) {
+//					partition.destroyBufferPool();
+//				}
+//			}
+
+			final SingleInputGate[] inputGates = task.getAllInputGates();
+
+			if (inputGates != null) {
+				for (SingleInputGate gate : inputGates) {
+					try {
+						if (gate != null) {
+							gate.releaseAllResources();
+						}
+					}
+					catch (IOException e) {
+						LOG.error("Error during release of reader resources: " + e.getMessage(), e);
+					}
+				}
+			}
+		}
+	}
+
 	public void unregisterTask(Task task) {
 		LOG.debug("Unregister task {} from network environment (state: {}).",
 				task.getTaskInfo().getTaskNameWithSubtasks(), task.getExecutionState());

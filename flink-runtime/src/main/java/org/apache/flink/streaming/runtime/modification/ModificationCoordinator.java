@@ -391,6 +391,11 @@ public class ModificationCoordinator {
 				currentExecutionAttempt.setInitialState(taskStateHandles);
 			}
 
+			LOG.debug("Restarting operator {} {} on TaskManager {}",
+				vertex.getTaskNameWithSubtaskIndex(),
+				vertex.getCurrentExecutionAttempt().getAttemptId(),
+				vertex.getFutureSlot().getTaskManagerLocation());
+
 			currentExecutionAttempt.scheduleForMigration();
 
 		} catch (Exception exception) {
@@ -588,7 +593,7 @@ public class ModificationCoordinator {
 				for (ExecutionVertex executionVertex : downstreamOperator.getTaskVertices()) {
 					// TODO Currently only works for one input streams
 
-					assert executionVertex.getNumberOfInputs() == 1;
+					Preconditions.checkArgument(executionVertex.getNumberOfInputs() == 1, vertex + " has not exactly one input");
 
 					InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForSpecificPartition(
 						executionVertex.getInputEdges(0),
@@ -836,7 +841,7 @@ public class ModificationCoordinator {
 		Preconditions.checkNotNull(jobVertex);
 
 		ExecutionVertex[] taskVertices = jobVertex.getTaskVertices();
-		if (taskVertices == null || taskVertices.length == 0) {
+		if (taskVertices == null || taskVertices.length == 0 || taskVertices[0].getNumberOfInputs() == 0) {
 			return null;
 		}
 
@@ -861,7 +866,8 @@ public class ModificationCoordinator {
 		Collection<IntermediateResultPartition> producedPartitions = taskVertices[0].getProducedPartitions().values();
 
 		if (producedPartitions.size() != 1) {
-			throw new IllegalStateException("Number of produced partitions is not 1");
+//			throw new IllegalStateException("Number of produced partitions is not 1");
+			return null;
 		}
 
 		// TODO Assume single producer

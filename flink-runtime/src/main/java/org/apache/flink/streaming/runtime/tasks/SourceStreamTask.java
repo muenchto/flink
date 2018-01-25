@@ -19,6 +19,7 @@
 package org.apache.flink.streaming.runtime.tasks;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.common.functions.StoppableFunction;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
@@ -125,6 +126,13 @@ public class SourceStreamTask<OUT, SRC extends SourceFunction<OUT>, OP extends S
 
 	@Override
 	protected boolean pauseInputs() {
+
+		if (headOperator.getUserFunction() instanceof StoppableFunction) {
+			((StoppableFunction) headOperator.getUserFunction()).stop();
+		} else {
+			throw new IllegalStateException("Tried to stop SourceStreamTask, that does not implement StoppableFunction");
+		}
+
 		setPausedForModification(true);
 		return true;
 	}

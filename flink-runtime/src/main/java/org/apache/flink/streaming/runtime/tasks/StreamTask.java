@@ -767,6 +767,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 						this.newICDD = location;
 
+						if (getName().contains("Source")) {
+							return acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction.STOPPING);
+						}
+
 					} else {
 						getEnvironment().ignoreModification(metaData.getModificationID());
 						LOG.info("Could not find {} in vertices for {}, that should be modified. Not attempting to pause operator",

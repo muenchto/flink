@@ -194,13 +194,16 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 				} else if (next.getEvent().getClass() == PausingOperatorMarker.class) {
 
 					LOG.info("Acknowledge Pausing for channel {}", next.getChannelIndex());
-					countBlockingMarker(ModificationCoordinator.ModificationAction.STOPPING);
+					boolean goingDownForMigration =
+						countBlockingMarker(ModificationCoordinator.ModificationAction.STOPPING);
 
 					PausingOperatorMarker marker = (PausingOperatorMarker) next.getEvent();
 
-					if (marker.getDescriptor() != null) {
+					if (marker.getDescriptor() != null && !goingDownForMigration) {
 						updateInputChannelWithNewLocation(marker.getDescriptor(), next.getChannelIndex());
 					}
+
+					return next;
 
 				} else if (next.getEvent().getClass() == StartModificationMarker.class) {
 					LOG.info("Received ModificationMarker:  {}", StartModificationMarker.class);
@@ -222,6 +225,8 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 				} else if (next.getEvent().getClass() == StartMigrationMarker.class) {
 
 					notifyMigration((StartMigrationMarker) next.getEvent());
+
+					return next;
 
 				} else {
 					if (next.getEvent().getClass() == EndOfPartitionEvent.class) {
@@ -255,17 +260,19 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 		}
 	}
 
-	private void countBlockingMarker(ModificationCoordinator.ModificationAction action) throws Exception {
+	private boolean countBlockingMarker(ModificationCoordinator.ModificationAction action) throws Exception {
 		numberOfSpillingToDiskMarker += 1;
 
 		if (numberOfSpillingToDiskMarker == inputGate.getNumberOfInputChannels()) {
 			pauseInputAfterSpillingAcknowledged(action);
+			return true;
 		} else {
 			LOG.info("Received SpillToDiskMarker #{}", numberOfSpillingToDiskMarker);
+			return false;
 		}
 	}
 
-	private volatile int numberOfSpillingToDiskMarker = 0;
+	private int numberOfSpillingToDiskMarker = 0;
 
 	private void pauseInputAfterSpillingAcknowledged(ModificationCoordinator.ModificationAction action) throws Exception {
 		if (statefulTask != null) {
