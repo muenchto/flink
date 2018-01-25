@@ -927,19 +927,26 @@ public class SingleInputGate implements InputGate {
 				return;
 			}
 
+			LOG.debug("Dummy LOG.");
+
+
 			InputChannel oldChannel = inputChannels.put(partitionId, newChannel);
 
 			if (oldChannel == null) {
 				throw new RuntimeException("No previous input channel.");
 			}
 
+			ensureChannelDoesNotContainPendingData(oldChannel);
+
 			oldChannel.releaseAllResources();
 
 			LOG.debug("Updated existing input channel to {}.", newChannel);
 
-			if (requestedPartitionsFlag) {
-				newChannel.requestSubpartition(consumedSubpartitionIndex);
-			}
+			newChannel.requestSubpartition(consumedSubpartitionIndex);
+
+//			if (requestedPartitionsFlag) {
+//				newChannel.requestSubpartition(consumedSubpartitionIndex);
+//			}
 //			Use this instead of direct requestSubpartition for exponential backoff
 //			retriggerPartitionRequest(partitionId);
 
@@ -949,6 +956,15 @@ public class SingleInputGate implements InputGate {
 
 			if (--numberOfUninitializedChannels == 0) {
 				pendingEvents.clear();
+			}
+		}
+	}
+
+	private void ensureChannelDoesNotContainPendingData(InputChannel channel) {
+		synchronized (inputChannelsWithData) {
+
+			if (inputChannelsWithData.contains(channel)) {
+				throw new IllegalStateException("Channel " + channel + " should not contain pending data");
 			}
 		}
 	}

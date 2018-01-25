@@ -1127,8 +1127,10 @@ public class Task implements Runnable, TaskActions {
 						this.asyncCallDispatcher = null;
 					}
 
+					// TODO Not clear, what happens, when
+
 					// free the network resources
-					// network.unregisterTask(this);
+					 network.unregisterTaskForMigration(this);
 
 					// free memory resources
 					if (invokable != null) {

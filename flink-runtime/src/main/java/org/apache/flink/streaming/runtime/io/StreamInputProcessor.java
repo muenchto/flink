@@ -34,6 +34,7 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
+import org.apache.flink.runtime.io.network.api.PausingOperatorMarker;
 import org.apache.flink.runtime.io.network.api.SpillToDiskMarker;
 import org.apache.flink.runtime.io.network.api.serialization.RecordDeserializer;
 import org.apache.flink.runtime.io.network.api.serialization.RecordDeserializer.DeserializationResult;
@@ -51,6 +52,7 @@ import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
+import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
@@ -116,6 +118,8 @@ public class StreamInputProcessor<IN> {
 
 	private boolean isFinished;
 
+	private final StreamTask task;
+
 	@SuppressWarnings("unchecked")
 	public StreamInputProcessor(
 			InputGate[] inputGates,
@@ -152,6 +156,7 @@ public class StreamInputProcessor<IN> {
 		if (checkpointedTask != null) {
 			this.barrierHandler.registerCheckpointEventHandler(checkpointedTask);
 		}
+		task = checkpointedTask;
 
 		this.lock = checkNotNull(lock);
 
@@ -250,6 +255,16 @@ public class StreamInputProcessor<IN> {
 						return true;
 
 					} else if (event.getClass() == SpillToDiskMarker.class) {
+						// Do nothing here, as modification was triggered in BarrierTracker
+						// Return true, so that we can restart this method, but check if we are still running
+
+						return true;
+					} else if (event.getClass() == StartMigrationMarker.class) {
+						// Do nothing here, as modification was triggered in BarrierTracker
+						// Return true, so that we can restart this method, but check if we are still running
+
+						return true;
+					} else if (event.getClass() == PausingOperatorMarker.class) {
 						// Do nothing here, as modification was triggered in BarrierTracker
 						// Return true, so that we can restart this method, but check if we are still running
 
