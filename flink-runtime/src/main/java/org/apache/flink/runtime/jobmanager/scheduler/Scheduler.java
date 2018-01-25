@@ -197,8 +197,6 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 
 		final ExecutionVertex vertex = task.getTaskToExecute().getVertex();
 
-		final Iterable<TaskManagerLocation> preferredLocations = vertex.getPreferredLocationsBasedOnInputs();
-
 		synchronized (globalLock) {
 
 			// schedule without hints and sharing
@@ -219,7 +217,7 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 		// in the set-with-available-instances
 		while (true) {
 
-			LOG.info("Looping to get freeSlot for a specific taskmanager");
+			LOG.info("Looping to get freeSlot except on a specific taskmanager");
 
 			Pair<Instance, Locality> instanceLocalityPair = findTaskmanagerExceptSpecificInstance(taskManagerID);
 
@@ -384,6 +382,8 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 			}
 
 			instance = entry.getValue();
+			instancesWithAvailableResources.remove(entry.getKey());
+			break;
 		}
 
 		return new ImmutablePair<>(instance, Locality.UNCONSTRAINED);
