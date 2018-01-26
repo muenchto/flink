@@ -622,6 +622,11 @@ public class JobManagerHARecoveryTest extends TestLogger {
 		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
 		}
 
+		@Override
+		public boolean willEnterPausedStateDueToMigration() {
+			return false;
+		}
+
 		public static void initializeStaticHelpers(int numSubtasks) {
 			completedCheckpointsLatch = new CountDownLatch(numSubtasks);
 			recoveredStates = new long[numSubtasks];

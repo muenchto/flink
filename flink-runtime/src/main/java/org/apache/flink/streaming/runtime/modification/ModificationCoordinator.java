@@ -297,6 +297,16 @@ public class ModificationCoordinator {
 
 		synchronized (lock) {
 
+			if (message.getTaskExecutionId() == null) {
+				LOG.error("TaskExecutionId is null while receiving state {}: {}", message.getJobID(), message);
+				return;
+			}
+
+			if (message.getSubtaskState() == null) {
+				LOG.error("SubtaskState is null while receiving state {}: {}", message.getJobID(), message);
+				return;
+			}
+
 			if (storedState.put(message.getTaskExecutionId(), message.getSubtaskState()) != null) {
 				LOG.info("Received duplicate StateMigrationModification for {} from task {}. Removed previous.",
 					modificationID, message.getTaskExecutionId());

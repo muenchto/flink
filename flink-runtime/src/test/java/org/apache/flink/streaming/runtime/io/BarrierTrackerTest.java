@@ -572,5 +572,12 @@ public class BarrierTrackerTest {
 		@Override
 		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
 		}
+
+
+
+		@Override
+		public boolean willEnterPausedStateDueToMigration() {
+			return false;
+		}
 	}
 }

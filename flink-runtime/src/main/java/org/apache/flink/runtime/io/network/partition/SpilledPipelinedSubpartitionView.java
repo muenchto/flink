@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -40,7 +41,7 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 	private final SpilledSubpartitionView.SpillReadBufferPool bufferPool;
 
 	/** The total number of spilled buffers */
-	private volatile long numberOfSpilledBuffers;
+	private AtomicLong numberOfSpilledBuffers;
 
 	/** Flag indicating whether a spill is still in progress */
 	private volatile boolean isSpillInProgress = true;
@@ -57,7 +58,7 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 		this.spillWriter = checkNotNull(spillWriter);
 		this.fileReader = new SynchronousBufferFileReader(spillWriter.getChannelID(), false);
 		checkArgument(numberOfSpilledBuffers >= 0);
-		this.numberOfSpilledBuffers = numberOfSpilledBuffers;
+		this.numberOfSpilledBuffers = new AtomicLong(numberOfSpilledBuffers);
 
 		// Check whether async spilling is still in progress. If not, this returns
 		// false and we can notify our availability listener about all available buffers.
@@ -74,7 +75,7 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 	@Override
 	public void notifyBuffersAvailable(long numBuffers) throws IOException {
 		if (isSpillInProgress) {
-			numberOfSpilledBuffers += numBuffers;
+			numberOfSpilledBuffers.addAndGet(numBuffers);
 		} else {
 			availabilityListener.notifyBuffersAvailable(numBuffers);
 		}
@@ -88,7 +89,7 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 	@Override
 	public void onNotification() {
 		isSpillInProgress = false;
-		availabilityListener.notifyBuffersAvailable(numberOfSpilledBuffers);
+		availabilityListener.notifyBuffersAvailable(numberOfSpilledBuffers.get());
 		LOG.debug("Finished spilling. Notified about {} available buffers.", numberOfSpilledBuffers);
 	}
 
@@ -96,11 +97,9 @@ public class SpilledPipelinedSubpartitionView implements ResultSubpartitionView,
 	public Buffer getNextBuffer() throws IOException, InterruptedException {
 
 		// No locking needed, since we do not notifyForAvailableBuffers before?
-		if (!fileReader.hasReachedEndOfFile()) {
+		if (fileReader.getSize() > 0 && !fileReader.hasReachedEndOfFile()) {
 
-			LOG.info("Reading from fileReader");
-
-			numberOfSpilledBuffers--;
+			numberOfSpilledBuffers.decrementAndGet();
 
 			// TODO This is fragile as we implicitly expect that multiple calls to
 			// this method don't happen before recycling buffers returned earlier.
