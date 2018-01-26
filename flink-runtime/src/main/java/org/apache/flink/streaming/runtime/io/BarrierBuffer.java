@@ -36,7 +36,6 @@ import org.apache.flink.runtime.io.network.api.*;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
-import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
@@ -194,12 +193,12 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 				} else if (next.getEvent().getClass() == PausingOperatorMarker.class) {
 
 					LOG.info("Acknowledge Pausing for channel {}", next.getChannelIndex());
-					boolean goingDownForMigration =
-						countBlockingMarker(ModificationCoordinator.ModificationAction.STOPPING);
+
+					countBlockingMarker(ModificationCoordinator.ModificationAction.STOPPING);
 
 					PausingOperatorMarker marker = (PausingOperatorMarker) next.getEvent();
 
-					if (marker.getDescriptor() != null && !goingDownForMigration) {
+					if (marker.getDescriptor() != null && !statefulTaskWillPauseDueToMigration()) {
 						updateInputChannelWithNewLocation(marker.getDescriptor(), next.getChannelIndex());
 					}
 
@@ -245,6 +244,16 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 				// final end of both input and buffered data
 				return null;
 			}
+		}
+	}
+
+	private boolean statefulTaskWillPauseDueToMigration() {
+		if (statefulTask != null) {
+
+			return statefulTask.willEnterPausedStateDueToMigration();
+
+		} else {
+			throw new NullPointerException("statefulTask must not be null");
 		}
 	}
 

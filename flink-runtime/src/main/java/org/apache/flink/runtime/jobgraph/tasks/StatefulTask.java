@@ -155,4 +155,6 @@ public interface StatefulTask {
 							 long upcomingCheckpointID) throws Exception;
 
 	void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location);
+
+	boolean willEnterPausedStateDueToMigration();
 }

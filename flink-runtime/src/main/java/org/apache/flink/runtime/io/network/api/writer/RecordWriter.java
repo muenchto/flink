@@ -21,7 +21,9 @@ package org.apache.flink.runtime.io.network.api.writer;
 import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.SimpleCounter;
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
+import org.apache.flink.runtime.io.network.api.PausingOperatorMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
 import org.apache.flink.runtime.event.AbstractEvent;
@@ -183,11 +185,6 @@ public class RecordWriter<T extends IOReadableWritable> {
 				// retain the buffer so that it can be recycled by each channel of targetPartition
 				eventBuffer.retain();
 				targetPartition.writeBuffer(eventBuffer, targetChannel);
-
-				if (event.getClass() == CheckpointBarrier.class) {
-					CheckpointBarrier checkpointBarrier = (CheckpointBarrier) event;
-					targetPartition.checkForSpillingAfterCheckpointBarrier(checkpointBarrier.getId(), targetChannel);
-				}
 			}
 		} finally {
 			// we do not need to further retain the eventBuffer
@@ -219,7 +216,14 @@ public class RecordWriter<T extends IOReadableWritable> {
 
 					if (event.getClass() == CheckpointBarrier.class) {
 						CheckpointBarrier checkpointBarrier = (CheckpointBarrier) event;
-						targetPartition.checkForSpillingAfterCheckpointBarrier(checkpointBarrier.getId(), targetChannel);
+						targetPartition.checkActionOnCheckpointBarrier(checkpointBarrier.getId(), targetChannel);
+
+						InputChannelDeploymentDescriptor icdd =
+							targetPartition.checkForPausingOperatorMarker(checkpointBarrier.getId(), targetChannel);
+
+						if (icdd != null) {
+							sendEventToTarget(new PausingOperatorMarker(icdd), targetChannel);
+						}
 					}
 				}
 			}

@@ -35,6 +35,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.NetworkEnvironment;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
+import org.apache.flink.runtime.io.network.api.PausingOperatorMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
@@ -131,7 +132,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	enum ModificationStatus {
 		NOT_MODIFIED,
-		WAITING_FOR_SPILLING_MARKER,
+		WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK, // Sources only
+		WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR, // Sources only
+		WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR,
 		PAUSING,
 	}
 
@@ -681,6 +684,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	}
 
 	@Override
+	public boolean willEnterPausedStateDueToMigration() {
+		return newICDD != null;
+	}
+
+	@Override
 	public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor inputChannelDeploymentDescriptor) {
 		InputGate[] allInputGates = getEnvironment().getAllInputGates();
 
@@ -736,6 +744,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		LOG.debug("Successfully connected {} to new Input", getName());
 	}
 
+	private volatile boolean alreadyTriggerMigration = false;
+
 	@Override
 	public boolean triggerMigration(ModificationMetaData metaData,
 									Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
@@ -753,6 +763,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				if (isRunning) {
 					// we can do a modification
 
+					if (!alreadyTriggerMigration) {
+						alreadyTriggerMigration = true;
+					}
+
 					Set<Integer> spillingIndices = spillingVertices.get(getEnvironment().getExecutionId());
 					List<InputChannelDeploymentDescriptor> location = stoppingVertices.get(getEnvironment().getExecutionId());
 
@@ -768,7 +782,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						this.newICDD = location;
 
 						if (getName().contains("Source")) {
-							return acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction.STOPPING);
+//							return acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction.STOPPING);
+							triggerPausingOperatorMarkerOnCheckpoint(metaData,
+								upcomingCheckpointID,
+								location);
 						}
 
 					} else {
@@ -825,6 +842,62 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
+	private void triggerPausingOperatorMarkerOnCheckpoint(ModificationMetaData metaData,
+														  long upcomingCheckpointID,
+														  List<InputChannelDeploymentDescriptor> location) {
+		LOG.info("Found {} in vertices for {}, that should be modified. Past modifications: {}",
+			getEnvironment().getJobVertexId(), getName(), Joiner.on(",")
+				.join(getEnvironment().getModificationHandler().getHandledModifications()));
+
+		if (checkIfModificationAlreadyOngoing(metaData.getModificationID())) {
+			if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR)) {
+
+				for (RecordWriterOutput<?> recordWriterOutput : getStreamOutputs()) {
+
+					if (recordWriterOutput.getRecordWriter().getNumChannels() != location.size()) {
+						throw new IllegalArgumentException("Number of output channels does not fit list of icdd");
+					}
+
+					ResultPartitionWriter resultPartitionWriter = recordWriterOutput
+						.getRecordWriter()
+						.getResultPartitionWriter();
+
+					if (upcomingCheckpointID == -1) {
+
+						for (int i = 0; i < resultPartitionWriter.getNumberOfOutputChannels(); i++) {
+							try {
+								recordWriterOutput.sendToTarget(new PausingOperatorMarker(location.get(i)), i);
+							} catch (IOException | InterruptedException e) {
+								LOG.error("Failed to write PausingOperatorMarker", e);
+							}
+						}
+
+						try {
+							acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction.STOPPING);
+						} catch (Exception e) {
+							LOG.error("Failed to enter spilling to disk", e);
+						}
+
+					} else {
+						resultPartitionWriter
+							.registerPausingOperatorAfterUpcomingCheckpoint(upcomingCheckpointID, location, this);
+					}
+				}
+
+				LOG.info("Operator {} successfully started modification sequence for {}.",
+					getName(), getEnvironment().getJobVertexId());
+				getEnvironment().acknowledgeModification(metaData.getModificationID());
+			} else {
+				getEnvironment().declineModification(metaData.getModificationID(),
+					new Throwable("Could not transition status for " + getName()));
+				throw new IllegalStateException("Could not transitionState. Current status is: " + modificationStatus);
+			}
+		} else {
+			LOG.info("Already received modification marker {} for {} for modification {}.",
+				seenModificationMarker.get(metaData.getModificationID()).get(), getName(), metaData.getModificationID());
+		}
+	}
+
 	private void triggerSpillingToDiskMarker(ModificationMetaData metaData,
 											 Set<Integer> spillingIndices,
 											 long upcomingCheckpointID,
@@ -834,7 +907,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				.join(getEnvironment().getModificationHandler().getHandledModifications()));
 
 		if (checkIfModificationAlreadyOngoing(metaData.getModificationID())) {
-			if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER)) {
+			if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR)) {
 
 				for (RecordWriterOutput<?> recordWriterOutput : getStreamOutputs()) {
 					for (Integer subTaskIndex : spillingIndices) {
@@ -909,7 +982,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 							getEnvironment().getJobVertexId(), getName(), Joiner.on(",").join(getEnvironment().getModificationHandler().getHandledModifications()));
 
 						if (checkIfModificationAlreadyOngoing(metaData.getModificationID())) {
-							if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER)) {
+							if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR)) {
 
 								modificationAction = action;
 
@@ -996,6 +1069,35 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
+	public void shutdownAfterSendingOperatorPausedEvent(ModificationCoordinator.ModificationAction action) {
+		synchronized (lock) {
+			if (isRunning) {
+
+				modificationAction = action;
+
+				if (pauseInputs()) {
+
+					if (transitionState(ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR, ModificationStatus.PAUSING)) {
+
+						LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
+							getName(), getEnvironment().getJobVertexId());
+					} else {
+
+						LOG.info("Operator {} successfully acknowledged SpillingToDisk but failed to transition state: {}.",
+							getName(), getEnvironment().getJobVertexId());
+					}
+
+				} else {
+					LOG.info("Operator {} failed to pause Input for SpillingToDisk: {}.",
+						getName(), getEnvironment().getJobVertexId());
+				}
+			} else {
+				LOG.info("Operator {} wants to acknowledge SpillingToDisk, but is not running: {}.",
+					getName(), getEnvironment().getJobVertexId());
+			}
+		}
+	}
+
 	@Override
 	public boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception {
 
@@ -1004,13 +1106,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		synchronized (lock) {
 			if (isRunning) {
 
-				modificationAction = action;
-
-				operatorChain.broadcastOperatorPausedEvent(newICDD);
-
 				if (pauseInputs()) {
 
-					if (transitionState(ModificationStatus.WAITING_FOR_SPILLING_MARKER, ModificationStatus.PAUSING)) {
+					if (transitionState(ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR, ModificationStatus.PAUSING)) {
+
+						modificationAction = action;
+
+						operatorChain.broadcastOperatorPausedEvent(newICDD);
 
 						LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
 							getName(), getEnvironment().getJobVertexId());
@@ -1062,6 +1164,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					checkpointOptions);
 
 				checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
+
+
+
 				return true;
 			} else {
 				// we cannot perform our checkpoint - let the downstream operators know that they

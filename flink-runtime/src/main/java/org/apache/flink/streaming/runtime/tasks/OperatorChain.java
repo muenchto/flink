@@ -230,6 +230,11 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 
 	public void broadcastOperatorPausedEvent(List<InputChannelDeploymentDescriptor> newLocation) throws IOException {
 		try {
+
+			if (newLocation == null) {
+				return;
+			}
+
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
 
 				if (streamOutput.getRecordWriter().getNumChannels() != newLocation.size()) {

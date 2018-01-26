@@ -68,7 +68,7 @@ object ExecutionGraphMessages {
         ""
       }
       
-      s"${timestampToString(timestamp)}\t$taskName(${subtaskIndex +
+      s"${timestampToString(timestamp)}\t$executionID $taskName(${subtaskIndex +
         1}/$totalNumberOfSubTasks) switched to $newExecutionState $oMsg"
     }
   }

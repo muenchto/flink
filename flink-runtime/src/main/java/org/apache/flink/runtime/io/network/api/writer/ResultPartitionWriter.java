@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.io.network.api.writer;
 
+import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.event.TaskEvent;
 import org.apache.flink.runtime.io.network.api.TaskEventHandler;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
@@ -29,6 +30,7 @@ import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartit
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.util.event.EventListener;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
+import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,6 +138,8 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 	// Upcoming to-pause CheckpointID maps to list of subpartitions, that should spill to disk afterwards
 	private final Map<Long, List<Integer>> upcomingCheckpointIDsToPausingPartitions = new ConcurrentHashMap<>();
 	private final Map<Long, ModificationCoordinator.ModificationAction> modificationActions = new ConcurrentHashMap<>();
+	private final Map<Long, List<InputChannelDeploymentDescriptor>> newLocations = new ConcurrentHashMap<>();
+	private StreamTask task;
 
 	private void registerSpillingAfterUpcomingCheckpoint(PausingTaskEvent event) {
 //		registerSpillingAfterUpcomingCheckpoint(event.getUpcomingCheckpointID(), event.getTaskIndex());
@@ -164,7 +168,19 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 		modificationActions.put(upcomingCheckpointID, action);
 	}
 
-	void checkForSpillingAfterCheckpointBarrier(long checkpointID, int taskIndex) {
+	public void registerPausingOperatorAfterUpcomingCheckpoint(long upcomingCheckpointID, List<InputChannelDeploymentDescriptor> locations, StreamTask task) {
+
+		List<InputChannelDeploymentDescriptor> toPauseTaskIndices = newLocations.get(upcomingCheckpointID);
+
+		if (toPauseTaskIndices != null) {
+			throw new IllegalStateException("New Location has been set twice");
+		}
+
+		newLocations.put(upcomingCheckpointID, locations);
+		this.task = task;
+	}
+
+	void checkActionOnCheckpointBarrier(long checkpointID, int taskIndex) {
 
 		List<Integer> taskIndices = upcomingCheckpointIDsToPausingPartitions.get(checkpointID);
 
@@ -194,6 +210,21 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
+		}
+	}
+
+	InputChannelDeploymentDescriptor checkForPausingOperatorMarker(long checkpointID, int taskIndex) {
+		List<InputChannelDeploymentDescriptor> locations = newLocations.get(checkpointID);
+
+		if (locations == null) {
+			return null;
+		}
+
+		if (locations.get(taskIndex) == null) {
+			return null;
+		} else {
+			task.shutdownAfterSendingOperatorPausedEvent(ModificationCoordinator.ModificationAction.STOPPING);
+			return locations.get(taskIndex);
 		}
 	}
 
