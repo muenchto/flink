@@ -37,7 +37,10 @@ import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.PausingOperatorMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
+import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
+import org.apache.flink.runtime.io.network.partition.ResultSubpartition;
+import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartition;
 import org.apache.flink.runtime.io.network.partition.consumer.*;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
@@ -131,9 +134,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	enum ModificationStatus {
 		NOT_MODIFIED,
-		WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK, // Sources only
-		WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR, // Sources only
-		WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR,
+		SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK, // Sources only
+		SPILLED_TO_DISK_AFTER_CHECKPOINT, // Sources only // TODO Really?
+		SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR, // Sources only
+		WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR, // Operators only
+		UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR, // Operators only
 		PAUSING,
 	}
 
@@ -214,9 +219,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	private final Map<Long, AtomicLong> seenModificationMarker = new HashMap<>();
 
-	private volatile ModificationCoordinator.ModificationAction modificationAction;
+	private volatile ModificationCoordinator.ModificationAction modificationAction =
+		ModificationCoordinator.ModificationAction.NO_OP;
 
-	private List<InputChannelDeploymentDescriptor> newICDD;
+	private List<InputChannelDeploymentDescriptor> icddToBroadcastDownstream;
 
 	// ------------------------------------------------------------------------
 	//  Life cycle methods for specific implementations
@@ -683,21 +689,53 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	}
 
 	@Override
-	public boolean willEnterPausedStateDueToMigration() {
-		return newICDD != null;
-	}
-
-	@Override
 	public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor inputChannelDeploymentDescriptor) {
-		InputGate[] allInputGates = getEnvironment().getAllInputGates();
 
-		if (allInputGates.length != 1 && allInputGates[0] instanceof SingleInputGate) {
-			throw new IllegalStateException("More than one InputGate encountered");
+		synchronized (lock) {
+			if (isRunning){
+				switch (STATE_UPDATER.get(this)) {
+
+					case WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR:
+						break;
+
+					case PAUSING:
+						// Happens if we receive a new icdd, although we want to pause
+						// Therefore, ignore this message
+						break;
+
+					case UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR:
+					case NOT_MODIFIED:
+					case SPILLED_TO_DISK_AFTER_CHECKPOINT:
+
+						InputGate[] allInputGates = getEnvironment().getAllInputGates();
+
+						if (allInputGates.length != 1 && allInputGates[0] instanceof SingleInputGate) {
+							throw new IllegalStateException("More than one InputGate encountered");
+						}
+
+						SingleInputGate inputGate = (SingleInputGate) allInputGates[0];
+
+						updateInputChannel(inputGate, channelIndex, inputChannelDeploymentDescriptor);
+
+						transitionState(ModificationStatus.NOT_MODIFIED,ModificationStatus.UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR);
+						transitionState(ModificationStatus.NOT_MODIFIED,ModificationStatus.SPILLED_TO_DISK_AFTER_CHECKPOINT);
+
+						if (STATE_UPDATER.get(this) != ModificationStatus.UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR
+							&& STATE_UPDATER.get(this) != ModificationStatus.SPILLED_TO_DISK_AFTER_CHECKPOINT) {
+							throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
+						}
+
+						break;
+
+					case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK:
+					case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR:
+					default:
+						throw new IllegalStateException(getName() + " - " + STATE_UPDATER.get(this));
+				}
+			} else {
+				throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
+			}
 		}
-
-		SingleInputGate inputGate = (SingleInputGate) allInputGates[0];
-
-		updateInputChannel(inputGate, channelIndex, inputChannelDeploymentDescriptor);
 	}
 
 	private void updateInputChannel(SingleInputGate inputGate, int channelIndex, InputChannelDeploymentDescriptor icdd) {
@@ -750,6 +788,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 									Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
 									Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
 									long upcomingCheckpointID) throws Exception {
+
 		try {
 
 			LOG.info("Starting migration ({}) for '{}' on task {} with jobVertexID {}",
@@ -764,6 +803,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 					if (!alreadyTriggerMigration) {
 						alreadyTriggerMigration = true;
+					} else {
+						return true;
 					}
 
 					Set<Integer> spillingIndices = spillingVertices.get(getEnvironment().getExecutionId());
@@ -771,20 +812,41 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 					if (spillingIndices != null) {
 
-						triggerSpillingToDiskMarker(metaData,
-							spillingIndices,
-							upcomingCheckpointID,
-							ModificationCoordinator.ModificationAction.STOPPING);
+						// TODO Masterthesis, check if correct of need to differentiate between sources & operators
+						if (transitionState(ModificationStatus.NOT_MODIFIED,
+							ModificationStatus.SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK)) {
+
+							setupSpillingToDiskOnUpcomingCheckpoint(metaData,
+								spillingIndices,
+								upcomingCheckpointID,
+								ModificationCoordinator.ModificationAction.STOPPING);
+
+						} else {
+							throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
+						}
 
 					} else if (location != null) {
 
-						this.newICDD = location;
+						if (!isSinkOperator()) {
+							Preconditions.checkArgument(getStreamOutputs().length == 1);
+							Preconditions.checkArgument(getStreamOutputs()[0].getRecordWriter().getNumChannels() == location.size());
+						}
 
-						if (getName().contains("Source")) {
-//							return acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction.STOPPING);
-							triggerPausingOperatorMarkerOnCheckpoint(metaData,
-								upcomingCheckpointID,
-								location);
+						if (this instanceof SourceStreamTask &&
+							transitionState(ModificationStatus.NOT_MODIFIED,
+							ModificationStatus.SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR)) {
+
+							this.icddToBroadcastDownstream = location;
+							this.checkpointToReactTo = upcomingCheckpointID;
+
+						} else if (transitionState(ModificationStatus.NOT_MODIFIED,
+							ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR)) {
+
+							this.icddToBroadcastDownstream = location;
+							this.checkpointToReactTo = upcomingCheckpointID;
+
+						} else {
+							throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
 						}
 
 					} else {
@@ -841,100 +903,38 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
-	private void triggerPausingOperatorMarkerOnCheckpoint(ModificationMetaData metaData,
-														  long upcomingCheckpointID,
-														  List<InputChannelDeploymentDescriptor> location) {
+	private Set<Integer> spillingIndices;
+	private long checkpointToReactTo = -10;
+
+	private void setupSpillingToDiskOnUpcomingCheckpoint(ModificationMetaData metaData,
+														 Set<Integer> spillingIndices,
+														 long upcomingCheckpointID,
+														 ModificationCoordinator.ModificationAction action) {
+
 		LOG.info("Found {} in vertices for {}, that should be modified. Past modifications: {}",
 			getEnvironment().getJobVertexId(), getName(), Joiner.on(",")
 				.join(getEnvironment().getModificationHandler().getHandledModifications()));
 
-		if (checkIfModificationAlreadyOngoing(metaData.getModificationID())) {
-			if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR)) {
+		if (upcomingCheckpointID == -1) {
+			for (RecordWriterOutput<?> recordWriterOutput : getStreamOutputs()) {
+				for (Integer subTaskIndex : spillingIndices) {
 
-				for (RecordWriterOutput<?> recordWriterOutput : getStreamOutputs()) {
-
-					if (recordWriterOutput.getRecordWriter().getNumChannels() != location.size()) {
-						throw new IllegalArgumentException("Number of output channels does not fit list of icdd");
-					}
-
-					ResultPartitionWriter resultPartitionWriter = recordWriterOutput
+					recordWriterOutput
 						.getRecordWriter()
-						.getResultPartitionWriter();
-
-					if (upcomingCheckpointID == -1) {
-
-						for (int i = 0; i < resultPartitionWriter.getNumberOfOutputChannels(); i++) {
-							try {
-								recordWriterOutput.sendToTarget(new PausingOperatorMarker(location.get(i)), i);
-							} catch (IOException | InterruptedException e) {
-								LOG.error("Failed to write PausingOperatorMarker", e);
-							}
-						}
-
-						try {
-							acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction.STOPPING);
-						} catch (Exception e) {
-							LOG.error("Failed to enter spilling to disk", e);
-						}
-
-					} else {
-						resultPartitionWriter
-							.registerPausingOperatorAfterUpcomingCheckpoint(upcomingCheckpointID, location, this);
-					}
+						.getResultPartitionWriter()
+						.spillImmediately(subTaskIndex, action);
 				}
-
-				LOG.info("Operator {} successfully started modification sequence for {}.",
-					getName(), getEnvironment().getJobVertexId());
-				getEnvironment().acknowledgeModification(metaData.getModificationID());
-			} else {
-				getEnvironment().declineModification(metaData.getModificationID(),
-					new Throwable("Could not transition status for " + getName()));
-				throw new IllegalStateException("Could not transitionState. Current status is: " + modificationStatus);
 			}
+			LOG.info("Operator {} successfully started sending spilling markers for {}.",
+				getName(), getEnvironment().getJobVertexId());
+			getEnvironment().acknowledgeModification(metaData.getModificationID());
 		} else {
-			LOG.info("Already received modification marker {} for {} for modification {}.",
-				seenModificationMarker.get(metaData.getModificationID()).get(), getName(), metaData.getModificationID());
-		}
-	}
+			this.spillingIndices = spillingIndices;
+			this.checkpointToReactTo = upcomingCheckpointID;
 
-	private void triggerSpillingToDiskMarker(ModificationMetaData metaData,
-											 Set<Integer> spillingIndices,
-											 long upcomingCheckpointID,
-											 ModificationCoordinator.ModificationAction action) {
-		LOG.info("Found {} in vertices for {}, that should be modified. Past modifications: {}",
-			getEnvironment().getJobVertexId(), getName(), Joiner.on(",")
-				.join(getEnvironment().getModificationHandler().getHandledModifications()));
-
-		if (checkIfModificationAlreadyOngoing(metaData.getModificationID())) {
-			if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR)) {
-
-				for (RecordWriterOutput<?> recordWriterOutput : getStreamOutputs()) {
-					for (Integer subTaskIndex : spillingIndices) {
-
-						ResultPartitionWriter resultPartitionWriter = recordWriterOutput
-							.getRecordWriter()
-							.getResultPartitionWriter();
-
-						if (upcomingCheckpointID == -1) {
-							resultPartitionWriter.spillImmediately(subTaskIndex, action);
-						} else {
-							resultPartitionWriter
-								.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex, action);
-						}
-					}
-				}
-
-				LOG.info("Operator {} successfully started modification sequence for {}.",
-					getName(), getEnvironment().getJobVertexId());
-				getEnvironment().acknowledgeModification(metaData.getModificationID());
-			} else {
-				getEnvironment().declineModification(metaData.getModificationID(),
-					new Throwable("Could not transition status for " + getName()));
-				throw new IllegalStateException("Could not transitionState. Current status is: " + modificationStatus);
-			}
-		} else {
-			LOG.info("Already received modification marker {} for {} for modification {}.",
-				seenModificationMarker.get(metaData.getModificationID()).get(), getName(), metaData.getModificationID());
+			LOG.info("Operator {} successfully started registered for sending spilling markers for {}.",
+				getName(), getEnvironment().getJobVertexId());
+			getEnvironment().acknowledgeModification(metaData.getModificationID());
 		}
 	}
 
@@ -995,8 +995,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 										if (upcomingCheckpointID == -1) {
 											resultPartitionWriter.spillImmediately(subTaskIndex, action);
 										} else {
-											resultPartitionWriter
-												.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex, action);
+
+											// TODO Modifications currently not supported
+
+//											resultPartitionWriter
+//												.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex, action);
 										}
 									}
 								}
@@ -1068,42 +1071,45 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
-	public void shutdownAfterSendingOperatorPausedEvent(ModificationCoordinator.ModificationAction action) {
-		synchronized (lock) {
-			if (isRunning) {
+	/**
+	 * Only meant for sources, to shut down
+	 */
+	private void shutdownAfterSendingOperatorPausedEvent(ModificationCoordinator.ModificationAction action) {
+		modificationAction = action;
 
-				modificationAction = action;
+		if (pauseInputs()) {
 
-				if (pauseInputs()) {
+			if (transitionState(ModificationStatus.SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR, ModificationStatus.PAUSING)) {
 
-					if (transitionState(ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR, ModificationStatus.PAUSING)) {
-
-						LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
-							getName(), getEnvironment().getJobVertexId());
-					} else {
-
-						LOG.info("Operator {} successfully acknowledged SpillingToDisk but failed to transition state: {}.",
-							getName(), getEnvironment().getJobVertexId());
-					}
-
-				} else {
-					LOG.info("Operator {} failed to pause Input for SpillingToDisk: {}.",
-						getName(), getEnvironment().getJobVertexId());
-				}
-			} else {
-				LOG.info("Operator {} wants to acknowledge SpillingToDisk, but is not running: {}.",
+				LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
 					getName(), getEnvironment().getJobVertexId());
+			} else {
+				throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
 			}
+
+		} else {
+			LOG.info("Operator {} failed to pause Input for SpillingToDisk: {}.",
+				getName(), getEnvironment().getJobVertexId());
 		}
 	}
 
 	@Override
-	public boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception {
+	public boolean receivedBlockingMarkersFromAllInputs(ModificationCoordinator.ModificationAction action) throws Exception {
+
 
 		LOG.info("Operator {} acknowledges SpillingToDisk {}.", getName(), getEnvironment().getJobVertexId());
 
 		synchronized (lock) {
 			if (isRunning) {
+
+				ModificationStatus modificationStatus = STATE_UPDATER.get(this);
+
+				if (modificationStatus != ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR) {
+//			throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
+					// Not interested in pausing marker, if we not are pausing for migration
+					// Channel update will be handled separately
+					return true;
+				}
 
 				if (pauseInputs()) {
 
@@ -1111,7 +1117,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 						modificationAction = action;
 
-						operatorChain.broadcastOperatorPausedEvent(newICDD);
+						broadcastPausingMarkersDownstream();
 
 						LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
 							getName(), getEnvironment().getJobVertexId());
@@ -1126,20 +1132,17 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					}
 
 				} else {
-					LOG.info("Operator {} failed to pause Input for SpillingToDisk: {}.",
-						getName(), getEnvironment().getJobVertexId());
+					LOG.info("Operator {} failed to pause Input for SpillingToDisk: {}.", getName(), getEnvironment().getJobVertexId());
 
 					return false;
 				}
 			} else {
-				LOG.info("Operator {} wants to acknowledge SpillingToDisk, but is not running: {}.",
-					getName(), getEnvironment().getJobVertexId());
+				LOG.info("Operator {} wants to acknowledge SpillingToDisk, but is not running: {}.", getName(), getEnvironment().getJobVertexId());
 
 				return false;
 			}
 		}
 	}
-
 
 	private boolean performCheckpoint(
 		CheckpointMetaData checkpointMetaData,
@@ -1162,9 +1165,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					checkpointMetaData.getTimestamp(),
 					checkpointOptions);
 
+				// TODO basically does two checkpoints, the normal one, and the one for sending the state
+				reactOnCheckpoint(checkpointMetaData.getCheckpointId());
+
 				checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
-
-
 
 				return true;
 			} else {
@@ -1193,6 +1197,73 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				return false;
 			}
 		}
+	}
+
+	private void reactOnCheckpoint(long checkpointId) throws IOException, InterruptedException {
+
+		synchronized (lock) {
+			if (isRunning) {
+				if (checkpointId == checkpointToReactTo) {
+					switch (STATE_UPDATER.get(this)) {
+						case WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR:
+						case PAUSING:
+						case NOT_MODIFIED:
+						case UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR:
+							break;
+
+						case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK:
+
+							ResultPartition resultPartition =
+								getStreamOutputs()[0].getRecordWriter().getResultPartitionWriter().getResultPartition();
+
+							ResultSubpartition[] subpartitions = resultPartition.getSubpartitions();
+
+							for (Integer spillingIndex : spillingIndices) {
+								((SpillablePipelinedSubpartition) subpartitions[spillingIndex])
+									.spillToDisk(ModificationCoordinator.ModificationAction.STOPPING);
+							}
+
+							if (!transitionState(ModificationStatus.SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK,
+								ModificationStatus.SPILLED_TO_DISK_AFTER_CHECKPOINT)) {
+								throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
+							}
+
+							break;
+
+						case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR:
+
+							// Pausing operator, and therefore propagating new location
+
+							broadcastPausingMarkersDownstream();
+
+							shutdownAfterSendingOperatorPausedEvent(ModificationCoordinator.ModificationAction.STOPPING);
+
+							break;
+
+						default:
+					}
+				}
+			} else {
+				throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
+			}
+		}
+	}
+
+	private void broadcastPausingMarkersDownstream() throws IOException, InterruptedException {
+
+		if (isSinkOperator()) {
+			return;
+		}
+
+		for (int i = 0; i < icddToBroadcastDownstream.size(); i++) {
+			getStreamOutputs()[0]
+				.getRecordWriter()
+				.sendEventToTarget(new PausingOperatorMarker(icddToBroadcastDownstream.get(i)), i);
+		}
+	}
+
+	private boolean isSinkOperator() {
+		return getName().toLowerCase().contains("sink");
 	}
 
 	private boolean performStateTransferToJobManager(StateMigrationMetaData stateMigrationMetaData,

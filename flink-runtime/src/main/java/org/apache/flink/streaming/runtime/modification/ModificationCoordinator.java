@@ -49,7 +49,8 @@ public class ModificationCoordinator {
 
 	public enum ModificationAction {
 		PAUSING, // For introducing operators to the job
-		STOPPING // For migrating state between TaskManagers
+		STOPPING, // For migrating state between TaskManagers
+		NO_OP // Not Specified
 	}
 
 	private static final long MODIFICATION_TIMEOUT = 90;
@@ -69,6 +70,7 @@ public class ModificationCoordinator {
 	private final Map<Long, PendingModification> failedModifications = new LinkedHashMap<Long, PendingModification>();
 
 	private final Map<ExecutionAttemptID, SubtaskState> storedState = new ConcurrentHashMap<>();
+	private final Set<ExecutionAttemptID> statelessTasks = new HashSet<>();
 
 	private final Map<ExecutionAttemptID, ExecutionVertex> vertexToRestart = new LinkedHashMap<>();
 
@@ -304,10 +306,8 @@ public class ModificationCoordinator {
 
 			if (message.getSubtaskState() == null) {
 				LOG.error("SubtaskState is null while receiving state {}: {}", message.getJobID(), message);
-				return;
-			}
-
-			if (storedState.put(message.getTaskExecutionId(), message.getSubtaskState()) != null) {
+				statelessTasks.add(message.getTaskExecutionId());
+			} else if (storedState.put(message.getTaskExecutionId(), message.getSubtaskState()) != null) {
 				LOG.info("Received duplicate StateMigrationModification for {} from task {}. Removed previous.",
 					modificationID, message.getTaskExecutionId());
 			} else {
@@ -376,9 +376,10 @@ public class ModificationCoordinator {
 
 		boolean correctState = vertex.getCurrentExecutionAttempt().getState() == ExecutionState.PAUSED;
 
-		if (vertexToRestart.containsKey(attemptID) && storedState.containsKey(attemptID) && correctState) {
+		if (vertexToRestart.containsKey(attemptID) && (storedState.containsKey(attemptID) || statelessTasks.contains(attemptID)) && correctState) {
 
 			vertexToRestart.remove(attemptID);
+			statelessTasks.remove(attemptID);
 			SubtaskState state = storedState.remove(attemptID);
 
 			restartOperatorInstanceWithState(vertex, state);
@@ -393,8 +394,9 @@ public class ModificationCoordinator {
 				executionGraph.getGlobalModVersion());
 
 			if (state == null) {
-				throw new IllegalStateException("Could not find state to restore for ExecutionAttempt: "
-					+ stoppedExecutionAttemptID);
+//				throw new IllegalStateException("Could not find state to restore for ExecutionAttempt: "
+//					+ stoppedExecutionAttemptID);
+				LOG.debug("Restarting stateless operator {}", vertex.getTaskNameWithSubtaskIndex());
 			} else {
 				TaskStateHandles taskStateHandles = new TaskStateHandles(state);
 

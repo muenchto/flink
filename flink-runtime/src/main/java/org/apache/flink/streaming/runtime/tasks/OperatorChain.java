@@ -228,31 +228,6 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		}
 	}
 
-	public void broadcastOperatorPausedEvent(List<InputChannelDeploymentDescriptor> newLocation) throws IOException {
-		try {
-
-			if (newLocation == null) {
-				return;
-			}
-
-			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
-
-				if (streamOutput.getRecordWriter().getNumChannels() != newLocation.size()) {
-					throw new IllegalStateException("Number of new icdd does not fit outgoing channels");
-				}
-
-				for (int i = 0; i < newLocation.size(); i++) {
-					streamOutput.sendToTarget(new PausingOperatorMarker(newLocation.get(i)), i);
-				}
-
-				streamOutput.flush();
-			}
-		}
-		catch (InterruptedException e) {
-			throw new IOException("Interrupted while broadcasting checkpoint barrier");
-		}
-	}
-
 	public void broadcastStartModificationEvent(ModificationMetaData metaData,
 												Set<ExecutionAttemptID> executionAttemptIDS,
 												Set<Integer> subTasksToPause,

@@ -154,7 +154,7 @@ public class BarrierTracker implements CheckpointBarrierHandler {
 
 			LOG.debug("Received all SpillToDisk-Marker and now spilling to disk");
 
-			statefulTask.acknowledgeSpillingToDisk(event.getAction());
+			statefulTask.receivedBlockingMarkersFromAllInputs(event.getAction());
 
 		} else {
 			throw new NullPointerException("statefulTask must not be null");
