@@ -77,7 +77,7 @@ import static org.apache.flink.util.Preconditions.checkState;
 public class ResultPartition implements BufferPoolOwner {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ResultPartition.class);
-	
+
 	public final String owningTaskName;
 
 	private final TaskActions taskActions;
@@ -238,6 +238,10 @@ public class ResultPartition implements BufferPoolOwner {
 	 */
 	public long getTotalNumberOfBytes() {
 		return totalNumberOfBytes;
+	}
+
+	public ResultSubpartition[] getSubpartitions() {
+		return subpartitions;
 	}
 
 	public int getNumberOfQueuedBuffers() {

@@ -198,8 +198,8 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 
 					PausingOperatorMarker marker = (PausingOperatorMarker) next.getEvent();
 
-					if (marker.getDescriptor() != null && !statefulTaskWillPauseDueToMigration()) {
-						updateInputChannelWithNewLocation(marker.getDescriptor(), next.getChannelIndex());
+					if (marker.getDescriptor() != null) {
+						receivedPausingMarkerWithNewLocation(marker.getDescriptor(), next.getChannelIndex());
 					}
 
 					return next;
@@ -247,17 +247,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 		}
 	}
 
-	private boolean statefulTaskWillPauseDueToMigration() {
-		if (statefulTask != null) {
-
-			return statefulTask.willEnterPausedStateDueToMigration();
-
-		} else {
-			throw new NullPointerException("statefulTask must not be null");
-		}
-	}
-
-	private void updateInputChannelWithNewLocation(InputChannelDeploymentDescriptor location, int channelIndex) {
+	private void receivedPausingMarkerWithNewLocation(InputChannelDeploymentDescriptor location, int channelIndex) {
 		if (statefulTask != null) {
 
 			LOG.debug("Update InputChannel with new Location {} {}", location, channelIndex);
@@ -273,7 +263,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 		numberOfSpillingToDiskMarker += 1;
 
 		if (numberOfSpillingToDiskMarker == inputGate.getNumberOfInputChannels()) {
-			pauseInputAfterSpillingAcknowledged(action);
+			receivedMarkersFromAllInputs(action);
 			return true;
 		} else {
 			LOG.info("Received SpillToDiskMarker #{}", numberOfSpillingToDiskMarker);
@@ -283,12 +273,12 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 
 	private int numberOfSpillingToDiskMarker = 0;
 
-	private void pauseInputAfterSpillingAcknowledged(ModificationCoordinator.ModificationAction action) throws Exception {
+	private void receivedMarkersFromAllInputs(ModificationCoordinator.ModificationAction action) throws Exception {
 		if (statefulTask != null) {
 
 			LOG.debug("Received all SpillToDisk-Marker and now spilling to disk");
 
-			statefulTask.acknowledgeSpillingToDisk(action);
+			statefulTask.receivedBlockingMarkersFromAllInputs(action);
 
 		} else {
 			throw new NullPointerException("statefulTask must not be null");

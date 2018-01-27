@@ -27,7 +27,6 @@ import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.ResultSubpartition;
 import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartition;
-import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.util.event.EventListener;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
@@ -85,7 +84,11 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 		return partition.getNumTargetKeyGroups();
 	}
 
-	// ------------------------------------------------------------------------
+	public ResultPartition getResultPartition() {
+		return partition;
+	}
+
+// ------------------------------------------------------------------------
 	// Data processing
 	// ------------------------------------------------------------------------
 
@@ -126,106 +129,7 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 
 	@Override
 	public void onEvent(TaskEvent event) {
-
-		if (event.getClass() == PausingTaskEvent.class) {
-			registerSpillingAfterUpcomingCheckpoint((PausingTaskEvent) event);
-			return;
-		}
-
 		taskEventHandler.publish(event);
-	}
-
-	// Upcoming to-pause CheckpointID maps to list of subpartitions, that should spill to disk afterwards
-	private final Map<Long, List<Integer>> upcomingCheckpointIDsToPausingPartitions = new ConcurrentHashMap<>();
-	private final Map<Long, ModificationCoordinator.ModificationAction> modificationActions = new ConcurrentHashMap<>();
-	private final Map<Long, List<InputChannelDeploymentDescriptor>> newLocations = new ConcurrentHashMap<>();
-	private StreamTask task;
-
-	private void registerSpillingAfterUpcomingCheckpoint(PausingTaskEvent event) {
-//		registerSpillingAfterUpcomingCheckpoint(event.getUpcomingCheckpointID(), event.getTaskIndex());
-	}
-
-	public void registerSpillingAfterUpcomingCheckpoint(long upcomingCheckpointID, int taskIndex, ModificationCoordinator.ModificationAction action) {
-		ResultSubpartition[] allPartitions = partition.getAllPartitions();
-
-		if (taskIndex >= allPartitions.length) {
-			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
-		}
-
-//		Preconditions.checkArgument(
-//			upcomingCheckpointIDsToPausingPartitions.get(pausingTaskEvent.getUpcomingCheckpointID()) == null);
-
-		List<Integer> toPauseTaskIndices = upcomingCheckpointIDsToPausingPartitions.get(upcomingCheckpointID);
-
-		if (toPauseTaskIndices == null) {
-			toPauseTaskIndices = new ArrayList<>();
-			toPauseTaskIndices.add(taskIndex);
-		} else {
-			toPauseTaskIndices.add(taskIndex);
-		}
-
-		upcomingCheckpointIDsToPausingPartitions.put(upcomingCheckpointID, toPauseTaskIndices);
-		modificationActions.put(upcomingCheckpointID, action);
-	}
-
-	public void registerPausingOperatorAfterUpcomingCheckpoint(long upcomingCheckpointID, List<InputChannelDeploymentDescriptor> locations, StreamTask task) {
-
-		List<InputChannelDeploymentDescriptor> toPauseTaskIndices = newLocations.get(upcomingCheckpointID);
-
-		if (toPauseTaskIndices != null) {
-			throw new IllegalStateException("New Location has been set twice");
-		}
-
-		newLocations.put(upcomingCheckpointID, locations);
-		this.task = task;
-	}
-
-	void checkActionOnCheckpointBarrier(long checkpointID, int taskIndex) {
-
-		List<Integer> taskIndices = upcomingCheckpointIDsToPausingPartitions.get(checkpointID);
-
-		if (taskIndices == null) {
-			return;
-		}
-
-		if (!taskIndices.contains(taskIndex)) {
-			return;
-		}
-
-		ResultSubpartition[] allPartitions = partition.getAllPartitions();
-
-		if (taskIndex >= allPartitions.length) {
-			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
-		}
-
-		ResultSubpartition resultSubpartition = allPartitions[taskIndex];
-
-		if (resultSubpartition.getClass() != SpillablePipelinedSubpartition.class) {
-			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
-		} else {
-			try {
-				ModificationCoordinator.ModificationAction modificationAction = modificationActions.get(checkpointID);
-
-				((SpillablePipelinedSubpartition) resultSubpartition).spillToDisk(modificationAction);
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
-	}
-
-	InputChannelDeploymentDescriptor checkForPausingOperatorMarker(long checkpointID, int taskIndex) {
-		List<InputChannelDeploymentDescriptor> locations = newLocations.get(checkpointID);
-
-		if (locations == null) {
-			return null;
-		}
-
-		if (locations.get(taskIndex) == null) {
-			return null;
-		} else {
-			task.shutdownAfterSendingOperatorPausedEvent(ModificationCoordinator.ModificationAction.STOPPING);
-			return locations.get(taskIndex);
-		}
 	}
 
 	public void reconfigureKeySelectorForNewConsumer() {

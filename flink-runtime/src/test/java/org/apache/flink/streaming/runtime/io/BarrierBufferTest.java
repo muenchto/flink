@@ -1528,7 +1528,7 @@ public class BarrierBufferTest {
 		}
 
 		@Override
-		public boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception {
+		public boolean receivedBlockingMarkersFromAllInputs(ModificationCoordinator.ModificationAction action) throws Exception {
 			return false;
 		}
 
@@ -1544,13 +1544,6 @@ public class BarrierBufferTest {
 
 		@Override
 		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
-		}
-
-
-
-		@Override
-		public boolean willEnterPausedStateDueToMigration() {
-			return false;
 		}
 	}
 

@@ -604,7 +604,7 @@ public class JobManagerHARecoveryTest extends TestLogger {
 		}
 
 		@Override
-		public boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception {
+		public boolean receivedBlockingMarkersFromAllInputs(ModificationCoordinator.ModificationAction action) throws Exception {
 			return false;
 		}
 
@@ -620,11 +620,6 @@ public class JobManagerHARecoveryTest extends TestLogger {
 
 		@Override
 		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
-		}
-
-		@Override
-		public boolean willEnterPausedStateDueToMigration() {
-			return false;
 		}
 
 		public static void initializeStaticHelpers(int numSubtasks) {

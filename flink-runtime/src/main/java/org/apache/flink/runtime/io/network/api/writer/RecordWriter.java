@@ -213,18 +213,6 @@ public class RecordWriter<T extends IOReadableWritable> {
 					// retain the buffer so that it can be recycled by each channel of targetPartition
 					eventBuffer.retain();
 					targetPartition.writeBuffer(eventBuffer, targetChannel);
-
-					if (event.getClass() == CheckpointBarrier.class) {
-						CheckpointBarrier checkpointBarrier = (CheckpointBarrier) event;
-						targetPartition.checkActionOnCheckpointBarrier(checkpointBarrier.getId(), targetChannel);
-
-						InputChannelDeploymentDescriptor icdd =
-							targetPartition.checkForPausingOperatorMarker(checkpointBarrier.getId(), targetChannel);
-
-						if (icdd != null) {
-							sendEventToTarget(new PausingOperatorMarker(icdd), targetChannel);
-						}
-					}
 				}
 			}
 		} finally {

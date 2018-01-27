@@ -555,7 +555,7 @@ public class BarrierTrackerTest {
 		}
 
 		@Override
-		public boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception {
+		public boolean receivedBlockingMarkersFromAllInputs(ModificationCoordinator.ModificationAction action) throws Exception {
 			return false;
 		}
 
@@ -571,13 +571,6 @@ public class BarrierTrackerTest {
 
 		@Override
 		public void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location) {
-		}
-
-
-
-		@Override
-		public boolean willEnterPausedStateDueToMigration() {
-			return false;
 		}
 	}
 }

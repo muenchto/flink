@@ -136,7 +136,7 @@ public interface StatefulTask {
 	 * @return {@code false} if pausing can not be carried out, {@code true} otherwise
 	 * @param action
 	 */
-	boolean acknowledgeSpillingToDisk(ModificationCoordinator.ModificationAction action) throws Exception;
+	boolean receivedBlockingMarkersFromAllInputs(ModificationCoordinator.ModificationAction action) throws Exception;
 
 	/**
 	 * This method is called to abort a modification of the graph.
@@ -155,6 +155,4 @@ public interface StatefulTask {
 							 long upcomingCheckpointID) throws Exception;
 
 	void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location);
-
-	boolean willEnterPausedStateDueToMigration();
 }

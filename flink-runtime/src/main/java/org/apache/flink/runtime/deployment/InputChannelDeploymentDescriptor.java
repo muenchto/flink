@@ -152,10 +152,11 @@ public class InputChannelDeploymentDescriptor implements Serializable {
 				throw new ExecutionGraphException(msg);
 			} else {
 				String msg = String.format("Trying to eagerly schedule a task whose inputs " +
-						"are not ready (partition consumable? %s, producer state: %s, producer slot: %s).",
+						"are not ready (partition consumable? %s, producer state: %s, producer slot: %s) for producer %s.",
 					consumedPartition.isConsumable(),
 					producerState,
-					producerSlot);
+					producerSlot,
+					producer.getVertex().getTaskNameWithSubtaskIndex());
 				throw new ExecutionGraphException(msg);
 			}
 
