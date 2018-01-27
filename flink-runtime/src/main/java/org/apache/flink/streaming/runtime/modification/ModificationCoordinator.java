@@ -73,6 +73,9 @@ public class ModificationCoordinator {
 	private final Set<ExecutionAttemptID> statelessTasks = new HashSet<>();
 
 	private final Map<ExecutionAttemptID, ExecutionVertex> vertexToRestart = new LinkedHashMap<>();
+	private Set<ExecutionAttemptID> migratingVertices = new HashSet<>();
+	private Set<ExecutionAttemptID> readyVertices = new HashSet<>();
+	private Set<ExecutionVertex> waitingVertices = new HashSet<>();
 
 	private final ExecutionGraph executionGraph;
 
@@ -378,12 +381,46 @@ public class ModificationCoordinator {
 
 		if (vertexToRestart.containsKey(attemptID) && (storedState.containsKey(attemptID) || statelessTasks.contains(attemptID)) && correctState) {
 
-			vertexToRestart.remove(attemptID);
-			statelessTasks.remove(attemptID);
-			SubtaskState state = storedState.remove(attemptID);
+			if (allUpstreamOperatorsMigratedOrUnmodified(vertex)) {
+				vertexToRestart.remove(attemptID);
+				statelessTasks.remove(attemptID);
+				SubtaskState state = storedState.remove(attemptID);
 
-			restartOperatorInstanceWithState(vertex, state);
+				boolean remove = migratingVertices.remove(vertex.getCurrentExecutionAttempt().getAttemptId());
+
+				if (!remove) {
+					throw new IllegalStateException("Wanting to restart operator, although not in migratingVertices set");
+				}
+
+				readyVertices.add(vertex.getCurrentExecutionAttempt().getAttemptId());
+
+				restartOperatorInstanceWithState(vertex, state);
+
+				for (ExecutionVertex waitingVertex : waitingVertices) {
+					restartIfStoppedAndStateReceived(waitingVertex);
+				}
+
+			} else {
+				waitingVertices.add(vertex);
+			}
 		}
+	}
+
+	private boolean allUpstreamOperatorsMigratedOrUnmodified(ExecutionVertex vertex) {
+
+		ExecutionJobVertex upstreamOperator = getUpstreamOperator(vertex);
+
+		if (upstreamOperator == null) {
+			return true;
+		} else {
+			for (ExecutionVertex executionVertex : upstreamOperator.getTaskVertices()) {
+				if (!readyVertices.contains(executionVertex.getCurrentExecutionAttempt().getAttemptId())) {
+					return false;
+				}
+			}
+		}
+
+		return true;
 	}
 
 	private void restartOperatorInstanceWithState(ExecutionVertex vertex, SubtaskState state) {
@@ -407,6 +444,8 @@ public class ModificationCoordinator {
 				vertex.getTaskNameWithSubtaskIndex(),
 				vertex.getCurrentExecutionAttempt().getAttemptId(),
 				vertex.getFutureSlot().getTaskManagerLocation());
+
+			readyVertices.add(currentExecutionAttempt.getAttemptId());
 
 			currentExecutionAttempt.scheduleForMigration();
 
@@ -567,6 +606,9 @@ public class ModificationCoordinator {
 					allVerticesOnTM.add(executionVertex);
 					executionVertex.prepareForMigration();
 					vertexToRestart.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), executionVertex);
+					migratingVertices.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
+				} else {
+					readyVertices.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
 				}
 			}
 		}
