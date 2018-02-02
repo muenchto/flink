@@ -105,9 +105,13 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 	@Override
 	protected boolean pauseInputs() {
 
-		running = false;
-		setPausedForModification(true);
+		if (running) {
+			running = false;
 
-		return true;
+			setPausedForModification(true);
+			return true;
+		} else {
+			throw new IllegalStateException();
+		}
 	}
 }
