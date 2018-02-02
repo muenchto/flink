@@ -127,6 +127,10 @@ public class SourceStreamTask<OUT, SRC extends SourceFunction<OUT>, OP extends S
 	@Override
 	protected boolean pauseInputs() {
 
+		if (getPausedForModification()) {
+			throw new IllegalStateException();
+		}
+
 		if (headOperator.getUserFunction() instanceof StoppableFunction) {
 			((StoppableFunction) headOperator.getUserFunction()).stop();
 		} else {

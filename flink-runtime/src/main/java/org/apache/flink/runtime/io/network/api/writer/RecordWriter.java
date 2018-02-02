@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.io.network.api.writer;
 
+import com.google.common.base.Joiner;
+import com.google.common.primitives.Ints;
 import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.SimpleCounter;
@@ -95,7 +97,12 @@ public class RecordWriter<T extends IOReadableWritable> {
 
 	public void emit(T record) throws IOException, InterruptedException {
 
-		for (int targetChannel : channelSelector.selectChannels(record, numChannels)) {
+		int[] selectChannels = channelSelector.selectChannels(record, numChannels);
+
+		LOG.debug("Task {} writes buffer {} to channels {}.",
+			targetPartition.getResultPartition().owningTaskName, record, Ints.join(",", selectChannels));
+
+		for (int targetChannel : selectChannels) {
 			sendToTarget(record, targetChannel);
 		}
 	}

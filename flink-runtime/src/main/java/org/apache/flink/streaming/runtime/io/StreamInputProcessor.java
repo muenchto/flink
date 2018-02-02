@@ -223,6 +223,8 @@ public class StreamInputProcessor<IN> {
 						// now we can do the actual processing
 						StreamRecord<IN> record = recordOrMark.asRecord();
 						synchronized (lock) {
+							LOG.debug("Task {} received {} from channel {}",
+								task.getName(), record.getValue(), currentChannel);
 							numRecordsIn.inc();
 							streamOperator.setKeyContextElement1(record);
 							streamOperator.processElement(record);

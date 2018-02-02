@@ -927,9 +927,6 @@ public class SingleInputGate implements InputGate {
 				return;
 			}
 
-			LOG.debug("Dummy LOG.");
-
-
 			InputChannel oldChannel = inputChannels.put(partitionId, newChannel);
 
 			if (oldChannel == null) {

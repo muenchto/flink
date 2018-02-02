@@ -709,7 +709,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 						InputGate[] allInputGates = getEnvironment().getAllInputGates();
 
-						if (allInputGates.length != 1 && allInputGates[0] instanceof SingleInputGate) {
+						if (allInputGates.length != 1 || !(allInputGates[0] instanceof SingleInputGate)) {
 							throw new IllegalStateException("More than one InputGate encountered");
 						}
 
@@ -1111,13 +1111,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					return true;
 				}
 
+				modificationAction = action;
+
+				broadcastPausingMarkersDownstream();
+
 				if (pauseInputs()) {
 
 					if (transitionState(ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR, ModificationStatus.PAUSING)) {
-
-						modificationAction = action;
-
-						broadcastPausingMarkersDownstream();
 
 						LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
 							getName(), getEnvironment().getJobVertexId());
@@ -1165,7 +1165,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					checkpointMetaData.getTimestamp(),
 					checkpointOptions);
 
-				// TODO basically does two checkpoints, the normal one, and the one for sending the state
+				// TODO basically does two checkpoints, the normal one, and the one for sending the state if exiting
 				reactOnCheckpoint(checkpointMetaData.getCheckpointId());
 
 				checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
@@ -1254,6 +1254,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		if (isSinkOperator()) {
 			return;
 		}
+
+		Preconditions.checkArgument(icddToBroadcastDownstream.size()
+			== getStreamOutputs()[0].getRecordWriter().getNumChannels());
 
 		for (int i = 0; i < icddToBroadcastDownstream.size(); i++) {
 			getStreamOutputs()[0]

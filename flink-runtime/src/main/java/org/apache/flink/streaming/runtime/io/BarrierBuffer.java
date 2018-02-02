@@ -178,17 +178,14 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 					// if the channel is blocked we, we just store the BufferOrEvent
 					bufferSpiller.add(next);
 					checkSizeLimit();
-				}
-				else if (next.isBuffer()) {
+				} else if (next.isBuffer()) {
 					return next;
-				}
-				else if (next.getEvent().getClass() == CheckpointBarrier.class) {
+				} else if (next.getEvent().getClass() == CheckpointBarrier.class) {
 					if (!endOfStream) {
 						// process barriers only if there is a chance of the checkpoint completing
 						processBarrier((CheckpointBarrier) next.getEvent(), next.getChannelIndex());
 					}
-				}
-				else if (next.getEvent().getClass() == CancelCheckpointMarker.class) {
+				} else if (next.getEvent().getClass() == CancelCheckpointMarker.class) {
 					processCancellationBarrier((CancelCheckpointMarker) next.getEvent());
 				} else if (next.getEvent().getClass() == PausingOperatorMarker.class) {
 

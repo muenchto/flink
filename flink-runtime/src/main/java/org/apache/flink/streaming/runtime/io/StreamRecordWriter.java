@@ -26,6 +26,7 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.writer.ChannelSelector;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
+import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +50,7 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	/** Flag indicating whether the output should be flushed after every element. */
 	private final boolean flushAlways;
 	private final String name;
+	private final StreamTask streamTask;
 
 	/** The exception encountered in the flushing thread. */
 	private Throwable flusherException;
@@ -59,13 +61,15 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	}
 
 	public StreamRecordWriter(ResultPartitionWriter writer, ChannelSelector<T> channelSelector, long timeout) {
-		this(writer, channelSelector, timeout, null);
+		this(null, writer, channelSelector, timeout, null);
 	}
 
-	public StreamRecordWriter(ResultPartitionWriter writer, ChannelSelector<T> channelSelector,
-								long timeout, String taskName) {
+	public StreamRecordWriter(StreamTask streamTask, ResultPartitionWriter writer, ChannelSelector<T> channelSelector,
+							  long timeout, String taskName) {
 
 		super(writer, channelSelector);
+
+		this.streamTask = streamTask;
 
 		LOG.info("{} Creating StreamRecordWriter for {} and {}", taskName, writer, channelSelector);
 
@@ -94,6 +98,11 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	@Override
 	public void emit(T record) throws IOException, InterruptedException {
 		checkErroneous();
+
+		if (isStreamTaskPausing()) {
+			return;
+		}
+
 		LOG.info(name + " emmits: " + record);
 		super.emit(record);
 		if (flushAlways) {
@@ -103,7 +112,12 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 
 	public void sendEventToTarget(AbstractEvent event, int targetChannel) throws IOException, InterruptedException {
 		checkErroneous();
-		LOG.info(name + " broadcast event: " + event);
+
+		if (isStreamTaskPausing()) {
+			return;
+		}
+
+		LOG.info("{} sends {} to {}", name, event, targetChannel);
 
 		super.sendEventToTarget(event, targetChannel);
 		if (flushAlways) {
@@ -114,6 +128,11 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	@Override
 	public void broadcastEmit(T record) throws IOException, InterruptedException {
 		checkErroneous();
+
+		if (isStreamTaskPausing()) {
+			return;
+		}
+
 		LOG.info(name + " broadcast emmits: " + record);
 
 		super.broadcastEmit(record);
@@ -125,6 +144,11 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	@Override
 	public void randomEmit(T record) throws IOException, InterruptedException {
 		checkErroneous();
+
+		if (isStreamTaskPausing()) {
+			return;
+		}
+
 		LOG.info(name + " random emmits: " + record);
 
 		super.randomEmit(record);
@@ -136,6 +160,11 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	@Override
 	public void sendToTarget(T record, int targetChannel) throws IOException, InterruptedException {
 		checkErroneous();
+
+		if (isStreamTaskPausing()) {
+			return;
+		}
+
 		LOG.info(name + " send to target emmits: " + record + " - " + targetChannel);
 
 		super.sendToTarget(record, targetChannel);
@@ -174,6 +203,15 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 	private void checkErroneous() throws IOException {
 		if (flusherException != null) {
 			throw new IOException("An exception happened while flushing the outputs", flusherException);
+		}
+	}
+
+	private boolean isStreamTaskPausing() {
+		if (streamTask.getPausedForModification()) {
+			LOG.info("{} is pausing, therefore not sending more records or events.", name);
+			return true;
+		} else {
+			return false;
 		}
 	}
 
