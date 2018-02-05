@@ -982,28 +982,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 							getEnvironment().getJobVertexId(), getName(), Joiner.on(",").join(getEnvironment().getModificationHandler().getHandledModifications()));
 
 						if (checkIfModificationAlreadyOngoing(metaData.getModificationID())) {
-							if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR)) {
+							if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK)) {
 
 								modificationAction = action;
 
-								for (RecordWriterOutput<?> recordWriterOutput : getStreamOutputs()) {
-									for (Integer subTaskIndex : subTasksToPause) {
-
-										ResultPartitionWriter resultPartitionWriter = recordWriterOutput
-											.getRecordWriter()
-											.getResultPartitionWriter();
-
-										if (upcomingCheckpointID == -1) {
-											resultPartitionWriter.spillImmediately(subTaskIndex, action);
-										} else {
-
-											// TODO Modifications currently not supported
-
-//											resultPartitionWriter
-//												.registerSpillingAfterUpcomingCheckpoint(upcomingCheckpointID, subTaskIndex, action);
-										}
-									}
-								}
+								setupSpillingToDiskOnUpcomingCheckpoint(metaData, subTasksToPause, upcomingCheckpointID, ModificationCoordinator.ModificationAction.STOPPING);
 
 								LOG.info("Operator {} successfully started modification sequence for {}.",
 									getName(), getEnvironment().getJobVertexId());
