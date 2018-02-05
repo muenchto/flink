@@ -250,6 +250,7 @@ org/apache/flink/streaming/api/operators/windowing/functions/InternalWindowFunct
 org/apache/flink/streaming/runtime/operators/windowing/WindowOperatorContractTest$41.class
 org/apache/flink/streaming/api/functions/ListSourceContext.class
 org/apache/flink/streaming/runtime/operators/windowing/WindowTranslationTest$18.class
+org/apache/flink/streaming/runtime/operators/windowing/WindowTranslationTest$Tuple3KeySelector.class
 org/apache/flink/runtime/operators/hash/InPlaceMutableHashTableTest$1.class
 org/apache/flink/runtime/checkpoint/savepoint/SavepointV1SerializerTest.class
 org/apache/flink/runtime/util/ReusingKeyGroupedIteratorTest$1.class
@@ -321,6 +322,7 @@ org/apache/flink/optimizer/IterationsCompilerTest.class
 org/apache/flink/runtime/io/network/api/serialization/EventSerializerTest.class
 org/apache/flink/runtime/operators/hash/HashTableITCase$ConstantsIntPairsIterator.class
 org/apache/flink/streaming/api/operators/co/KeyedCoProcessOperatorTest$EventTimeTriggeringStatefulProcessFunction.class
+org/apache/flink/runtime/metrics/MetricRegistryTest$TestReporter9.class
 org/apache/flink/streaming/api/functions/source/InputFormatSourceFunctionTest.class
 org/apache/flink/runtime/messages/WebMonitorMessagesTest.class
 org/apache/flink/runtime/resourcemanager/JobLeaderIdServiceTest.class
@@ -473,6 +475,7 @@ org/apache/flink/optimizer/WorksetIterationCornerCasesTest$TestMapper.class
 org/apache/flink/runtime/util/TestingFatalErrorHandler.class
 org/apache/flink/streaming/util/typeutils/FieldAccessorTest$ArrayInPojo.class
 org/apache/flink/optimizer/custompartition/GroupingPojoTranslationTest$Pojo2.class
+org/apache/flink/runtime/executiongraph/restart/LatchedRestarter.class
 org/apache/flink/runtime/operators/testutils/BinaryOperatorTestBase.class
 org/apache/flink/runtime/io/network/partition/consumer/UnionInputGateTest.class
 org/apache/flink/runtime/checkpoint/CheckpointIDCounterTest$StandaloneCheckpointIDCounterTest.class
@@ -1363,6 +1366,7 @@ org/apache/flink/runtime/operators/testutils/InfiniteInputIterator.class
 org/apache/flink/runtime/operators/ReduceTaskTest$1.class
 org/apache/flink/runtime/util/StartupUtils.class
 org/apache/flink/runtime/query/KvStateLocationRegistryTest.class
+org/apache/flink/runtime/executiongraph/ExecutionGraphRestartTest$TriggeredRestartStrategy.class
 org/apache/flink/runtime/io/network/partition/PipelinedSubpartitionTest$4.class
 org/apache/flink/runtime/io/network/api/serialization/PagedViewsTest$TestOutputView.class
 org/apache/flink/runtime/io/network/api/serialization/types/BooleanType.class
@@ -1736,6 +1740,7 @@ org/apache/flink/runtime/jobmanager/scheduler/SchedulerIsolatedTasksTest.class
 org/apache/flink/streaming/graph/StreamingJobGraphGeneratorNodeHashTest$1.class
 org/apache/flink/optimizer/operators/JoinWithDistributionTest$JoinFunc.class
 org/apache/flink/streaming/runtime/operators/windowing/WindowOperatorTest$SessionWindowFunction.class
+org/apache/flink/runtime/executiongraph/restart/FailureRateRestartStrategyTest.class
 org/apache/flink/optimizer/custompartition/GroupingPojoTranslationTest$1.class
 org/apache/flink/streaming/api/operators/co/KeyedCoProcessOperatorTest$EventTimeTriggeringProcessFunction.class
 org/apache/flink/streaming/api/operators/FoldApplyWindowFunctionTest.class
@@ -1747,6 +1752,7 @@ org/apache/flink/runtime/akka/QuarantineMonitorTest$Watchee$1.class
 org/apache/flink/streaming/api/DataStreamTest$8.class
 org/apache/flink/runtime/util/NonReusingKeyGroupedIteratorTest.class
 org/apache/flink/runtime/operators/testutils/TaskCancelThread.class
+org/apache/flink/runtime/executiongraph/restart/NoOpRestarter.class
 org/apache/flink/runtime/io/network/api/serialization/types/ShortType.class
 org/apache/flink/runtime/operators/hash/HashTableTest$LongIterator.class
 org/apache/flink/runtime/operators/drivers/ReduceDriverTest$ConcatSumFirstReducer.class
@@ -2027,6 +2033,7 @@ org/apache/flink/runtime/blob/BlobCacheSuccessTest.class
 org/apache/flink/streaming/api/operators/async/queue/StreamElementQueueTest$4.class
 org/apache/flink/streaming/runtime/operators/windowing/WindowOperatorContractTest$6.class
 org/apache/flink/optimizer/plantranslate/JobGraphGeneratorTest.class
+org/apache/flink/runtime/state/OperatorStateBackendTest$VerifyingIntSerializer.class
 org/apache/flink/runtime/state/StateBackendTestBase$3.class
 org/apache/flink/streaming/api/operators/StreamGroupedFoldTest$MyFolder.class
 org/apache/flink/streaming/runtime/operators/windowing/WindowOperatorTest$2.class
@@ -2039,6 +2046,7 @@ org/apache/flink/runtime/checkpoint/CheckpointCoordinatorMasterHooksTest$LongSer
 org/apache/flink/streaming/runtime/tasks/BlockingCheckpointsTest$1.class
 org/apache/flink/streaming/runtime/operators/windowing/KeyMapPutIfAbsentTest.class
 org/apache/flink/runtime/operators/CrossTaskTest$MockFailingCrossStub.class
+org/apache/flink/runtime/executiongraph/ExecutionGraphRestartTest$TriggeredRestartStrategy$1.class
 org/apache/flink/runtime/operators/testutils/UniformRecordGenerator.class
 org/apache/flink/runtime/checkpoint/CheckpointStateRestoreTest$1.class
 org/apache/flink/runtime/io/network/netty/NettyServerLowAndHighWatermarkTest$TestLowAndHighWatermarkHandler.class
@@ -2074,6 +2082,7 @@ org/apache/flink/runtime/blob/BlobClientTest.class
 org/apache/flink/runtime/leaderelection/ZooKeeperLeaderRetrievalTest$FindConnectingAddress.class
 org/apache/flink/runtime/operators/JoinTaskTest$MockDelayingMatchStub.class
 org/apache/flink/runtime/query/netty/KvStateClientTest$4.class
+org/apache/flink/runtime/metrics/MetricRegistryTest$FailingReporter.class
 org/apache/flink/runtime/rpc/akka/AkkaRpcServiceTest$4.class
 org/apache/flink/runtime/testutils/DirectScheduledExecutorService.class
 org/apache/flink/streaming/runtime/operators/windowing/WindowOperatorContractTest$7.class
@@ -2143,6 +2152,7 @@ org/apache/flink/runtime/operators/testutils/UnregisteredTaskMetricsGroup.class
 org/apache/flink/runtime/checkpoint/CheckpointPropertiesTest.class
 org/apache/flink/runtime/metrics/TaskManagerMetricsTest$1$1.class
 org/apache/flink/streaming/runtime/tasks/BlockingCheckpointsTest.class
+org/apache/flink/runtime/checkpoint/CheckpointSettingsSerializableTest$CustomStateBackend.class
 org/apache/flink/runtime/jobgraph/JobTaskVertexTest$TestException.class
 org/apache/flink/runtime/io/network/api/writer/RecordWriterTest$5.class
 org/apache/flink/runtime/io/network/api/writer/RecordWriterTest$2.class
@@ -2178,6 +2188,7 @@ org/apache/flink/runtime/io/network/buffer/BufferPoolFactoryTest.class
 org/apache/flink/client/testjar/WordCount$Tokenizer.class
 org/apache/flink/optimizer/java/GroupReduceCompilationTest$CombineReducer.class
 org/apache/flink/runtime/rpc/akka/AkkaRpcServiceTest$6.class
+org/apache/flink/runtime/executiongraph/utils/NotCancelAckingTaskGateway.class
 org/apache/flink/runtime/io/network/partition/PipelinedSubpartitionTest$2.class
 org/apache/flink/runtime/metrics/dump/MetricQueryServiceTest.class
 org/apache/flink/runtime/metrics/groups/AbstractMetricGroupTest$TestReporter2.class
@@ -2283,6 +2294,7 @@ org/apache/flink/runtime/checkpoint/CheckpointCoordinatorTest$2.class
 org/apache/flink/runtime/io/network/DataExchangeModeTest.class
 org/apache/flink/optimizer/custompartition/CustomPartitioningTest$TestKeySelectorInt.class
 org/apache/flink/runtime/jobmanager/JobManagerTest$3$1.class
+org/apache/flink/runtime/executiongraph/ExecutionGraphRestartTest$2.class
 org/apache/flink/runtime/util/AtomicDisposableReferenceCounterTest$1.class
 org/apache/flink/runtime/operators/CombinerOversizedRecordsTest.class
 org/apache/flink/client/CliFrontendRunTest$RunTestingCliFrontend.class
@@ -2327,6 +2339,7 @@ org/apache/flink/runtime/clusterframework/overlays/HadoopUserOverlayTest$1.class
 org/apache/flink/runtime/query/netty/KvStateClientTest$2.class
 org/apache/flink/runtime/taskmanager/TaskManagerTest$6.class
 org/apache/flink/streaming/runtime/operators/windowing/TimeWindowTranslationTest$DummyFolder.class
+org/apache/flink/runtime/executiongraph/ExecutionGraphRestartTest$1.class
 org/apache/flink/runtime/taskmanager/TaskCancelAsyncProducerConsumerITCase$AsyncProducer.class
 org/apache/flink/runtime/concurrent/FlinkFutureTest$5.class
 org/apache/flink/streaming/api/operators/FoldApplyProcessWindowFunctionTest$5.class

@@ -3,7 +3,7 @@
   <parent>
     <artifactId>flink-libraries</artifactId>
     <groupId>org.apache.flink</groupId>
-    <version>1.3.0</version>
+    <version>1.3.2</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -101,7 +101,7 @@
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-scala_2.10</artifactId>
-      <version>1.3.0</version>
+      <version>1.3.2</version>
       <scope>provided</scope>
       <exclusions>
         <exclusion>
@@ -161,7 +161,7 @@
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-clients_2.10</artifactId>
-      <version>1.3.0</version>
+      <version>1.3.2</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>
@@ -189,7 +189,7 @@
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-test-utils_2.10</artifactId>
-      <version>1.3.0</version>
+      <version>1.3.2</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>

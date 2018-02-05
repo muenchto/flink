@@ -1,4 +1,4 @@
-Comparing /home/adrian/.m2/repository/org/apache/flink/flink-streaming-scala_2.10/1.1.4/flink-streaming-scala_2.10-1.1.4.jar with /home/adrian/Masterarbeit/flink/flink-streaming-scala/target/flink-streaming-scala_2.10-1.3.0.jar:
+Comparing /home/adrian/.m2/repository/org/apache/flink/flink-streaming-scala_2.10/1.1.4/flink-streaming-scala_2.10-1.1.4.jar with /home/adrian/Masterarbeit/Code/flink/flink-streaming-scala/target/flink-streaming-scala_2.10-1.3.2.jar:
 ***  MODIFIED CLASS: PUBLIC org.apache.flink.streaming.api.scala.AllWindowedStream  (not serializable)
 	+++  NEW METHOD: PUBLIC(+) org.apache.flink.streaming.api.scala.DataStream fold(java.lang.Object, org.apache.flink.api.common.functions.FoldFunction, org.apache.flink.streaming.api.scala.function.AllWindowFunction, org.apache.flink.api.common.typeinfo.TypeInformation, org.apache.flink.api.common.typeinfo.TypeInformation)
 	+++  NEW METHOD: PUBLIC(+) org.apache.flink.streaming.api.scala.DataStream fold(java.lang.Object, scala.Function2, scala.Function3, org.apache.flink.api.common.typeinfo.TypeInformation, org.apache.flink.api.common.typeinfo.TypeInformation)

@@ -9,9 +9,9 @@ flink-table
 From: 'an unknown organization'
   - Guava: Google Core Libraries for Java (https://github.com/google/guava/guava) com.google.guava:guava:bundle:19.0
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - commons-compiler (https://github.com/janino-compiler/janino) org.codehaus.janino:commons-compiler:jar:3.0.6
+  - commons-compiler (http://janino-compiler.github.io/commons-compiler/) org.codehaus.janino:commons-compiler:jar:3.0.7
     License: New BSD License  (https://raw.githubusercontent.com/janino-compiler/janino/master/LICENSE)
-  - janino (http://janino-compiler.github.io/janino/) org.codehaus.janino:janino:jar:3.0.6
+  - janino (http://janino-compiler.github.io/janino/) org.codehaus.janino:janino:jar:3.0.7
     License: New BSD License  (https://raw.githubusercontent.com/janino-compiler/janino/master/LICENSE)
   - Javassist (http://www.javassist.org/) org.javassist:javassist:bundle:3.18.2-GA
     License: MPL 1.1  (http://www.mozilla.org/MPL/MPL-1.1.html)    License: LGPL 2.1  (http://www.gnu.org/licenses/lgpl-2.1.html)    License: Apache License 2.0  (http://www.apache.org/licenses/)
@@ -37,7 +37,7 @@ From: 'The Apache Software Foundation' (https://www.apache.org/)
     License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
   - Calcite Linq4j (https://calcite.apache.org/calcite-linq4j) org.apache.calcite:calcite-linq4j:jar:1.12.0
     License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
-  - force-shading (https://www.apache.org/force-shading/) org.apache.flink:force-shading:jar:1.3.0
+  - force-shading (https://www.apache.org/force-shading/) org.apache.flink:force-shading:jar:1.3.2
     License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
 
 

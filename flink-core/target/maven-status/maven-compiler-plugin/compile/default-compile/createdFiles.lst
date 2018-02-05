@@ -367,6 +367,7 @@ org/apache/flink/api/common/functions/AbstractRichFunction.class
 org/apache/flink/api/common/operators/CompilerHints.class
 org/apache/flink/api/common/operators/util/JoinHashMap$Prober.class
 org/apache/flink/api/common/CodeAnalysisMode.class
+org/apache/flink/core/fs/FileSystemKind.class
 org/apache/flink/api/common/typeutils/base/FloatComparator.class
 org/apache/flink/types/parser/BooleanValueParser.class
 org/apache/flink/api/common/operators/base/FilterOperatorBase.class
@@ -393,6 +394,7 @@ org/apache/flink/util/AbstractID.class
 org/apache/flink/api/common/aggregators/AggregatorRegistry.class
 org/apache/flink/api/java/tuple/builder/Tuple3Builder.class
 org/apache/flink/api/common/typeinfo/AtomicType.class
+org/apache/flink/util/StateMigrationException.class
 org/apache/flink/core/memory/SeekableDataOutputView.class
 org/apache/flink/api/common/io/FileOutputFormat$OutputDirectoryMode.class
 org/apache/flink/api/common/io/DelimitedInputFormat.class
@@ -520,6 +522,7 @@ org/apache/flink/util/IterableIterator.class
 org/apache/flink/types/KeyFieldOutOfBoundsException.class
 org/apache/flink/api/java/typeutils/runtime/RowSerializer.class
 org/apache/flink/api/common/typeutils/base/array/FloatPrimitiveArraySerializer.class
+org/apache/flink/api/common/typeutils/TypeSerializerSerializationUtil$SerialUIDMismatchTolerantInputStream.class
 org/apache/flink/api/common/operators/base/DeltaIterationBase$SolutionSetPlaceHolder.class
 org/apache/flink/api/common/functions/ReduceFunction.class
 org/apache/flink/types/ResettableValue.class

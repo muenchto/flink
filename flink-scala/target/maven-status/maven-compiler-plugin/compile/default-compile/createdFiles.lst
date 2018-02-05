@@ -1,0 +1,3 @@
+org/apache/flink/api/scala/typeutils/TraversableSerializerConfigSnapshot.class
+org/apache/flink/api/scala/typeutils/ScalaTrySerializerConfigSnapshot.class
+org/apache/flink/api/scala/typeutils/ScalaOptionSerializerConfigSnapshot.class

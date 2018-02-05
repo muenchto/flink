@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<japicmp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" accessModifier="PUBLIC" creationTimestamp="2017-12-17T01:17:30.992+0100" ignoreMissingClasses="false" newJar="/home/adrian/Masterarbeit/Code/flink/flink-scala/target/flink-scala_2.10-1.3.0.jar" oldJar="/home/adrian/.m2/repository/org/apache/flink/flink-scala_2.10/1.1.4/flink-scala_2.10-1.1.4.jar" onlyBinaryIncompatibleModifications="false" onlyModifications="true" packagesExclude="@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.Internal;@org.apache.flink.annotation.Internal;@org.apache.flink.annotation.Internal;@org.apache.flink.annotation.Internal;@org.apache.flink.annotation.Internal" packagesInclude="@org.apache.flink.annotation.Public;@org.apache.flink.annotation.Public;@org.apache.flink.annotation.Public;@org.apache.flink.annotation.Public;@org.apache.flink.annotation.Public" semanticVersioning="0.1.0" title="JApiCmp-Report" xsi:noNamespaceSchemaLocation="japicmp.xsd">
+<japicmp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" accessModifier="PUBLIC" creationTimestamp="2018-02-05T14:02:29.390+0100" ignoreMissingClasses="false" newJar="/home/adrian/Masterarbeit/Code/flink/flink-scala/target/flink-scala_2.10-1.3.2.jar" oldJar="/home/adrian/.m2/repository/org/apache/flink/flink-scala_2.10/1.1.4/flink-scala_2.10-1.1.4.jar" onlyBinaryIncompatibleModifications="false" onlyModifications="true" packagesExclude="@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.PublicEvolving;@org.apache.flink.annotation.Internal;@org.apache.flink.annotation.Internal;@org.apache.flink.annotation.Internal;@org.apache.flink.annotation.Internal;@org.apache.flink.annotation.Internal" packagesInclude="@org.apache.flink.annotation.Public;@org.apache.flink.annotation.Public;@org.apache.flink.annotation.Public;@org.apache.flink.annotation.Public;@org.apache.flink.annotation.Public" semanticVersioning="0.1.0" title="JApiCmp-Report" xsi:noNamespaceSchemaLocation="japicmp.xsd">
     <classes>
         <class binaryCompatible="true" changeStatus="UNCHANGED" fullyQualifiedName="org.apache.flink.api.scala.DataSet" javaObjectSerializationCompatible="NOT_SERIALIZABLE" javaObjectSerializationCompatibleAsString="not serializable" sourceCompatible="true">
             <annotations>
@@ -370,7 +370,7 @@
                 <compatibilityChanges/>
             </superclass>
         </class>
-        <class binaryCompatible="true" changeStatus="UNCHANGED" fullyQualifiedName="org.apache.flink.api.scala.typeutils.OptionTypeInfo" javaObjectSerializationCompatible="SERIALIZABLE_INCOMPATIBLE_DEFAULT_SERIALVERSIONUID_CHANGED" javaObjectSerializationCompatibleAsString="default serialVersionUID changed" sourceCompatible="true">
+        <class binaryCompatible="true" changeStatus="MODIFIED" fullyQualifiedName="org.apache.flink.api.scala.typeutils.OptionTypeInfo" javaObjectSerializationCompatible="SERIALIZABLE_INCOMPATIBLE_DEFAULT_SERIALVERSIONUID_CHANGED" javaObjectSerializationCompatibleAsString="default serialVersionUID changed" sourceCompatible="true">
             <annotations>
                 <annotation binaryCompatible="true" changeStatus="MODIFIED" fullyQualifiedName="scala.reflect.ScalaSignature" sourceCompatible="true">
                     <compatibilityChanges/>
@@ -378,7 +378,7 @@
                         <element binaryCompatible="true" changeStatus="MODIFIED" name="bytes" sourceCompatible="true">
                             <compatibilityChanges/>
                             <newElementValues>
-<newElementValue fullyQualifiedName="java.lang.String" name="n.a." type="String" value="����c�B���=�ab�9uS&amp;gt;tG+�9f�:4wN���&amp;#x9;�IA/�9fkRLGn�����&amp;#x9;Qa]2bY�T!a�������N��&amp;#xA;��)a&amp;#xD;\5oW*�1�D��CB�7&amp;#xD;[3��5&amp;#x9;1a�:h��)2�E��&amp;apos;&amp;#xD;��#�&amp;#x9;�%]IR&amp;quot;A&amp;#xA;��Q)���;za�LgNZ8��Y1�AB2p[6|g.���&amp;apos;&amp;#x9;yA+�9f�:4wN]7bi&amp;amp;|g����71�A!�����i&amp;quot;!�+��y��CA�&amp;quot;���#&amp;quot;A�&amp;#xA;�&amp;#x9;�#a�(pi&amp;quot;Lgn�&amp;#x9;�?�2�BA�!��y��^5p]B�!d&amp;#xA;��Q��&amp;#xD;!����F�aD�&amp;#x9;�?-J!������s��E��]eI!aL&amp;#xA;���#x.\5d)f�X&amp;#xD;��2�&amp;#x9;�&amp;#xD;�&amp;quot;�3�1)G.Z7UsB,�J�4p+���c�&amp;#xA;�M!AQ��B�B�%1&amp;apos;A�fY�lG+�9f�:4w�&amp;#x9;��o�!&amp;#x9;�O��y%t��� ��eZ�����Mei�A���cY�&amp;#xD;a&amp;#xD;��{�!&amp;#x9;EP��SN��m]5d)f�X&amp;#xD;F�@!&amp;#x9;y�)��BA&amp;#x9;9!i\8mK�t�F��D!&amp;#x9;!u)D�F�&amp;#x9;1�&amp;quot;��b]:|G/�;j_:L!�S#��A+(&amp;#xD;\5d�Z|GN^5oO&amp;quot;)!&amp;#xA;�C!}�Y�n�+va2,G+�9fQ&amp;#x9;I5&amp;#x9;C�N���c(A�jg.+��V=qK&amp;quot;�Aj���!�!&amp;#x9;%U��O�$Hk�;bY�KW&amp;#xD;�3t)���CA�T�&amp;#x9;!�EA�J]RD#aT&amp;quot;&amp;#x9;�]�A�I)���,G/�:jifD#AV&amp;quot;&amp;#x9;�i�A�I.���,G�V=qK�c�m]:��q�2!�1��&amp;#x9;yb,��`A�1�K]3eK�L!!�2��&amp;#xD;c�m]:��}��FA-D��)��&amp;quot;�g�Q9W&amp;#xD;^$f]���n�)be�lW&amp;#xD;^3sgR&amp;#x9;q&amp;#xD;��i[&amp;gt;�X&amp;quot;A5��)\��B;uS2T��\��U�4�-��oS&amp;#xA;�Q*�9��u��BA9c���FO]5oOB�1/�&amp;#x9;�%]!�C��v&amp;#x9;%1H-!A�����FA�`IIB#�Z&amp;quot;&amp;#x9;�e�A�&amp;#x9;&amp;gt;�!&amp;#xD;�X-�;f�&amp;gt;l�/�:bi&amp;gt;�H#B&amp;gt;�����c�?35&amp;#x9;QP���+%�q0 ��)f�XmQ8na���&amp;#xD;^8s��&amp;#x9;���a��I�m]2f]�Lgn�����A��AA��=)�0Z2vi&amp;amp;|gnQ8oM&amp;amp;&amp;lt;��BA���i�!F����)&amp;quot;aD#yK�,H/[8o�&amp;gt;tg-[4)�a��bBA�����qC��GJ,�&amp;#xD;^3TKJL�&amp;#xD;\5{KJ$B!!�� A!A0a���&amp;#xD;&amp;#x9;i&amp;quot; ��)f�XmU3sS�d�N_3s�!&amp;#x9;9!a�A��%�fAA&amp;#xA;�&amp;quot;9�Q���B�����;p&amp;apos;R��N\4��=Dq!a��&amp;#x9;�&amp;#xA;i#��fcV�Gn����=�bBA��S�&amp;#xD;AK��_&amp;#xA;T�bBA�����qG�&amp;#x9;G�tW)];bYR�q(!�&amp;#x9;��E�1�a�U!1�Q���BE���[1tQ�{G-�������c�#�D%��QI#�&amp;#xD;A+(&amp;#xD;\5d�">
+<newElementValue fullyQualifiedName="java.lang.String" name="n.a." type="String" value="���Mc�B���=�ab�9uS&amp;gt;tG+�9f�:4wN���&amp;#x9;�IA/�9fkRLGn�����&amp;#x9;Qa]2bY�T!a�������N��&amp;#xA;��)a&amp;#xD;\5oW*�1�D��CB�7&amp;#xD;[3��5&amp;#x9;1a�:h��)2�E��&amp;apos;&amp;#xD;��#�&amp;#x9;�%]IR&amp;quot;A&amp;#xA;��Q)���;za�LgNZ8��Y1�AB2p[6|g.���&amp;apos;&amp;#x9;yA+�9f�:4wN]7bi&amp;amp;|g����71�A!�����i&amp;quot;!�+��y��CA�&amp;quot;���#&amp;quot;A�&amp;#xA;�&amp;#x9;�#a�(pi&amp;quot;Lgn�&amp;#x9;�?�2�BA�!��y��^5p]B�!d&amp;#xA;��Q��&amp;#xD;!����F�aD�&amp;#x9;�?-J!������s��E��]eI!aL&amp;#xA;���#x.\5d)f�X&amp;#xD;��2�&amp;#x9;�&amp;#xD;�&amp;quot;�3�1)G.Z7UsB,�J�4p+���c�&amp;#xA;�M!AQ��B�B�%1&amp;apos;A�fY�lG+�9f�:4w�&amp;#x9;��o�!&amp;#x9;�O��y%t��� ��eZ�����Mei�A���cY�&amp;#xD;a&amp;#xD;��{�!&amp;#x9;EP��SN��m]5d)f�X&amp;#xD;F�@!&amp;#x9;y�)��BA&amp;#x9;9!i\8mK�t�F��D!&amp;#x9;!u)D�F�&amp;#x9;1�&amp;quot;��b]:|G/�;j_:L!�S#��A+(&amp;#xD;\5d�Z|GN^5oO&amp;quot;)!&amp;#xA;�C!}�Y�n�+va2,G+�9fQ&amp;#x9;I5&amp;#x9;C�N���c(A�jg.+��V=qK&amp;quot;�Aj���!�!&amp;#x9;%U��O�$Hk�;bY�KW&amp;#xD;�3t)���CA�T�&amp;#x9;!�EA�J]RD#aT&amp;quot;&amp;#x9;�]�A�I)���,G/�:jifD#AV&amp;quot;&amp;#x9;�i�A�I.���,G�V=qK�c�m]:��q�2!�1��&amp;#x9;yb,��`A�1�K]3eK�L!!�2��&amp;#xD;c�m]:��}��FA-D��)��&amp;quot;�g�Q9W&amp;#xD;^$f]���n�)be�lW&amp;#xD;^3sgR&amp;#x9;q&amp;#xD;��i[&amp;gt;�X&amp;quot;A5��)\��B;uS2T��\��U�4�-��oS&amp;#xA;�Q*�9��u��BA9c���FO]5oOB�1/�&amp;#x9;�%]!�C��v&amp;#x9;%1H-!A�����FA�`IIB#�Z&amp;quot;&amp;#x9;�e�A�&amp;#x9;&amp;gt;�!&amp;#xD;�X-�;f�&amp;gt;l�/�:bi&amp;gt;�H#B&amp;gt;�����c�?35&amp;#x9;QP���+%�q0 ��)f�XmQ8na���&amp;#xD;^8s��&amp;#x9;���a��I�m]2f]�Lgn�����A��AA��=)�0Z2vi&amp;amp;|gnQ8oM&amp;amp;&amp;lt;��BA���i�!F����)&amp;quot;aD#yK�,H/[8o�&amp;gt;tg-[4)�a��bBA�����qC��GJ,�&amp;#xD;^3TKJL�&amp;#xD;\5{KJ$B!!�� A!A0a���&amp;#xD;&amp;#x9;i&amp;quot; ��)f�XmU3sS�d�N_3s�!&amp;#x9;9!a�A��%�fAA&amp;#xA;�&amp;quot;9�Q���B�����;p&amp;apos;R��N\4��=Dq!a��&amp;#x9;�&amp;#xA;i#��fcV�Gn����=�bBA��S�&amp;#xD;AK��_&amp;#xA;T�bBA�����qG�&amp;#x9;G�tW)];bYR�q(!�&amp;#x9;��E�1�a�U!1�Q���BE���[1tQ�{G-������A������,G/�7f[RK�/Z%oM&amp;gt;DC!a��FA�A)a�&amp;#xA;��%SIA&amp;#x9;WSNL&amp;apos;&amp;#xD;\3G_J$Vm�;j]�D3�AA&amp;apos;!&amp;#xD;!�qJ���#*%A�)vE2L7&amp;#xD;">
     <values/>
 </newElementValue>
                             </newElementValues>
@@ -399,7 +399,30 @@
             <constructors/>
             <fields/>
             <interfaces/>
-            <methods/>
+            <methods>
+                <method binaryCompatible="true" changeStatus="NEW" name="getElemTypeInfo" newLineNumber="90" oldLineNumber="n.a." sourceCompatible="true">
+                    <annotations>
+                        <annotation binaryCompatible="true" changeStatus="NEW" fullyQualifiedName="org.apache.flink.annotation.VisibleForTesting" sourceCompatible="true">
+                            <compatibilityChanges/>
+                            <elements/>
+                        </annotation>
+                    </annotations>
+                    <attributes>
+                        <attribute changeStatus="NEW" newValue="NON_SYNTHETIC" oldValue="n.a."/>
+                    </attributes>
+                    <compatibilityChanges/>
+                    <modifiers>
+                        <modifier changeStatus="NEW" newValue="NON_FINAL" oldValue="n.a."/>
+                        <modifier changeStatus="NEW" newValue="NON_STATIC" oldValue="n.a."/>
+                        <modifier changeStatus="NEW" newValue="PUBLIC" oldValue="n.a."/>
+                        <modifier changeStatus="NEW" newValue="NON_ABSTRACT" oldValue="n.a."/>
+                        <modifier changeStatus="NEW" newValue="NON_BRIDGE" oldValue="n.a."/>
+                        <modifier changeStatus="NEW" newValue="NON_SYNTHETIC" oldValue="n.a."/>
+                    </modifiers>
+                    <parameters/>
+                    <returnType changeStatus="NEW" newValue="org.apache.flink.api.common.typeinfo.TypeInformation" oldValue="n.a."/>
+                </method>
+            </methods>
             <modifiers>
                 <modifier changeStatus="UNCHANGED" newValue="NON_FINAL" oldValue="NON_FINAL"/>
                 <modifier changeStatus="UNCHANGED" newValue="NON_STATIC" oldValue="NON_STATIC"/>
@@ -407,7 +430,7 @@
                 <modifier changeStatus="UNCHANGED" newValue="NON_ABSTRACT" oldValue="NON_ABSTRACT"/>
                 <modifier changeStatus="UNCHANGED" newValue="NON_SYNTHETIC" oldValue="NON_SYNTHETIC"/>
             </modifiers>
-            <serialVersionUid serialVersionUidDefaultNew="185770958565763447" serialVersionUidDefaultOld="3854567845858426184" serialVersionUidInClassNew="n.a." serialVersionUidInClassOld="n.a." serializableNew="true" serializableOld="true"/>
+            <serialVersionUid serialVersionUidDefaultNew="3485656671828881825" serialVersionUidDefaultOld="3854567845858426184" serialVersionUidInClassNew="n.a." serialVersionUidInClassOld="n.a." serializableNew="true" serializableOld="true"/>
             <superclass binaryCompatible="true" changeStatus="UNCHANGED" sourceCompatible="true" superclassNew="org.apache.flink.api.common.typeinfo.TypeInformation" superclassOld="org.apache.flink.api.common.typeinfo.TypeInformation">
                 <compatibilityChanges/>
             </superclass>

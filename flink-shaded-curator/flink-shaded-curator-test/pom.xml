@@ -24,11 +24,7 @@
 	<parent>
 		<groupId>org.apache.flink</groupId>
 		<artifactId>flink-shaded-curator</artifactId>
-<<<<<<< HEAD
 		<version>1.3.2</version>
-=======
-		<version>1.3.0</version>
->>>>>>> Commit for release 1.3.0
 		<relativePath>..</relativePath>
 	</parent>
 

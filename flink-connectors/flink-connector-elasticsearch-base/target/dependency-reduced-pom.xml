@@ -57,6 +57,12 @@
       <artifactId>elasticsearch</artifactId>
       <version>1.7.1</version>
       <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>*</artifactId>
+          <groupId>org.ow2.asm</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.flink</groupId>
@@ -114,14 +120,6 @@
           <groupId>org.javassist</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>guava</artifactId>
-          <groupId>com.google.guava</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>asm-all</artifactId>
-          <groupId>org.ow2.asm</groupId>
-        </exclusion>
-        <exclusion>
           <artifactId>scala-library</artifactId>
           <groupId>org.scala-lang</groupId>
         </exclusion>
@@ -160,10 +158,6 @@
         <exclusion>
           <artifactId>chill_2.10</artifactId>
           <groupId>com.twitter</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>flink-shaded-curator-recipes</artifactId>
-          <groupId>org.apache.flink</groupId>
         </exclusion>
         <exclusion>
           <artifactId>flink-core</artifactId>

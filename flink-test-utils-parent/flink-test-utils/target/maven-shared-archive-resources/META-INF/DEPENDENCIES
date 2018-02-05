@@ -257,27 +257,27 @@ From: 'The Apache Software Foundation' (http://www.apache.org/)
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
 
 From: 'The Apache Software Foundation' (https://www.apache.org/)
-  - flink-annotations (http://flink.apache.org/flink-annotations) org.apache.flink:flink-annotations:jar:1.3.0
+  - flink-annotations (http://flink.apache.org/flink-annotations) org.apache.flink:flink-annotations:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-clients (http://flink.apache.org/flink-clients_2.10) org.apache.flink:flink-clients_2.10:jar:1.3.0
+  - flink-clients (http://flink.apache.org/flink-clients_2.10) org.apache.flink:flink-clients_2.10:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-core (http://flink.apache.org/flink-core) org.apache.flink:flink-core:jar:1.3.0
+  - flink-core (http://flink.apache.org/flink-core) org.apache.flink:flink-core:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-java (http://flink.apache.org/flink-java) org.apache.flink:flink-java:jar:1.3.0
+  - flink-java (http://flink.apache.org/flink-java) org.apache.flink:flink-java:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-metrics-core (http://flink.apache.org/flink-metrics/flink-metrics-core) org.apache.flink:flink-metrics-core:jar:1.3.0
+  - flink-metrics-core (http://flink.apache.org/flink-metrics/flink-metrics-core) org.apache.flink:flink-metrics-core:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-optimizer (http://flink.apache.org/flink-optimizer_2.10) org.apache.flink:flink-optimizer_2.10:jar:1.3.0
+  - flink-optimizer (http://flink.apache.org/flink-optimizer_2.10) org.apache.flink:flink-optimizer_2.10:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-runtime (http://flink.apache.org/flink-runtime_2.10) org.apache.flink:flink-runtime_2.10:jar:1.3.0
+  - flink-runtime (http://flink.apache.org/flink-runtime_2.10) org.apache.flink:flink-runtime_2.10:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-shaded-hadoop2 (http://flink.apache.org/flink-shaded-hadoop/flink-shaded-hadoop2) org.apache.flink:flink-shaded-hadoop2:jar:1.3.0
+  - flink-shaded-hadoop2 (http://flink.apache.org/flink-shaded-hadoop/flink-shaded-hadoop2) org.apache.flink:flink-shaded-hadoop2:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-streaming-java (http://flink.apache.org/flink-streaming-java_2.10) org.apache.flink:flink-streaming-java_2.10:jar:1.3.0
+  - flink-streaming-java (http://flink.apache.org/flink-streaming-java_2.10) org.apache.flink:flink-streaming-java_2.10:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - flink-test-utils-junit (http://flink.apache.org/flink-test-utils-parent/flink-test-utils-junit) org.apache.flink:flink-test-utils-junit:jar:1.3.0
+  - flink-test-utils-junit (http://flink.apache.org/flink-test-utils-parent/flink-test-utils-junit) org.apache.flink:flink-test-utils-junit:jar:1.3.2
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
-  - force-shading (https://www.apache.org/force-shading/) org.apache.flink:force-shading:jar:1.3.0
+  - force-shading (https://www.apache.org/force-shading/) org.apache.flink:force-shading:jar:1.3.2
     License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
 
 From: 'The Netty Project' (http://netty.io/)
@@ -293,6 +293,10 @@ From: 'Typesafe Inc.' (http://www.typesafe.com)
     License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
   - flakka-slf4j (http://akka.io/) com.data-artisans:flakka-slf4j_2.10:jar:2.3-custom
     License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
+
+From: 'xerial.org' (http://www.xerial.org/)
+  - Snappy for Java (http://github.com/xerial/snappy-java/) org.xerial.snappy:snappy-java:bundle:1.0.5
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
 
 
 

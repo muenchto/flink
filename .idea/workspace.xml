@@ -5,7 +5,507 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e3d7fe84-2503-4229-8144-a2ec4df36d2b" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/tasks/StreamTask.java" afterPath="$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/tasks/StreamTask.java" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__com_101tec_zkclient_0_8.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__io_dropwizard_metrics_metrics_core_3_1_0.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__io_dropwizard_metrics_metrics_ganglia_3_1_0.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__io_dropwizard_metrics_metrics_graphite_3_1_0.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__net_sf_jopt_simple_jopt_simple_4_9.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_flink_flink_optimizer_2_10_test_jar_tests_1_3_0.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_kafka_kafka_2_10_0_10_0_1.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_kafka_kafka_clients_0_10_0_1.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_codehaus_janino_commons_compiler_3_0_6.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_codehaus_janino_janino_3_0_6.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_ow2_asm_asm_4_1.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_ow2_asm_asm_commons_4_1.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_xerial_snappy_snappy_java_1_1_1_7.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_xerial_snappy_snappy_java_1_1_2_6.xml" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/.idea/scala_compiler.xml" afterPath="$PROJECT_DIR$/.idea/scala_compiler.xml" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change beforePath="$PROJECT_DIR$/build-target" afterPath="$PROJECT_DIR$/build-target" />
+      <change beforePath="$PROJECT_DIR$/flink-annotations/pom.xml" afterPath="$PROJECT_DIR$/flink-annotations/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-annotations/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-annotations/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-annotations/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-annotations/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-annotations/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-annotations/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-annotations/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-annotations/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-clients/pom.xml" afterPath="$PROJECT_DIR$/flink-clients/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-avro/flink-avro_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-avro/flink-avro_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-avro/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-avro/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-avro/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-avro/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-avro/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-avro/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-avro/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-avro/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-avro/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-avro/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/flink-connector-cassandra_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/flink-connector-cassandra_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/flink-connector-elasticsearch-base_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/flink-connector-elasticsearch-base_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch-base/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/flink-connector-elasticsearch_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/flink-connector-elasticsearch_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/flink-connector-elasticsearch2_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/flink-connector-elasticsearch2_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch2/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/flink-connector-elasticsearch5_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/flink-connector-elasticsearch5_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-elasticsearch5/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/flink-connector-filesystem_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/flink-connector-filesystem_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-filesystem/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/flink-connector-kafka-0.10_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/flink-connector-kafka-0.10_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.10/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/flink-connector-kafka-0.8_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/flink-connector-kafka-0.8_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.8/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/flink-connector-kafka-0.9_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/flink-connector-kafka-0.9_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-0.9/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/flink-connector-kafka-base_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/flink-connector-kafka-base_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kafka-base/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-kinesis/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-kinesis/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/flink-connector-nifi_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/flink-connector-nifi_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-nifi/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/flink-connector-rabbitmq_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/flink-connector-rabbitmq_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-rabbitmq/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/flink-connector-twitter_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/flink-connector-twitter_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-connector-twitter/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/flink-hadoop-compatibility_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/flink-hadoop-compatibility_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/japicmp/japicmp.diff" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/japicmp/japicmp.diff" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/japicmp/japicmp.html" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/japicmp/japicmp.html" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/japicmp/japicmp.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/japicmp/japicmp.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-hadoop-compatibility/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hbase/flink-hbase_2.10.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hbase/flink-hbase_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hbase/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hbase/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hbase/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-hbase/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hbase/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-hbase/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hbase/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-hbase/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hbase/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-hbase/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/flink-hcatalog.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/flink-hcatalog.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-hcatalog/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-jdbc/flink-jdbc.iml" afterPath="$PROJECT_DIR$/flink-connectors/flink-jdbc/flink-jdbc.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-jdbc/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-jdbc/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-connectors/flink-jdbc/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/pom.xml" afterPath="$PROJECT_DIR$/flink-connectors/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-connectors/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-connectors/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-connectors/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/flink-connector-wikiedits_2.10.iml" afterPath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/flink-connector-wikiedits_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/flink-statebackend-rocksdb_2.10.iml" afterPath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/flink-statebackend-rocksdb_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-contrib/flink-statebackend-rocksdb/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/flink-storm-examples_2.10.iml" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/flink-storm-examples_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm-examples/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm/flink-storm_2.10.iml" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm/flink-storm_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm/pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-storm/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-contrib/flink-storm/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/flink-streaming-contrib_2.10.iml" afterPath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/flink-streaming-contrib_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-contrib/flink-streaming-contrib/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/flink-tweet-inputformat_2.10.iml" afterPath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/flink-tweet-inputformat_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-contrib/flink-tweet-inputformat/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/pom.xml" afterPath="$PROJECT_DIR$/flink-contrib/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-contrib/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-contrib/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-contrib/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-core/flink-core.iml" afterPath="$PROJECT_DIR$/flink-core/flink-core.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-core/pom.xml" afterPath="$PROJECT_DIR$/flink-core/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/classes/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-core/target/classes/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/classes/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-core/target/classes/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-core/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/japicmp/japicmp.diff" afterPath="$PROJECT_DIR$/flink-core/target/japicmp/japicmp.diff" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/japicmp/japicmp.html" afterPath="$PROJECT_DIR$/flink-core/target/japicmp/japicmp.html" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/japicmp/japicmp.xml" afterPath="$PROJECT_DIR$/flink-core/target/japicmp/japicmp.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-core/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-core/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-core/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-core/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterPath="$PROJECT_DIR$/flink-core/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-core/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/test-classes/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-core/target/test-classes/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-core/target/test-classes/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-core/target/test-classes/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-dist/flink-dist_2.10.iml" afterPath="$PROJECT_DIR$/flink-dist/flink-dist_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-dist/pom.xml" afterPath="$PROJECT_DIR$/flink-dist/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-dist/src/main/flink-bin/.version.properties" afterPath="$PROJECT_DIR$/flink-dist/src/main/flink-bin/.version.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-dist/target/classes/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-dist/target/classes/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-dist/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-dist/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-dist/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-dist/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-batch/flink-examples-batch_2.10.iml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-batch/flink-examples-batch_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-batch/pom.xml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-batch/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/antrun/build-main.xml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/antrun/build-main.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-batch/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/flink-examples-streaming_2.10.iml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/flink-examples-streaming_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/pom.xml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/antrun/build-main.xml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/antrun/build-main.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-streaming/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-table/flink-examples-table_2.10.iml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-table/flink-examples-table_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-table/pom.xml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-table/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-examples/flink-examples-table/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/flink-examples_2.10.iml" afterPath="$PROJECT_DIR$/flink-examples/flink-examples_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/pom.xml" afterPath="$PROJECT_DIR$/flink-examples/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-examples/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-examples/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-examples/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-fs-tests/flink-fs-tests_2.10.iml" afterPath="$PROJECT_DIR$/flink-fs-tests/flink-fs-tests_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-fs-tests/pom.xml" afterPath="$PROJECT_DIR$/flink-fs-tests/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-fs-tests/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-fs-tests/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-fs-tests/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-fs-tests/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-fs-tests/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-fs-tests/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-fs-tests/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-fs-tests/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-java/flink-java.iml" afterPath="$PROJECT_DIR$/flink-java/flink-java.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-java/pom.xml" afterPath="$PROJECT_DIR$/flink-java/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/classes/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-java/target/classes/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/classes/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-java/target/classes/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-java/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/japicmp/japicmp.diff" afterPath="$PROJECT_DIR$/flink-java/target/japicmp/japicmp.diff" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/japicmp/japicmp.html" afterPath="$PROJECT_DIR$/flink-java/target/japicmp/japicmp.html" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/japicmp/japicmp.xml" afterPath="$PROJECT_DIR$/flink-java/target/japicmp/japicmp.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-java/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-java/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-java/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-java/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-java8/pom.xml" afterPath="$PROJECT_DIR$/flink-java8/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/flink-cep-scala_2.10.iml" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/flink-cep-scala_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep-scala/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep/flink-cep_2.10.iml" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep/flink-cep_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-cep/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-libraries/flink-cep/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/flink-gelly-examples_2.10.iml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/flink-gelly-examples_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-examples/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/flink-gelly-scala_2.10.iml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/flink-gelly-scala_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly-scala/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly/flink-gelly_2.10.iml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly/flink-gelly_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-libraries/flink-gelly/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-ml/flink-ml_2.10.iml" afterPath="$PROJECT_DIR$/flink-libraries/flink-ml/flink-ml_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-ml/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-ml/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-ml/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-ml/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-ml/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-libraries/flink-ml/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-ml/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/flink-ml/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-ml/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/flink-ml/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-python/flink-python_2.10.iml" afterPath="$PROJECT_DIR$/flink-libraries/flink-python/flink-python_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-python/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-python/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-python/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-python/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-python/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-libraries/flink-python/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-python/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/flink-python/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-python/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/flink-python/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-python/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-libraries/flink-python/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-table/flink-table_2.10.iml" afterPath="$PROJECT_DIR$/flink-libraries/flink-table/flink-table_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-table/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-table/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-table/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/flink-table/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-table/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-libraries/flink-table/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-table/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/flink-table/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-table/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/flink-table/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/flink-table/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-libraries/flink-table/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/pom.xml" afterPath="$PROJECT_DIR$/flink-libraries/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-libraries/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-libraries/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-libraries/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-mesos/flink-mesos_2.10.iml" afterPath="$PROJECT_DIR$/flink-mesos/flink-mesos_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-mesos/pom.xml" afterPath="$PROJECT_DIR$/flink-mesos/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-mesos/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-mesos/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-mesos/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-mesos/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-mesos/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-mesos/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-mesos/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-mesos/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-mesos/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-mesos/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/japicmp/japicmp.diff" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/japicmp/japicmp.diff" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/japicmp/japicmp.html" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/japicmp/japicmp.html" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/japicmp/japicmp.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/japicmp/japicmp.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-core/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/flink-metrics-datadog.iml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/flink-metrics-datadog.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-datadog/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/flink-metrics-dropwizard.iml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/flink-metrics-dropwizard.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-dropwizard/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/flink-metrics-ganglia.iml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/flink-metrics-ganglia.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/flink-metrics-graphite.iml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/flink-metrics-graphite.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/flink-metrics-jmx.iml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/flink-metrics-jmx.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/flink-metrics-statsd.iml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/flink-metrics-statsd.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/pom.xml" afterPath="$PROJECT_DIR$/flink-metrics/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-metrics/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-metrics/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-metrics/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-optimizer/pom.xml" afterPath="$PROJECT_DIR$/flink-optimizer/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/src/main/resources/archetype-resources/pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/src/main/resources/archetype-resources/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/target/classes/archetype-resources/pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/target/classes/archetype-resources/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-java/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/src/main/resources/archetype-resources/pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/src/main/resources/archetype-resources/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/target/classes/archetype-resources/pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/target/classes/archetype-resources/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/pom.xml" afterPath="$PROJECT_DIR$/flink-quickstart/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-quickstart/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-quickstart/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-quickstart/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime-web/flink-runtime-web_2.10.iml" afterPath="$PROJECT_DIR$/flink-runtime-web/flink-runtime-web_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime-web/pom.xml" afterPath="$PROJECT_DIR$/flink-runtime-web/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime-web/target/classes/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-runtime-web/target/classes/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime-web/target/classes/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-runtime-web/target/classes/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime-web/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-runtime-web/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime-web/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-runtime-web/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime-web/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-runtime-web/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime-web/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-runtime-web/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/flink-runtime_2.10.iml" afterPath="$PROJECT_DIR$/flink-runtime/flink-runtime_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/pom.xml" afterPath="$PROJECT_DIR$/flink-runtime/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/src/main/resources/.version.properties" afterPath="$PROJECT_DIR$/flink-runtime/src/main/resources/.version.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/target/classes/.version.properties" afterPath="$PROJECT_DIR$/flink-runtime/target/classes/.version.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/target/classes/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-runtime/target/classes/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-runtime/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-runtime/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-runtime/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-runtime/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-runtime/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-runtime/target/test-classes/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-runtime/target/test-classes/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-scala-shell/flink-scala-shell_2.10.iml" afterPath="$PROJECT_DIR$/flink-scala-shell/flink-scala-shell_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-scala-shell/pom.xml" afterPath="$PROJECT_DIR$/flink-scala-shell/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-scala-shell/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-scala-shell/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-scala-shell/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-scala-shell/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-scala-shell/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-scala-shell/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-scala-shell/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-scala-shell/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-scala-shell/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-scala-shell/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/flink-scala_2.10.iml" afterPath="$PROJECT_DIR$/flink-scala/flink-scala_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/pom.xml" afterPath="$PROJECT_DIR$/flink-scala/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/classes/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-scala/target/classes/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/classes/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-scala/target/classes/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-scala/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/japicmp/japicmp.diff" afterPath="$PROJECT_DIR$/flink-scala/target/japicmp/japicmp.diff" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/japicmp/japicmp.html" afterPath="$PROJECT_DIR$/flink-scala/target/japicmp/japicmp.html" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/japicmp/japicmp.xml" afterPath="$PROJECT_DIR$/flink-scala/target/japicmp/japicmp.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-scala/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-scala/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-scala/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-scala/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-recipes/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-shaded-curator/flink-shaded-curator-test/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-curator/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-shaded-curator/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-curator/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-shaded-curator/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-include-yarn-tests/pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-include-yarn-tests/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/pom.xml" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-shaded-hadoop/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-shaded-hadoop/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-java/pom.xml" afterPath="$PROJECT_DIR$/flink-streaming-java/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/flink-streaming-scala_2.10.iml" afterPath="$PROJECT_DIR$/flink-streaming-scala/flink-streaming-scala_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/pom.xml" afterPath="$PROJECT_DIR$/flink-streaming-scala/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-streaming-scala/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/target/japicmp/japicmp.diff" afterPath="$PROJECT_DIR$/flink-streaming-scala/target/japicmp/japicmp.diff" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/target/japicmp/japicmp.html" afterPath="$PROJECT_DIR$/flink-streaming-scala/target/japicmp/japicmp.html" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/target/japicmp/japicmp.xml" afterPath="$PROJECT_DIR$/flink-streaming-scala/target/japicmp/japicmp.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-streaming-scala/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-streaming-scala/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-streaming-scala/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-streaming-scala/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/pom.xml" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils-junit/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/flink-test-utils_2.10.iml" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/flink-test-utils_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/pom.xml" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/pom.xml" afterPath="$PROJECT_DIR$/flink-test-utils-parent/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-test-utils-parent/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-test-utils-parent/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-test-utils-parent/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-tests/flink-tests_2.10.iml" afterPath="$PROJECT_DIR$/flink-tests/flink-tests_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-tests/pom.xml" afterPath="$PROJECT_DIR$/flink-tests/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-tests/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-tests/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-tests/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-tests/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-tests/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-tests/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-tests/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-tests/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-yarn-tests/pom.xml" afterPath="$PROJECT_DIR$/flink-yarn-tests/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-yarn/flink-yarn_2.10.iml" afterPath="$PROJECT_DIR$/flink-yarn/flink-yarn_2.10.iml" />
+      <change beforePath="$PROJECT_DIR$/flink-yarn/pom.xml" afterPath="$PROJECT_DIR$/flink-yarn/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-yarn/target/dependency-reduced-pom.xml" afterPath="$PROJECT_DIR$/flink-yarn/target/dependency-reduced-pom.xml" />
+      <change beforePath="$PROJECT_DIR$/flink-yarn/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/flink-yarn/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/flink-yarn/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/flink-yarn/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/flink-yarn/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/flink-yarn/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/flink-yarn/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/flink-yarn/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" afterPath="$PROJECT_DIR$/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" afterPath="$PROJECT_DIR$/target/maven-shared-archive-resources/META-INF/DEPENDENCIES" />
+      <change beforePath="$PROJECT_DIR$/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/target/maven-shared-archive-resources/META-INF/NOTICE" />
+      <change beforePath="$PROJECT_DIR$/target/rat.txt" afterPath="$PROJECT_DIR$/target/rat.txt" />
+      <change beforePath="$PROJECT_DIR$/tools/force-shading/pom.xml" afterPath="$PROJECT_DIR$/tools/force-shading/pom.xml" />
+      <change beforePath="$PROJECT_DIR$/tools/force-shading/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/tools/force-shading/target/maven-archiver/pom.properties" />
+      <change beforePath="$PROJECT_DIR$/tools/force-shading/target/maven-shared-archive-resources/META-INF/NOTICE" afterPath="$PROJECT_DIR$/tools/force-shading/target/maven-shared-archive-resources/META-INF/NOTICE" />
     </list>
     <ignored path="$PROJECT_DIR$/flink-connectors/flink-connector-cassandra/target/" />
     <ignored path="$PROJECT_DIR$/flink-contrib/flink-connector-wikiedits/target/" />
@@ -96,25 +596,11 @@
       <file leaf-file-name="StreamTask.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/tasks/StreamTask.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="158">
-              <caret line="1855" column="0" lean-forward="false" selection-start-line="1855" selection-start-column="0" selection-end-line="1855" selection-end-column="0" />
+            <state relative-caret-position="26220">
+              <caret line="1860" column="0" lean-forward="false" selection-start-line="1860" selection-start-column="0" selection-end-line="1860" selection-end-column="0" />
               <folding>
-                <element signature="e#10070#10071#0" expanded="true" />
-                <element signature="e#10105#10106#0" expanded="true" />
-                <element signature="e#19729#19730#0" expanded="true" />
-                <element signature="e#19799#19800#0" expanded="true" />
-                <element signature="e#19991#19992#0" expanded="true" />
-                <element signature="e#20009#20010#0" expanded="true" />
-                <element signature="e#45310#45311#0" expanded="true" />
-                <element signature="e#45364#45365#0" expanded="true" />
-                <element signature="e#46499#46500#0" expanded="true" />
-                <element signature="e#46538#46539#0" expanded="true" />
-                <element signature="e#55019#55020#0" expanded="true" />
-                <element signature="e#55068#55069#0" expanded="true" />
-                <element signature="e#55279#55280#0" expanded="true" />
-                <element signature="e#55302#55303#0" expanded="true" />
-                <element signature="e#63552#63553#0" expanded="true" />
-                <element signature="e#63577#63578#0" expanded="true" />
+                <element signature="e#63790#63791#0" expanded="true" />
+                <element signature="e#63815#63816#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -123,7 +609,7 @@
       <file leaf-file-name="AbstractStreamOperator.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/api/operators/AbstractStreamOperator.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="167">
+            <state relative-caret-position="4830">
               <caret line="396" column="0" lean-forward="false" selection-start-line="396" selection-start-column="0" selection-end-line="396" selection-end-column="0" />
               <folding />
             </state>
@@ -133,8 +619,8 @@
       <file leaf-file-name="HeapKeyedStateBackend.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/state/heap/HeapKeyedStateBackend.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="167">
-              <caret line="266" column="0" lean-forward="false" selection-start-line="266" selection-start-column="0" selection-end-line="266" selection-end-column="0" />
+            <state relative-caret-position="4230">
+              <caret line="309" column="0" lean-forward="false" selection-start-line="309" selection-start-column="0" selection-end-line="309" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -143,7 +629,7 @@
       <file leaf-file-name="RegisteredKeyedBackendStateMetaInfo.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/state/RegisteredKeyedBackendStateMetaInfo.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="158">
+            <state relative-caret-position="705">
               <caret line="76" column="0" lean-forward="false" selection-start-line="76" selection-start-column="0" selection-end-line="76" selection-end-column="0" />
               <folding />
             </state>
@@ -153,7 +639,7 @@
       <file leaf-file-name="ArrayListSerializer.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/state/ArrayListSerializer.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="158">
+            <state relative-caret-position="1560">
               <caret line="148" column="0" lean-forward="false" selection-start-line="148" selection-start-column="0" selection-end-line="148" selection-end-column="0" />
               <folding />
             </state>
@@ -163,7 +649,7 @@
       <file leaf-file-name="CollectionSerializerConfigSnapshot.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-core/src/main/java/org/apache/flink/api/common/typeutils/base/CollectionSerializerConfigSnapshot.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="296">
+            <state relative-caret-position="300">
               <caret line="38" column="0" lean-forward="false" selection-start-line="38" selection-start-column="0" selection-end-line="38" selection-end-column="0" />
               <folding>
                 <element signature="e#1565#1566#0" expanded="true" />
@@ -175,7 +661,7 @@
       <file leaf-file-name="CompositeTypeSerializerConfigSnapshot.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-core/src/main/java/org/apache/flink/api/common/typeutils/CompositeTypeSerializerConfigSnapshot.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="158">
+            <state relative-caret-position="420">
               <caret line="52" column="0" lean-forward="false" selection-start-line="52" selection-start-column="0" selection-end-line="52" selection-end-column="0" />
               <folding />
             </state>
@@ -195,10 +681,10 @@
       <file leaf-file-name="BarrierBuffer.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/io/BarrierBuffer.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="202">
+            <state relative-caret-position="6735">
               <caret line="489" column="0" lean-forward="false" selection-start-line="489" selection-start-column="0" selection-end-line="489" selection-end-column="0" />
               <folding>
-                <marker date="1517258251422" expanded="true" signature="16979:17068" ph="{...}" />
+                <marker date="1517833360823" expanded="true" signature="16979:17068" ph="{...}" />
               </folding>
             </state>
           </provider>
@@ -207,18 +693,121 @@
       <file leaf-file-name="ModificationCoordinator.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/modification/ModificationCoordinator.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="15">
+            <state relative-caret-position="8100">
               <caret line="583" column="48" lean-forward="false" selection-start-line="583" selection-start-column="48" selection-end-line="583" selection-end-column="48" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="CoGroupedStreams.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="CoGroupedStreams.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/api/datastream/CoGroupedStreams.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="723">
-              <caret line="554" column="0" lean-forward="false" selection-start-line="554" selection-start-column="0" selection-end-line="554" selection-end-column="0" />
+            <state relative-caret-position="1578">
+              <caret line="555" column="0" lean-forward="false" selection-start-line="555" selection-start-column="0" selection-end-line="555" selection-end-column="0" />
+              <folding>
+                <element signature="imports" expanded="true" />
+                <element signature="e#5603#5604#0" expanded="true" />
+                <element signature="e#5662#5663#0" expanded="true" />
+                <element signature="e#12782#12783#0" expanded="true" />
+                <element signature="e#12809#12810#0" expanded="true" />
+                <element signature="e#12837#12838#0" expanded="true" />
+                <element signature="e#12864#12865#0" expanded="true" />
+                <element signature="e#12888#12889#0" expanded="true" />
+                <element signature="e#12907#12908#0" expanded="true" />
+                <element signature="e#12931#12932#0" expanded="true" />
+                <element signature="e#12950#12951#0" expanded="true" />
+                <element signature="e#13010#13011#0" expanded="true" />
+                <element signature="e#13054#13055#0" expanded="true" />
+                <element signature="e#13114#13115#0" expanded="true" />
+                <element signature="e#13158#13159#0" expanded="true" />
+                <element signature="e#13587#13588#0" expanded="true" />
+                <element signature="e#13608#13609#0" expanded="true" />
+                <element signature="e#13654#13655#0" expanded="true" />
+                <element signature="e#13675#13676#0" expanded="true" />
+                <element signature="e#13714#13715#0" expanded="true" />
+                <element signature="e#13731#13732#0" expanded="true" />
+                <element signature="e#13776#13777#0" expanded="true" />
+                <element signature="e#13793#13794#0" expanded="true" />
+                <element signature="e#13810#13850#0" expanded="true" />
+                <element signature="e#13902#13903#0" expanded="true" />
+                <element signature="e#13943#13944#0" expanded="true" />
+                <element signature="e#13987#13988#0" expanded="true" />
+                <element signature="e#14007#14008#0" expanded="true" />
+                <element signature="e#14255#14256#0" expanded="true" />
+                <element signature="e#14318#14319#0" expanded="true" />
+                <element signature="e#14414#14444#1" expanded="true" />
+                <element signature="e#14716#14717#0" expanded="true" />
+                <element signature="e#14777#14778#0" expanded="true" />
+                <element signature="e#14830#14831#0" expanded="true" />
+                <element signature="e#14874#14875#0" expanded="true" />
+                <element signature="e#15350#15351#0" expanded="true" />
+                <element signature="e#15371#15372#0" expanded="true" />
+                <element signature="e#15443#15444#0" expanded="true" />
+                <element signature="e#15463#15464#0" expanded="true" />
+                <element signature="e#15524#15525#0" expanded="true" />
+                <element signature="e#15544#15545#0" expanded="true" />
+                <element signature="e#16100#16101#0" expanded="true" />
+                <element signature="e#16118#16119#0" expanded="true" />
+                <element signature="e#17370#17371#0" expanded="true" />
+                <element signature="e#17442#17443#0" expanded="true" />
+                <element signature="e#17459#17489#0" expanded="true" />
+                <element signature="e#17850#17851#0" expanded="true" />
+                <element signature="e#17896#17897#0" expanded="true" />
+                <element signature="e#20148#20149#0" expanded="true" />
+                <element signature="e#20171#20172#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="HadoopFileSystem.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/fs/hdfs/HadoopFileSystem.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-5700">
+              <caret line="51" column="19" lean-forward="false" selection-start-line="51" selection-start-column="19" selection-end-line="51" selection-end-column="19" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="MapRFileSystem.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/fs/maprfs/MapRFileSystem.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-4090">
+              <caret line="64" column="37" lean-forward="false" selection-start-line="64" selection-start-column="37" selection-end-line="64" selection-end-column="37" />
+              <folding>
+                <element signature="e#0#11430#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="FileSystem.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/flink-core/src/main/java/org/apache/flink/core/fs/FileSystem.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="286">
+              <caret line="662" column="33" lean-forward="false" selection-start-line="662" selection-start-column="28" selection-end-line="662" selection-end-column="33" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="pom.xml" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/flink-shaded-hadoop/pom.xml">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="0">
+              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="pom.xml" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/pom.xml">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="0">
+              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -227,7 +816,7 @@
       <file leaf-file-name="OneInputStreamTask.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/tasks/OneInputStreamTask.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="210">
+            <state relative-caret-position="840">
               <caret line="81" column="0" lean-forward="false" selection-start-line="81" selection-start-column="0" selection-end-line="81" selection-end-column="0" />
               <folding />
             </state>
@@ -237,58 +826,8 @@
       <file leaf-file-name="StreamInputProcessor.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/io/StreamInputProcessor.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="210">
+            <state relative-caret-position="2640">
               <caret line="236" column="0" lean-forward="false" selection-start-line="236" selection-start-column="0" selection-end-line="236" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="StatefulTask.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/jobgraph/tasks/StatefulTask.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1470">
-              <caret line="125" column="12" lean-forward="false" selection-start-line="125" selection-start-column="12" selection-end-line="125" selection-end-column="12" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="PrintSinkFunction.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/api/functions/sink/PrintSinkFunction.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="210">
-              <caret line="33" column="13" lean-forward="false" selection-start-line="33" selection-start-column="13" selection-end-line="33" selection-end-column="13" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="OutputFormatSinkFunction.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/api/functions/sink/OutputFormatSinkFunction.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="195">
-              <caret line="41" column="13" lean-forward="false" selection-start-line="41" selection-start-column="13" selection-end-line="41" selection-end-column="13" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="DiscardingSink.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/api/functions/sink/DiscardingSink.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="180">
-              <caret line="28" column="13" lean-forward="false" selection-start-line="28" selection-start-column="13" selection-end-line="28" selection-end-column="13" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="DataSink.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/flink-java/src/main/java/org/apache/flink/api/java/operators/DataSink.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="105">
-              <caret line="42" column="13" lean-forward="false" selection-start-line="42" selection-start-column="13" selection-end-line="42" selection-end-column="13" />
               <folding />
             </state>
           </provider>
@@ -326,9 +865,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>upcomingcheck</find>
-      <find>start</find>
-      <find>introduce</find>
       <find>migration</find>
       <find>restart</find>
       <find>inputgate</find>
@@ -356,6 +892,9 @@
       <find>updatetask</find>
       <find>union</find>
       <find>unionserial</find>
+      <find>abstract</find>
+      <find>abstra</find>
+      <find>copy(</find>
     </findStrings>
     <dirStrings>
       <dir>$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/tasks</dir>
@@ -527,10 +1066,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
-      <pane id="PackagesPane" />
-      <pane id="Scratches" />
-      <pane id="AndroidView" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -541,726 +1076,19 @@
             <path>
               <item name="flink" type="b2602c69:ProjectViewProjectNode" />
               <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
+              <item name="flink-shaded-hadoop" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="flink" type="b2602c69:ProjectViewProjectNode" />
               <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
+              <item name="flink-shaded-hadoop" type="462c0819:PsiDirectoryNode" />
+              <item name="flink-shaded-hadoop2" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="flink" type="b2602c69:ProjectViewProjectNode" />
               <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="common" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="common" type="462c0819:PsiDirectoryNode" />
-              <item name="typeutils" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-core" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="common" type="462c0819:PsiDirectoryNode" />
-              <item name="typeutils" type="462c0819:PsiDirectoryNode" />
-              <item name="base" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-java" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-java" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-java" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-java" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-java" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-java" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-libraries" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-libraries" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-table" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-libraries" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-table" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-libraries" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-table" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-libraries" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-table" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="scala" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-libraries" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-table" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="scala" type="462c0819:PsiDirectoryNode" />
-              <item name="table" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-libraries" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-table" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="scala" type="462c0819:PsiDirectoryNode" />
-              <item name="table" type="462c0819:PsiDirectoryNode" />
-              <item name="sources" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="event" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="executiongraph" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="instance" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-              <item name="network" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-              <item name="network" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-              <item name="network" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="serialization" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-              <item name="network" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="writer" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-              <item name="network" type="462c0819:PsiDirectoryNode" />
-              <item name="netty" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-              <item name="network" type="462c0819:PsiDirectoryNode" />
-              <item name="partition" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="jobgraph" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="jobgraph" type="462c0819:PsiDirectoryNode" />
-              <item name="tasks" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="jobmanager" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="jobmanager" type="462c0819:PsiDirectoryNode" />
-              <item name="slots" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="messages" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="messages" type="462c0819:PsiDirectoryNode" />
-              <item name="checkpoint" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="messages" type="462c0819:PsiDirectoryNode" />
-              <item name="modification" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="state" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="state" type="462c0819:PsiDirectoryNode" />
-              <item name="heap" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="taskmanager" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="util" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="util" type="462c0819:PsiDirectoryNode" />
-              <item name="event" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="datastream" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="functions" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="functions" type="462c0819:PsiDirectoryNode" />
-              <item name="source" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="operators" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="modification" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="modification" type="462c0819:PsiDirectoryNode" />
-              <item name="events" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="tasks" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="scala" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="main" type="462c0819:PsiDirectoryNode" />
-              <item name="scala" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="io" type="462c0819:PsiDirectoryNode" />
-              <item name="network" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="jobmanager" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="rpc" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="flink-runtime" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-              <item name="java" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-              <item name="streaming" type="462c0819:PsiDirectoryNode" />
+              <item name="flink-shaded-hadoop" type="462c0819:PsiDirectoryNode" />
+              <item name="flink-shaded-hadoop2-uber" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="flink" type="b2602c69:ProjectViewProjectNode" />
@@ -1345,11 +1173,6 @@
             <path>
               <item name="flink" type="b2602c69:ProjectViewProjectNode" />
               <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-              <item name="Maven: com.data-artisans:flakka-actor_2.10:2.3-custom" type="70bed36:NamedLibraryElementNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
               <item name="Maven: com.rabbitmq:amqp-client:3.3.1" type="70bed36:NamedLibraryElementNode" />
             </path>
             <path>
@@ -1364,14 +1187,6 @@
               <item name="Maven: com.rabbitmq:amqp-client:3.3.1" type="70bed36:NamedLibraryElementNode" />
               <item name="amqp-client-3.3.1.jar" type="462c0819:PsiDirectoryNode" />
               <item name="rabbitmq" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-              <item name="Maven: com.rabbitmq:amqp-client:3.3.1" type="70bed36:NamedLibraryElementNode" />
-              <item name="amqp-client-3.3.1.jar" type="462c0819:PsiDirectoryNode" />
-              <item name="rabbitmq" type="462c0819:PsiDirectoryNode" />
-              <item name="client" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="flink" type="b2602c69:ProjectViewProjectNode" />
@@ -1394,24 +1209,6 @@
             <path>
               <item name="flink" type="b2602c69:ProjectViewProjectNode" />
               <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-              <item name="Maven: org.apache.flink:flink-streaming-java_2.10:1.3.0" type="70bed36:NamedLibraryElementNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-              <item name="Maven: org.apache.flink:flink-streaming-java_2.10:1.3.0" type="70bed36:NamedLibraryElementNode" />
-              <item name="flink-streaming-java_2.10-1.3.0.jar" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-              <item name="Maven: org.apache.flink:flink-streaming-java_2.10:1.3.0" type="70bed36:NamedLibraryElementNode" />
-              <item name="flink-streaming-java_2.10-1.3.0.jar" type="462c0819:PsiDirectoryNode" />
-              <item name="flink" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="flink" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
               <item name="Maven: org.slf4j:slf4j-log4j12:1.7.7" type="70bed36:NamedLibraryElementNode" />
             </path>
             <path>
@@ -1424,6 +1221,10 @@
           <select />
         </subPane>
       </pane>
+      <pane id="AndroidView" />
+      <pane id="Scratches" />
+      <pane id="Scope" />
+      <pane id="PackagesPane" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -2175,6 +1976,7 @@
       <workItem from="1517583829067" duration="1910000" />
       <workItem from="1517601651737" duration="602000" />
       <workItem from="1517793137115" duration="962000" />
+      <workItem from="1517834539339" duration="1641000" />
     </task>
     <servers />
   </component>
@@ -2211,7 +2013,7 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="1181058000" />
+    <option name="totallyTimeSpent" value="1182699000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -2224,6 +2026,7 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="-3" width="1920" height="1083" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32984293" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -2277,7 +2080,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/api/datastream/CoGroupedStreams.java</url>
-          <line>554</line>
+          <line>555</line>
           <properties />
           <option name="timeStamp" value="180" />
         </line-breakpoint>
@@ -2344,41 +2147,6 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/io/network/buffer/BufferPool.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="45">
-          <caret line="31" column="36" lean-forward="true" selection-start-line="31" selection-start-column="36" selection-end-line="31" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/io/network/buffer/BufferPoolOwner.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="90">
-          <caret line="22" column="0" lean-forward="true" selection-start-line="22" selection-start-column="0" selection-end-line="22" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/flink-core/src/main/java/org/apache/flink/core/memory/MemorySegment.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-120">
-          <caret line="95" column="22" lean-forward="false" selection-start-line="95" selection-start-column="22" selection-end-line="95" selection-end-column="22" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/io/network/buffer/BufferProvider.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="257">
-          <caret line="56" column="9" lean-forward="true" selection-start-line="56" selection-start-column="9" selection-end-line="56" selection-end-column="9" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/io/network/buffer/BufferRecycler.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="90">
-          <caret line="22" column="17" lean-forward="false" selection-start-line="22" selection-start-column="17" selection-end-line="22" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/io/network/buffer/FreeingBufferRecycler.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="165">
@@ -3257,7 +3025,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="11280">
           <caret line="833" column="29" lean-forward="false" selection-start-line="833" selection-start-column="29" selection-end-line="833" selection-end-column="29" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -3335,7 +3102,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/modification/ModificationCoordinator.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="15">
+        <state relative-caret-position="8100">
           <caret line="583" column="48" lean-forward="false" selection-start-line="583" selection-start-column="48" selection-end-line="583" selection-end-column="48" />
           <folding />
         </state>
@@ -3351,7 +3118,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/tasks/OneInputStreamTask.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="210">
+        <state relative-caret-position="840">
           <caret line="81" column="0" lean-forward="false" selection-start-line="81" selection-start-column="0" selection-end-line="81" selection-end-column="0" />
           <folding />
         </state>
@@ -3359,7 +3126,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/io/StreamInputProcessor.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="210">
+        <state relative-caret-position="2640">
           <caret line="236" column="0" lean-forward="false" selection-start-line="236" selection-start-column="0" selection-end-line="236" selection-end-column="0" />
           <folding />
         </state>
@@ -3367,42 +3134,28 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/io/BarrierBuffer.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="202">
+        <state relative-caret-position="6735">
           <caret line="489" column="0" lean-forward="false" selection-start-line="489" selection-start-column="0" selection-end-line="489" selection-end-column="0" />
           <folding>
-            <marker date="1517258251422" expanded="true" signature="16979:17068" ph="{...}" />
+            <marker date="1517833360823" expanded="true" signature="16979:17068" ph="{...}" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/runtime/tasks/StreamTask.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="158">
-          <caret line="1855" column="0" lean-forward="false" selection-start-line="1855" selection-start-column="0" selection-end-line="1855" selection-end-column="0" />
+        <state relative-caret-position="26220">
+          <caret line="1860" column="0" lean-forward="false" selection-start-line="1860" selection-start-column="0" selection-end-line="1860" selection-end-column="0" />
           <folding>
-            <element signature="e#10070#10071#0" expanded="true" />
-            <element signature="e#10105#10106#0" expanded="true" />
-            <element signature="e#19729#19730#0" expanded="true" />
-            <element signature="e#19799#19800#0" expanded="true" />
-            <element signature="e#19991#19992#0" expanded="true" />
-            <element signature="e#20009#20010#0" expanded="true" />
-            <element signature="e#45310#45311#0" expanded="true" />
-            <element signature="e#45364#45365#0" expanded="true" />
-            <element signature="e#46499#46500#0" expanded="true" />
-            <element signature="e#46538#46539#0" expanded="true" />
-            <element signature="e#55019#55020#0" expanded="true" />
-            <element signature="e#55068#55069#0" expanded="true" />
-            <element signature="e#55279#55280#0" expanded="true" />
-            <element signature="e#55302#55303#0" expanded="true" />
-            <element signature="e#63552#63553#0" expanded="true" />
-            <element signature="e#63577#63578#0" expanded="true" />
+            <element signature="e#63790#63791#0" expanded="true" />
+            <element signature="e#63815#63816#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/api/operators/AbstractStreamOperator.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="167">
+        <state relative-caret-position="4830">
           <caret line="396" column="0" lean-forward="false" selection-start-line="396" selection-start-column="0" selection-end-line="396" selection-end-column="0" />
           <folding />
         </state>
@@ -3410,15 +3163,15 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/state/heap/HeapKeyedStateBackend.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="167">
-          <caret line="266" column="0" lean-forward="false" selection-start-line="266" selection-start-column="0" selection-end-line="266" selection-end-column="0" />
+        <state relative-caret-position="4230">
+          <caret line="309" column="0" lean-forward="false" selection-start-line="309" selection-start-column="0" selection-end-line="309" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/state/RegisteredKeyedBackendStateMetaInfo.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="158">
+        <state relative-caret-position="705">
           <caret line="76" column="0" lean-forward="false" selection-start-line="76" selection-start-column="0" selection-end-line="76" selection-end-column="0" />
           <folding />
         </state>
@@ -3426,7 +3179,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-core/src/main/java/org/apache/flink/api/common/typeutils/CompositeTypeSerializerConfigSnapshot.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="158">
+        <state relative-caret-position="420">
           <caret line="52" column="0" lean-forward="false" selection-start-line="52" selection-start-column="0" selection-end-line="52" selection-end-column="0" />
           <folding />
         </state>
@@ -3434,7 +3187,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/state/ArrayListSerializer.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="158">
+        <state relative-caret-position="1560">
           <caret line="148" column="0" lean-forward="false" selection-start-line="148" selection-start-column="0" selection-end-line="148" selection-end-column="0" />
           <folding />
         </state>
@@ -3442,7 +3195,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-core/src/main/java/org/apache/flink/api/common/typeutils/base/CollectionSerializerConfigSnapshot.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="296">
+        <state relative-caret-position="300">
           <caret line="38" column="0" lean-forward="false" selection-start-line="38" selection-start-column="0" selection-end-line="38" selection-end-column="0" />
           <folding>
             <element signature="e#1565#1566#0" expanded="true" />
@@ -3452,8 +3205,101 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/streaming/api/datastream/CoGroupedStreams.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="723">
-          <caret line="554" column="0" lean-forward="false" selection-start-line="554" selection-start-column="0" selection-end-line="554" selection-end-column="0" />
+        <state relative-caret-position="1578">
+          <caret line="555" column="0" lean-forward="false" selection-start-line="555" selection-start-column="0" selection-end-line="555" selection-end-column="0" />
+          <folding>
+            <element signature="imports" expanded="true" />
+            <element signature="e#5603#5604#0" expanded="true" />
+            <element signature="e#5662#5663#0" expanded="true" />
+            <element signature="e#12782#12783#0" expanded="true" />
+            <element signature="e#12809#12810#0" expanded="true" />
+            <element signature="e#12837#12838#0" expanded="true" />
+            <element signature="e#12864#12865#0" expanded="true" />
+            <element signature="e#12888#12889#0" expanded="true" />
+            <element signature="e#12907#12908#0" expanded="true" />
+            <element signature="e#12931#12932#0" expanded="true" />
+            <element signature="e#12950#12951#0" expanded="true" />
+            <element signature="e#13010#13011#0" expanded="true" />
+            <element signature="e#13054#13055#0" expanded="true" />
+            <element signature="e#13114#13115#0" expanded="true" />
+            <element signature="e#13158#13159#0" expanded="true" />
+            <element signature="e#13587#13588#0" expanded="true" />
+            <element signature="e#13608#13609#0" expanded="true" />
+            <element signature="e#13654#13655#0" expanded="true" />
+            <element signature="e#13675#13676#0" expanded="true" />
+            <element signature="e#13714#13715#0" expanded="true" />
+            <element signature="e#13731#13732#0" expanded="true" />
+            <element signature="e#13776#13777#0" expanded="true" />
+            <element signature="e#13793#13794#0" expanded="true" />
+            <element signature="e#13810#13850#0" expanded="true" />
+            <element signature="e#13902#13903#0" expanded="true" />
+            <element signature="e#13943#13944#0" expanded="true" />
+            <element signature="e#13987#13988#0" expanded="true" />
+            <element signature="e#14007#14008#0" expanded="true" />
+            <element signature="e#14255#14256#0" expanded="true" />
+            <element signature="e#14318#14319#0" expanded="true" />
+            <element signature="e#14414#14444#1" expanded="true" />
+            <element signature="e#14716#14717#0" expanded="true" />
+            <element signature="e#14777#14778#0" expanded="true" />
+            <element signature="e#14830#14831#0" expanded="true" />
+            <element signature="e#14874#14875#0" expanded="true" />
+            <element signature="e#15350#15351#0" expanded="true" />
+            <element signature="e#15371#15372#0" expanded="true" />
+            <element signature="e#15443#15444#0" expanded="true" />
+            <element signature="e#15463#15464#0" expanded="true" />
+            <element signature="e#15524#15525#0" expanded="true" />
+            <element signature="e#15544#15545#0" expanded="true" />
+            <element signature="e#16100#16101#0" expanded="true" />
+            <element signature="e#16118#16119#0" expanded="true" />
+            <element signature="e#17370#17371#0" expanded="true" />
+            <element signature="e#17442#17443#0" expanded="true" />
+            <element signature="e#17459#17489#0" expanded="true" />
+            <element signature="e#17850#17851#0" expanded="true" />
+            <element signature="e#17896#17897#0" expanded="true" />
+            <element signature="e#20148#20149#0" expanded="true" />
+            <element signature="e#20171#20172#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/fs/maprfs/MapRFileSystem.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-4090">
+          <caret line="64" column="37" lean-forward="false" selection-start-line="64" selection-start-column="37" selection-end-line="64" selection-end-column="37" />
+          <folding>
+            <element signature="e#0#11430#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/flink-runtime/src/main/java/org/apache/flink/runtime/fs/hdfs/HadoopFileSystem.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-5700">
+          <caret line="51" column="19" lean-forward="false" selection-start-line="51" selection-start-column="19" selection-end-line="51" selection-end-column="19" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/flink-core/src/main/java/org/apache/flink/core/fs/FileSystem.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="286">
+          <caret line="662" column="33" lean-forward="false" selection-start-line="662" selection-start-column="28" selection-end-line="662" selection-end-column="33" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/flink-shaded-hadoop/pom.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber/pom.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding />
         </state>
       </provider>

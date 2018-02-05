@@ -367,6 +367,7 @@ org/apache/flink/runtime/operators/hash/NonReusingBuildSecondHashJoinIterator.cl
 org/apache/flink/runtime/operators/chaining/ChainedReduceCombineDriver.class
 org/apache/flink/streaming/api/operators/async/queue/OrderedStreamElementQueue$1.class
 org/apache/flink/runtime/state/heap/StateTableByKeyGroupReader.class
+org/apache/flink/runtime/executiongraph/restart/FailureRateRestartStrategy$1.class
 org/apache/flink/runtime/checkpoint/hooks/MasterHooks$WrappedMasterHook.class
 org/apache/flink/streaming/api/functions/windowing/FoldApplyAllWindowFunction.class
 org/apache/flink/streaming/api/transformations/SplitTransformation.class
@@ -440,7 +441,6 @@ org/apache/flink/runtime/state/StateBackend.class
 org/apache/flink/optimizer/dag/FilterNode.class
 org/apache/flink/streaming/api/windowing/assigners/WindowAssigner$WindowAssignerContext.class
 org/apache/flink/runtime/operators/hash/ReusingBuildFirstReOpenableHashJoinIterator.class
-org/apache/flink/runtime/executiongraph/restart/ExecutionGraphRestarter$1.class
 org/apache/flink/migration/runtime/state/memory/AbstractMigrationRestoreStrategy.class
 org/apache/flink/optimizer/plan/NamedChannel.class
 org/apache/flink/streaming/api/datastream/AsyncDataStream.class
@@ -855,6 +855,7 @@ org/apache/flink/runtime/taskexecutor/TaskExecutor$ResourceManagerHeartbeatListe
 org/apache/flink/runtime/query/netty/DisabledKvStateRequestStats.class
 org/apache/flink/optimizer/CompilerException.class
 org/apache/flink/runtime/state/HashMapSerializer.class
+org/apache/flink/runtime/executiongraph/restart/ExecutionGraphRestartCallback.class
 org/apache/flink/runtime/state/heap/HeapReducingState$ReduceTransformation.class
 org/apache/flink/client/program/ProgramParametrizationException.class
 org/apache/flink/streaming/api/operators/StreamSourceContexts$AutomaticWatermarkContext.class
@@ -1063,6 +1064,7 @@ org/apache/flink/runtime/heartbeat/HeartbeatTarget.class
 org/apache/flink/streaming/api/windowing/triggers/PurgingTrigger.class
 org/apache/flink/runtime/state/CompositeStateHandle.class
 org/apache/flink/optimizer/plan/StreamingPlan.class
+org/apache/flink/streaming/api/datastream/CoGroupedStreams$UnionSerializerConfigSnapshot.class
 org/apache/flink/runtime/operators/DriverStrategy.class
 org/apache/flink/runtime/JobException.class
 org/apache/flink/runtime/metrics/dump/MetricDumpSerialization$MetricDumpDeserializer.class
@@ -1273,6 +1275,7 @@ org/apache/flink/streaming/api/graph/StreamConfig.class
 org/apache/flink/streaming/api/functions/source/FileReadFunction.class
 org/apache/flink/runtime/io/network/partition/ResultPartition$1.class
 org/apache/flink/runtime/clusterframework/overlays/Krb5ConfOverlay$Builder.class
+org/apache/flink/runtime/state/SharedStateRegistryFactory.class
 org/apache/flink/runtime/operators/sort/AbstractMergeInnerJoinIterator.class
 org/apache/flink/optimizer/dag/SortPartitionNode.class
 org/apache/flink/runtime/checkpoint/PendingCheckpoint$TaskAcknowledgeResult.class
@@ -1827,6 +1830,7 @@ org/apache/flink/streaming/api/operators/AbstractStreamOperator$LatencyGauge.cla
 org/apache/flink/runtime/jobmanager/scheduler/Locality.class
 org/apache/flink/streaming/api/functions/source/ContinuousFileMonitoringFunction$1.class
 org/apache/flink/runtime/operators/udf/AssignRangeIndex.class
+org/apache/flink/runtime/executiongraph/restart/RestartCallback.class
 org/apache/flink/runtime/taskmanager/Task$2.class
 org/apache/flink/streaming/api/windowing/evictors/Evictor$EvictorContext.class
 org/apache/flink/optimizer/operators/HashRightOuterJoinBuildSecondDescriptor.class
@@ -1997,7 +2001,6 @@ org/apache/flink/runtime/taskexecutor/utils/TaskExecutorMetricsInitializer$5.cla
 org/apache/flink/runtime/metrics/groups/ProxyMetricGroup.class
 org/apache/flink/runtime/io/disk/ChannelReaderInputViewIterator.class
 org/apache/flink/runtime/metrics/scope/OperatorScopeFormat.class
-org/apache/flink/runtime/executiongraph/restart/ExecutionGraphRestarter.class
 org/apache/flink/streaming/api/operators/ChainingStrategy.class
 org/apache/flink/runtime/taskexecutor/TaskExecutor$ResourceManagerLeaderListener.class
 org/apache/flink/runtime/taskexecutor/exceptions/PartitionException.class
@@ -2033,6 +2036,7 @@ org/apache/flink/streaming/api/windowing/assigners/BaseAlignedWindowAssigner.cla
 org/apache/flink/runtime/state/UserFacingListState.class
 org/apache/flink/streaming/api/transformations/SelectTransformation.class
 org/apache/flink/runtime/util/LeaderRetrievalUtils.class
+org/apache/flink/runtime/executiongraph/restart/FixedDelayRestartStrategy$1.class
 org/apache/flink/runtime/webmonitor/WebMonitorUtils$LogFileLocation.class
 org/apache/flink/runtime/metrics/groups/TaskIOMetricGroup$InputBuffersGauge.class
 org/apache/flink/streaming/runtime/io/StreamInputProcessor$ForwardingValveOutputHandler.class

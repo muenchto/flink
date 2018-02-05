@@ -38,6 +38,7 @@ org/apache/flink/api/common/operators/util/TestRichInputFormat.class
 org/apache/flink/core/fs/SafetyNetCloseableRegistryTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$21.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$39.class
+org/apache/flink/api/common/typeutils/TypeSerializerSerializationUtilTest$1.class
 org/apache/flink/api/common/typeutils/base/DoubleSerializerTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$4.class
 org/apache/flink/api/common/typeutils/base/LongSerializerTest.class
@@ -51,6 +52,7 @@ org/apache/flink/core/memory/MemorySegmentTestBase.class
 org/apache/flink/api/common/typeutils/base/MapSerializerTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$IdentityMapper5.class
 org/apache/flink/api/java/typeutils/runtime/PojoSubclassSerializerTest$TestUserClassBase.class
+org/apache/flink/api/common/state/MapStateDescriptorTest$1.class
 org/apache/flink/api/common/io/GenericCsvInputFormatTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$42.class
 org/apache/flink/util/NumberSequenceIteratorTest.class
@@ -112,6 +114,7 @@ org/apache/flink/configuration/ConfigDocsCompletenessChecker.class
 org/apache/flink/core/io/LocatableSplitAssignerTest.class
 org/apache/flink/api/common/typeutils/base/BooleanValueComparatorTest.class
 org/apache/flink/api/java/typeutils/PojoTypeExtractionTest$PojoWithParameterizedFields3.class
+org/apache/flink/api/common/state/ValueStateDescriptorTest$1.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$Either2.class
 org/apache/flink/api/java/typeutils/ValueTypeInfoTest$TestClass.class
 org/apache/flink/api/java/typeutils/PojoTypeExtractionTest$MutualPojoB.class
@@ -290,6 +293,7 @@ org/apache/flink/api/common/io/RichInputFormatTest.class
 org/apache/flink/api/common/io/FileOutputFormatTest$DummyFileOutputFormat.class
 org/apache/flink/api/java/typeutils/PojoTypeInformationTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$54.class
+org/apache/flink/api/common/typeutils/base/EnumSerializerUpgradeTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorInputFormatsTest$DerivedInputFormat.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$Nested.class
 org/apache/flink/api/common/io/FileInputFormatTest$1.class
@@ -311,6 +315,7 @@ org/apache/flink/api/common/typeutils/base/ListSerializerTest.class
 org/apache/flink/api/java/typeutils/CompositeTypeTest$MyPojo.class
 org/apache/flink/types/parser/ByteValueParserTest.class
 org/apache/flink/core/memory/HybridOffHeapMemorySegmentTest.class
+org/apache/flink/api/common/state/ReducingStateDescriptorTest$1.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$27.class
 org/apache/flink/api/java/typeutils/runtime/AbstractGenericTypeComparatorTest$BookAuthor.class
 org/apache/flink/api/common/typeutils/ComparatorTestBase.class
@@ -367,6 +372,7 @@ org/apache/flink/api/common/operators/util/FieldListTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$DummyFlatMapFunction.class
 org/apache/flink/types/parser/DoubleParserTest.class
 org/apache/flink/api/common/typeutils/base/CharSerializerTest.class
+org/apache/flink/api/common/state/MapStateDescriptorTest$2.class
 org/apache/flink/api/common/typeinfo/TypeHintTest$5.class
 org/apache/flink/api/java/typeutils/runtime/ValueSerializerUUIDTest.class
 org/apache/flink/api/java/typeutils/runtime/PojoSerializerTest.class
@@ -384,6 +390,7 @@ org/apache/flink/api/common/state/ValueStateDescriptorTest.class
 org/apache/flink/api/java/typeutils/TypeInfoFactoryTest$MyTupleTypeInfoFactory.class
 org/apache/flink/api/common/io/EnumerateNestedFilesTest$1.class
 org/apache/flink/api/common/io/FileInputFormatTest$InvertedInputStream.class
+org/apache/flink/api/common/typeutils/TypeSerializerSerializationUtilTest$AbstractIntSerializer.class
 org/apache/flink/api/common/typeinfo/TypeHintTest$2.class
 org/apache/flink/api/java/typeutils/runtime/TupleComparatorTTT1Test.class
 org/apache/flink/api/common/typeutils/base/BigDecSerializerTest.class
@@ -408,6 +415,7 @@ org/apache/flink/api/common/operators/base/PartitionMapOperatorTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$Testable.class
 org/apache/flink/api/common/operators/base/FlatMapOperatorCollectionTest$IdRichFlatMap.class
 org/apache/flink/util/OutputTagTest.class
+org/apache/flink/api/common/state/AggregatingStateDescriptorTest.class
 org/apache/flink/api/common/io/GenericCsvInputFormatTest$1.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$IdentityMapper2.class
 org/apache/flink/types/parser/IntValueParserTest.class
@@ -438,6 +446,7 @@ org/apache/flink/types/parser/ShortParserTest.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$EdgeMapper2.class
 org/apache/flink/api/java/typeutils/PojoTypeExtractionTest$WrongCtorPojo.class
 org/apache/flink/api/common/operators/SelectorFunctionKeysTest$KeySelector3.class
+org/apache/flink/api/common/state/AggregatingStateDescriptorTest$1.class
 org/apache/flink/api/java/typeutils/PojoTypeExtractionTest$TypedPojoGetterSetterCheck.class
 org/apache/flink/api/java/typeutils/TypeInfoFactoryTest$MyOption.class
 org/apache/flink/api/java/typeutils/TypeExtractorTest$29.class
@@ -466,6 +475,7 @@ org/apache/flink/api/common/io/GenericCsvInputFormatTest$TestCsvInputFormat.clas
 org/apache/flink/api/java/typeutils/TypeExtractorTest$Edge.class
 org/apache/flink/api/common/typeutils/base/EnumSerializerTest$PublicEnum.class
 org/apache/flink/api/java/typeutils/runtime/PojoGenericTypeSerializerTest.class
+org/apache/flink/api/common/state/ListStateDescriptorTest$1.class
 org/apache/flink/api/java/typeutils/TypeExtractorInputFormatsTest$DerivedTupleInputFormat.class
 org/apache/flink/api/java/typeutils/PojoTypeInformationTest$NestedPojoInner.class
 org/apache/flink/api/common/typeutils/base/array/CharPrimitiveArrayComparatorTest.class
