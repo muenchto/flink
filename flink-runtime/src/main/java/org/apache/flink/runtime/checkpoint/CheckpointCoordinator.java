@@ -347,6 +347,10 @@ public class CheckpointCoordinator {
 		}
 	}
 
+	public ExecutionVertex[] getTriggerVertices() {
+		return this.tasksToTrigger;
+	}
+
 	public boolean isShutdown() {
 		return shutdown;
 	}

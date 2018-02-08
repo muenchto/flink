@@ -838,7 +838,7 @@ public class DataStream<T> {
 		TimestampsAndPeriodicWatermarksOperator<T> operator =
 				new TimestampsAndPeriodicWatermarksOperator<>(cleanedAssigner);
 
-		return transform("Timestamps/Watermarks", getTransformation().getOutputType(), operator)
+		return transform(timestampAndWatermarkAssigner.getClass().getName(), getTransformation().getOutputType(), operator)
 				.setParallelism(inputParallelism);
 	}
 

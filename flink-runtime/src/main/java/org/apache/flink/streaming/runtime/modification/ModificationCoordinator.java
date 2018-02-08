@@ -452,7 +452,7 @@ public class ModificationCoordinator {
 
 	private boolean allUpstreamOperatorsMigratedOrUnmodified(ExecutionVertex vertex) {
 
-		ExecutionJobVertex upstreamOperator = getUpstreamOperator(vertex);
+		ExecutionJobVertex upstreamOperator = getUpstreamOperator(vertex).get(0);
 
 		if (upstreamOperator == null) {
 			return true;
@@ -504,7 +504,7 @@ public class ModificationCoordinator {
 		ArrayList<ExecutionVertex> indicesToPause = new ArrayList<>(instancesToPause.getTaskVertices().length);
 		indicesToPause.addAll(Arrays.asList(instancesToPause.getTaskVertices()));
 
-		ExecutionJobVertex upstreamOperator = getUpstreamOperator(indicesToPause.get(0));
+		ExecutionJobVertex upstreamOperator = getUpstreamOperator(indicesToPause.get(0)).get(0);
 
 		ArrayList<ExecutionAttemptID> upstream = new ArrayList<>();
 		for (ExecutionVertex executionVertex : upstreamOperator.getTaskVertices()) {
@@ -597,10 +597,10 @@ public class ModificationCoordinator {
 					checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
 				}
 
-				ExecutionJobVertex source = findSource();
+				ExecutionVertex[] triggerVertices = executionGraph.getCheckpointCoordinator().getTriggerVertices();
 
 				// send the messages to the tasks that trigger their modification
-				for (ExecutionVertex execution : source.getTaskVertices()) {
+				for (ExecutionVertex execution : triggerVertices) {
 					execution.getCurrentExecutionAttempt().triggerMigration(
 						modificationId,
 						timestamp,
@@ -739,9 +739,9 @@ public class ModificationCoordinator {
 
 		for (ExecutionVertex vertex : allVerticesOnTM) {
 
-			ExecutionJobVertex upstreamOperator = getUpstreamOperator(vertex);
+			List<ExecutionJobVertex> upstreamOperators = getUpstreamOperator(vertex);
 
-			if (upstreamOperator != null) {
+			for (ExecutionJobVertex upstreamOperator : upstreamOperators) {
 				// Non-Source operator
 				ExecutionVertex[] executionVertices = upstreamOperator.getTaskVertices();
 				for (ExecutionVertex executionVertex : executionVertices) {
@@ -919,10 +919,10 @@ public class ModificationCoordinator {
 					checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
 				}
 
-				ExecutionJobVertex source = findSource();
+				ExecutionVertex[] triggerVertices = executionGraph.getCheckpointCoordinator().getTriggerVertices();
 
 				// send the messages to the tasks that trigger their modification
-				for (ExecutionVertex execution : source.getTaskVertices()) {
+				for (ExecutionVertex execution : triggerVertices) {
 					execution.getCurrentExecutionAttempt().triggerMigration(
 						modificationId,
 						timestamp,
@@ -1020,7 +1020,7 @@ public class ModificationCoordinator {
 
 		List<ExecutionVertex> operatorsIDs = getAllExecutionVerticesForName(operatorName);
 
-		ExecutionJobVertex previousOperator = getUpstreamOperator(operatorsIDs.get(0));
+		ExecutionJobVertex previousOperator = getUpstreamOperator(operatorsIDs.get(0)).get(0);
 
 		ArrayList<ExecutionAttemptID> upstreamIds = new ArrayList<>();
 		for (ExecutionVertex executionVertex : previousOperator.getTaskVertices()) {
@@ -1042,22 +1042,28 @@ public class ModificationCoordinator {
 		throw new IllegalStateException("Could not find any operator, who's name contains: " + operatorName);
 	}
 
-	private ExecutionJobVertex getUpstreamOperator(ExecutionVertex jobVertex) {
+	private List<ExecutionJobVertex> getUpstreamOperator(ExecutionVertex jobVertex) {
 		Preconditions.checkNotNull(jobVertex);
 
 		return getUpstreamOperator(jobVertex.getJobVertex());
 	}
 
-	private ExecutionJobVertex getUpstreamOperator(ExecutionJobVertex jobVertex) {
+	private List<ExecutionJobVertex> getUpstreamOperator(ExecutionJobVertex jobVertex) {
 		Preconditions.checkNotNull(jobVertex);
 
 		ExecutionVertex[] taskVertices = jobVertex.getTaskVertices();
 		if (taskVertices == null || taskVertices.length == 0 || taskVertices[0].getNumberOfInputs() == 0) {
-			return null;
+			return Collections.emptyList();
 		}
 
-		// TODO Assume single producer
-		return taskVertices[0].getInputEdges(0)[0].getSource().getProducer().getJobVertex();
+		List<ExecutionJobVertex> executionJobVertices = new ArrayList<>();
+		ExecutionVertex taskVertex = taskVertices[0];
+
+		for (int i = 0; i < taskVertex.getNumberOfInputs(); i++) {
+			executionJobVertices.add(taskVertex.getInputEdges(i)[0].getSource().getProducer().getJobVertex());
+		}
+
+		return executionJobVertices;
 	}
 
 	private ExecutionJobVertex getDownstreamOperator(ExecutionVertex jobVertex) {
@@ -1272,7 +1278,7 @@ public class ModificationCoordinator {
 		ExecutionVertex singleExecutionVertex = getSingleExecutionVertex(attemptID);
 
 		ArrayList<ExecutionAttemptID> upstreamIds = new ArrayList<>();
-		for (ExecutionVertex executionVertex : getUpstreamOperator(singleExecutionVertex).getTaskVertices()) {
+		for (ExecutionVertex executionVertex : getUpstreamOperator(singleExecutionVertex).get(0).getTaskVertices()) {
 			upstreamIds.add(executionVertex.getCurrentExecutionAttempt().getAttemptId());
 		}
 
