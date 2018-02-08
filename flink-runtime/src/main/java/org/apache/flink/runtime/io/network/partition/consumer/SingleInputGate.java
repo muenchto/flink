@@ -950,7 +950,7 @@ public class SingleInputGate implements InputGate {
 				oldChannel = inputChannels.remove(inputChannelsToIndex.get(index));
 
 				ensureChannelDoesNotContainPendingData(oldChannel);
-				
+
 				inputChannels.put(partitionId, newChannel);
 			} else {
 				throw new RuntimeException("No previous input channel.");

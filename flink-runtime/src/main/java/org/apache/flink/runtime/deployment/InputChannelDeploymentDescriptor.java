@@ -248,6 +248,10 @@ public class InputChannelDeploymentDescriptor implements Serializable {
 
 		final ResourceID consumerTaskManager = consumerSlot.getTaskManagerID();
 
+		if (consumedPartition == null || consumedPartition.getProducer() == null) {
+			throw new IllegalStateException();
+		}
+
 		final Execution producer = consumedPartition.getProducer().getCurrentExecutionAttempt();
 
 		final ExecutionState producerState = producer.getState();

@@ -655,40 +655,56 @@ public class ModificationCoordinator {
 		Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs = new HashMap<>();
 		Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs = new HashMap<>();
 
-		Map<Integer, Map<Integer, IntermediateResultPartition>> partitions = new HashMap<>();
+		Map<Integer, IntermediateResultPartition> partitions = new HashMap<>();
 
 		for (ExecutionVertex vertex : filterTaskVertices) {
 			int subtaskIndex = vertex.getParallelSubtaskIndex();
-			Map<Integer, IntermediateResultPartition> intermediatePartitions = new HashMap<>();
 
-			Collection<IntermediateResultPartition> producedPartitions = vertex.getProducedPartitions().values();
-			for (IntermediateResultPartition producedPartition : producedPartitions) {
-				intermediatePartitions.put(producedPartition.getPartitionNumber(), producedPartition);
+			Map<IntermediateResultPartitionID, IntermediateResultPartition> producedPartitions = vertex.getProducedPartitions();
+
+			assert producedPartitions.size() == 1;
+
+			for (IntermediateResultPartition irp : producedPartitions.values()) {
+				partitions.put(subtaskIndex, irp);
 			}
-
-			partitions.put(subtaskIndex, intermediatePartitions);
 		}
 
 		Set<ExecutionAttemptID> notPausingOperators = new HashSet<>();
 
 		for (ExecutionVertex vertex : sourceOperator.getTaskVertices()) {
 
+			// See my paper notes. We can only reuse some of the input channels, not all
+//			if (vertex.getParallelSubtaskIndex() > filterExecutionJobVertex.getParallelism()) {
+//				continue;
+//			}
+
 			// Now create a list of icdd for the migrating task, that will be send downstream to all consuming tasks
 			List<InputChannelDeploymentDescriptor> list = new ArrayList<>();
 
-			Map<Integer, IntermediateResultPartition> partitionMap = partitions.get(vertex.getParallelSubtaskIndex());
+			IntermediateResultPartition irp = partitions.get(vertex.getParallelSubtaskIndex());
 
-			for (ExecutionVertex executionVertex : mapOperator.getTaskVertices()) {
+			ExecutionVertex executionVertex = mapOperator.getTaskVertices()[vertex.getParallelSubtaskIndex()];
 
-				Preconditions.checkArgument(executionVertex.getNumberOfInputs() == 1, vertex + " has not exactly one input");
+			Preconditions.checkArgument(executionVertex.getNumberOfInputs() == 1, vertex + " has not exactly one input");
 
-				InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForUpcomingOperator(
-					executionVertex.getCurrentAssignedResource(),
-					executionGraph.isQueuedSchedulingAllowed(),
-					partitionMap.get(executionVertex.getParallelSubtaskIndex()));
+			InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForUpcomingOperator(
+				executionVertex.getCurrentAssignedResource(),
+				executionGraph.isQueuedSchedulingAllowed(),
+				irp);
 
-				list.add(icdd);
-			}
+			list.add(icdd);
+
+//			for (ExecutionVertex executionVertex : mapOperator.getTaskVertices()) {
+//
+//				Preconditions.checkArgument(executionVertex.getNumberOfInputs() == 1, vertex + " has not exactly one input");
+//
+//				InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForUpcomingOperator(
+//					executionVertex.getCurrentAssignedResource(),
+//					executionGraph.isQueuedSchedulingAllowed(),
+//					irp);
+//
+//				list.add(icdd);
+//			}
 
 			pausingIDs.put(vertex.getCurrentExecutionAttempt().getAttemptId(), list);
 			notPausingOperators.add(vertex.getCurrentExecutionAttempt().getAttemptId());
@@ -1524,10 +1540,15 @@ public class ModificationCoordinator {
 			throw new IllegalStateException("Source has more than one producing dataset");
 		}
 
+		ExecutionJobVertex map = findMap();
+		map.getJobVertex().connectDataSetAsInput(filterIDS, DistributionPattern.POINTWISE);
+
 		IntermediateDataSet sourceProducedDataset = sourceProducedDatasets.get(0);
 
+		sourceProducedDataset.getConsumers().clear();
+
 		// Connect source IDS as input for FilterOperator
-		filterJobVertex.connectDataSetAsInput(sourceProducedDataset, DistributionPattern.ALL_TO_ALL);
+		filterJobVertex.connectDataSetAsInput(sourceProducedDataset, DistributionPattern.POINTWISE);
 
 		try {
 			ExecutionJobVertex vertex =
