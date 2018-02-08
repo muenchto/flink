@@ -565,7 +565,7 @@ public class BarrierTrackerTest {
 		}
 
 		@Override
-		public boolean triggerMigration(ModificationMetaData metaData, Map<ExecutionAttemptID, Set<Integer>> spillingVertices, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices, long upcomingCheckpointID) {
+		public boolean triggerMigration(ModificationMetaData metaData, Map<ExecutionAttemptID, Set<Integer>> spillingVertices, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices, Set<ExecutionAttemptID> notPausingOperators, long upcomingCheckpointID) {
 			return false;
 		}
 

@@ -138,8 +138,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK, // Sources only
 		SPILLED_TO_DISK_AFTER_CHECKPOINT, // Sources only // TODO Really?
 		SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR, // Sources only
+		OPERATOR_WAITING_FOR_UPCOMING_CHECKPOINT_TO_BROADCAST_NEW_DOWNSTREAM_OPERATOR_LOCATION, // Sources only
 		WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR, // Operators only
 		UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR, // Operators only
+		BROADCASTED_NEW_LOCATION_FOR_DOWNSTREAM_OPERATOR,
 		PAUSING,
 	}
 
@@ -774,7 +776,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 
 		try {
-			inputGate.updateInputChannel(partitionId.getPartitionId(), inputChannel);
+			inputGate.updateInputChannel(partitionId.getPartitionId(), inputChannel, channelIndex);
 		} catch (IOException | InterruptedException e) {
 			throw new IllegalStateException("Could not update InputChannel", e);
 		}
@@ -788,6 +790,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	public boolean triggerMigration(ModificationMetaData metaData,
 									Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
 									Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
+									Set<ExecutionAttemptID> notPausingOperators,
 									long upcomingCheckpointID) throws Exception {
 
 		try {
@@ -833,7 +836,16 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 							Preconditions.checkArgument(getStreamOutputs()[0].getRecordWriter().getNumChannels() == location.size());
 						}
 
-						if (this instanceof SourceStreamTask &&
+						if (notPausingOperators.contains(getEnvironment().getExecutionId())) {
+							if (!transitionState(ModificationStatus.NOT_MODIFIED,
+								ModificationStatus.OPERATOR_WAITING_FOR_UPCOMING_CHECKPOINT_TO_BROADCAST_NEW_DOWNSTREAM_OPERATOR_LOCATION)) {
+								throw new IllegalStateException("Unexpected state for {}" + getName());
+							}
+
+							this.icddToBroadcastDownstream = location;
+							this.checkpointToReactTo = upcomingCheckpointID;
+
+						} else 	if (this instanceof SourceStreamTask &&
 							transitionState(ModificationStatus.NOT_MODIFIED,
 							ModificationStatus.SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR)) {
 
@@ -860,7 +872,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					// lock scope, they are an atomic operation regardless of the order in which they occur.
 					// Given this, we immediately emit the checkpoint barriers, so the downstream operators
 					// can start their checkpoint work as soon as possible
-					operatorChain.broadcastStartMigrationEvent(metaData, spillingVertices, stoppingVertices, upcomingCheckpointID);
+					operatorChain.broadcastStartMigrationEvent(metaData, spillingVertices, stoppingVertices, notPausingOperators, upcomingCheckpointID);
 
 					return true;
 				} else {
@@ -1188,6 +1200,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		synchronized (lock) {
 			if (isRunning) {
 				if (checkpointId == checkpointToReactTo) {
+
+					ResultPartition resultPartition;
+					ResultSubpartition[] subpartitions;
+
 					switch (STATE_UPDATER.get(this)) {
 						case WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR:
 						case PAUSING:
@@ -1195,16 +1211,34 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						case UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR:
 							break;
 
+						case OPERATOR_WAITING_FOR_UPCOMING_CHECKPOINT_TO_BROADCAST_NEW_DOWNSTREAM_OPERATOR_LOCATION:
+
+							broadcastPausingMarkersDownstream();
+
+							resultPartition = getStreamOutputs()[0].getRecordWriter().getResultPartitionWriter().getResultPartition();
+
+							subpartitions = resultPartition.getSubpartitions();
+
+							for (ResultSubpartition subpartition : subpartitions) {
+								((SpillablePipelinedSubpartition) subpartition).spillToDiskWithoutMarker();
+							}
+
+							if (!transitionState(ModificationStatus.OPERATOR_WAITING_FOR_UPCOMING_CHECKPOINT_TO_BROADCAST_NEW_DOWNSTREAM_OPERATOR_LOCATION,
+								ModificationStatus.BROADCASTED_NEW_LOCATION_FOR_DOWNSTREAM_OPERATOR)) {
+								throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
+							}
+
+							break;
+
 						case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK:
 
-							ResultPartition resultPartition =
-								getStreamOutputs()[0].getRecordWriter().getResultPartitionWriter().getResultPartition();
+							resultPartition = getStreamOutputs()[0].getRecordWriter().getResultPartitionWriter().getResultPartition();
 
-							ResultSubpartition[] subpartitions = resultPartition.getSubpartitions();
+							subpartitions = resultPartition.getSubpartitions();
 
 							for (Integer spillingIndex : spillingIndices) {
 								((SpillablePipelinedSubpartition) subpartitions[spillingIndex])
-									.spillToDisk(ModificationCoordinator.ModificationAction.STOPPING);
+									.spillToDiskWithoutMarker(ModificationCoordinator.ModificationAction.STOPPING);
 							}
 
 							if (!transitionState(ModificationStatus.SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK,

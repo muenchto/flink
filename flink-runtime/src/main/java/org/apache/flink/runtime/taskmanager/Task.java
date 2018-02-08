@@ -496,11 +496,11 @@ public class Task implements Runnable, TaskActions {
 				taskNameWithSubtask);
 		}
 
-		try {
-			inputGate.updateInputChannel(partitionId.getPartitionId(), inputChannel);
-		} catch (IOException | InterruptedException e) {
-			failExternally(e);
-		}
+//		try {
+//			inputGate.updateInputChannel(partitionId.getPartitionId(), inputChannel);
+//		} catch (IOException | InterruptedException e) {
+//			failExternally(e);
+//		}
 
 		LOG.debug("Successfully connected {} to new Input", taskNameWithSubtask);
 	}
@@ -1822,6 +1822,7 @@ public class Task implements Runnable, TaskActions {
 		long modificationTimestamp,
 		final Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
 		final Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
+		final Set<ExecutionAttemptID> notPausingOperators,
 		final long upcomingCheckpointID) {
 
 		final AbstractInvokable invokable = this.invokable;
@@ -1846,7 +1847,7 @@ public class Task implements Runnable, TaskActions {
 							modificationID, Joiner.on(",").join(spillingVertices.keySet()));
 
 						try {
-							boolean success = statefulTask.triggerMigration(metaData, spillingVertices, stoppingVertices, upcomingCheckpointID);
+							boolean success = statefulTask.triggerMigration(metaData, spillingVertices, stoppingVertices, notPausingOperators, upcomingCheckpointID);
 							if (!success) {
 								modificationResponder.declineModification(jobId, executionId, modificationID,
 									new TaskNotStatefulModificationException(taskNameWithSubtask));

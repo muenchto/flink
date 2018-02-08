@@ -171,7 +171,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public void triggerMigration(ExecutionAttemptID attemptId, JobID jobId, long modificationId, long timestamp, Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs, long checkpointIDToModify) {
+	public void triggerMigration(ExecutionAttemptID attemptId, JobID jobId, long modificationId, long timestamp, Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs, Set<ExecutionAttemptID> notPausingOperators, long checkpointIDToModify) {
 	}
 
 	@Override

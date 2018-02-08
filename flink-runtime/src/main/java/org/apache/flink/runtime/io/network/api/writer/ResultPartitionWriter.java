@@ -18,7 +18,6 @@
 
 package org.apache.flink.runtime.io.network.api.writer;
 
-import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.event.TaskEvent;
 import org.apache.flink.runtime.io.network.api.TaskEventHandler;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
@@ -29,15 +28,10 @@ import org.apache.flink.runtime.io.network.partition.ResultSubpartition;
 import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartition;
 import org.apache.flink.runtime.util.event.EventListener;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
-import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A buffer-oriented runtime result writer.
@@ -164,7 +158,7 @@ public class ResultPartitionWriter implements EventListener<TaskEvent> {
 			throw new IllegalStateException("Received PausingTaskEvent for non-existing sub-partition: " + taskIndex);
 		} else {
 			try {
-				((SpillablePipelinedSubpartition) resultSubpartition).spillToDisk(action);
+				((SpillablePipelinedSubpartition) resultSubpartition).spillToDiskWithoutMarker(action);
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}

@@ -19,14 +19,10 @@
 
 package org.apache.flink.runtime.io.network.api.serialization;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions.CheckpointType;
-import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.ResultPartitionLocation;
 import org.apache.flink.runtime.event.AbstractEvent;
@@ -38,7 +34,6 @@ import org.apache.flink.runtime.io.network.buffer.FreeingBufferRecycler;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
-import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.runtime.util.DataInputDeserializer;
 import org.apache.flink.runtime.util.DataOutputSerializer;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
@@ -46,13 +41,14 @@ import org.apache.flink.streaming.runtime.modification.events.CancelModification
 import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.util.InstantiationUtil;
+import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.Charset;
 import java.util.*;
-
-import org.apache.flink.util.Preconditions;
 
 /**
  * Utility class to serialize and deserialize task events.
@@ -205,6 +201,7 @@ public class EventSerializer {
 
 			Map<ExecutionAttemptID, Set<Integer>> spillingVertices = marker.getSpillingVertices();
 			Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices = marker.getStoppingVertices();
+			Set<ExecutionAttemptID> notPausingOperators = marker.getNotPausingOperators();
 
 			int bufferSize = 36;
 			bufferSize += spillingVertices.keySet().size() * 16;
@@ -228,6 +225,8 @@ public class EventSerializer {
 					}
 				}
 			}
+
+			bufferSize += 4 + notPausingOperators.size() * 16;
 
 			int spillingSize = spillingVertices.keySet().size(), stoppingSize = stoppingVertices.size();
 
@@ -289,6 +288,12 @@ public class EventSerializer {
 						buf.putInt(location.getConnectionId().getConnectionIndex());
 					}
 				}
+			}
+
+			buf.putInt(notPausingOperators.size());
+			for (ExecutionAttemptID executionAttemptID : notPausingOperators) {
+				buf.putLong(executionAttemptID.getLowerPart());
+				buf.putLong(executionAttemptID.getUpperPart());
 			}
 
 			buf.position(0);
@@ -676,7 +681,16 @@ public class EventSerializer {
 					stoppingVertices.put(executionAttemptID, list);
 				}
 
-				return new StartMigrationMarker(modificationID, timestamp, spillingVertices, stoppingVertices, checkpointToModify);
+				int notPausingSize = buffer.getInt();
+				Set<ExecutionAttemptID> notPausingOperators = new HashSet<>(notPausingSize);
+				for (int i = 0; i < notPausingSize; i++) {
+					long lower = buffer.getLong();
+					long upper = buffer.getLong();
+					ExecutionAttemptID executionAttemptID = new ExecutionAttemptID(lower, upper);
+					notPausingOperators.add(executionAttemptID);
+				}
+
+				return new StartMigrationMarker(modificationID, timestamp, spillingVertices, stoppingVertices, notPausingOperators, checkpointToModify);
 			} else if (type == OTHER_EVENT) {
 				try {
 					final DataInputDeserializer deserializer = new DataInputDeserializer(buffer);

@@ -152,6 +152,7 @@ public interface StatefulTask {
 	boolean triggerMigration(ModificationMetaData metaData,
 							 Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
 							 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
+							 Set<ExecutionAttemptID> notPausingOperators,
 							 long upcomingCheckpointID) throws Exception;
 
 	void updateChannelLocation(int channelIndex, InputChannelDeploymentDescriptor location);

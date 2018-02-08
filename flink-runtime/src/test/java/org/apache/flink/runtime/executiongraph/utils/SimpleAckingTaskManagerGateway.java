@@ -146,7 +146,14 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 								 Set<ExecutionAttemptID> ids, Set<Integer> operatorSubTaskIndices, ModificationCoordinator.ModificationAction action, long checkpointIDToModify) {}
 
 	@Override
-	public void triggerMigration(ExecutionAttemptID attemptId, JobID jobId, long modificationId, long timestamp, Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs, Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs, long checkpointIDToModify) {	}
+	public void triggerMigration(ExecutionAttemptID attemptId,
+								 JobID jobId,
+								 long modificationId,
+								 long timestamp,
+								 Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
+								 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+								 Set<ExecutionAttemptID> notPausingOperators,
+								 long checkpointIDToModify) {	}
 
 	@Override
 	public Future<BlobKey> requestTaskManagerLog(Time timeout) {

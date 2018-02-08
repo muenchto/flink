@@ -15,6 +15,7 @@ public class TriggerMigration extends AbstractModificationMessage {
 	private final long timestamp;
 	private final Map<ExecutionAttemptID, Set<Integer>> spillingVertices; // Mutually exclusive, either one or the other
 	private final Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices;
+	private final Set<ExecutionAttemptID> notPausingOperators;
 	private final long checkpointIDToModify;
 
 	public TriggerMigration(JobID job,
@@ -23,12 +24,14 @@ public class TriggerMigration extends AbstractModificationMessage {
 							long timestamp,
 							Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
 							Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
+							Set<ExecutionAttemptID> notPausingOperators,
 							long checkpointIDToModify) {
 		super(job, taskExecutionId, modificationID);
 
 		this.timestamp = timestamp;
 		this.spillingVertices = spillingVertices;
 		this.stoppingVertices = stoppingVertices;
+		this.notPausingOperators = notPausingOperators;
 		this.checkpointIDToModify = checkpointIDToModify;
 	}
 
@@ -52,5 +55,9 @@ public class TriggerMigration extends AbstractModificationMessage {
 
 	public Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> getStoppingVertices() {
 		return stoppingVertices;
+	}
+
+	public Set<ExecutionAttemptID> getNotPausingOperators() {
+		return notPausingOperators;
 	}
 }

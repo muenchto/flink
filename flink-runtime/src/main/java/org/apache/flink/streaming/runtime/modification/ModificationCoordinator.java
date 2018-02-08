@@ -13,6 +13,7 @@ import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.concurrent.Future;
 import org.apache.flink.runtime.deployment.InputChannelDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.execution.ExecutionState;
@@ -595,6 +596,66 @@ public class ModificationCoordinator {
 		return details.toString();
 	}
 
+	public void introduceNewOperator(int parallelism) throws ExecutionGraphException {
+		Collection<ExecutionJobVertex> allVertices = executionGraph.getAllVertices().values();
+
+		ExecutionJobVertex sourceOperator = findSource();
+		ExecutionJobVertex mapOperator = findMap();
+
+		ExecutionJobVertex filterExecutionJobVertex = buildFilterExecutionJobVertex(sourceOperator, parallelism);
+		List<ExecutionVertex> filterTaskVertices = Arrays.asList(filterExecutionJobVertex.getTaskVertices());
+
+		setupFilterConfiguration(sourceOperator, filterExecutionJobVertex);
+
+		allocateSlots(filterTaskVertices);
+
+		Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs = new HashMap<>();
+		Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs = new HashMap<>();
+
+		Map<Integer, Map<Integer, IntermediateResultPartition>> partitions = new HashMap<>();
+
+		for (ExecutionVertex vertex : filterTaskVertices) {
+			int subtaskIndex = vertex.getParallelSubtaskIndex();
+			Map<Integer, IntermediateResultPartition> intermediatePartitions = new HashMap<>();
+
+			Collection<IntermediateResultPartition> producedPartitions = vertex.getProducedPartitions().values();
+			for (IntermediateResultPartition producedPartition : producedPartitions) {
+				intermediatePartitions.put(producedPartition.getPartitionNumber(), producedPartition);
+			}
+
+			partitions.put(subtaskIndex, intermediatePartitions);
+		}
+
+		Set<ExecutionAttemptID> notPausingOperators = new HashSet<>();
+
+		for (ExecutionVertex vertex : sourceOperator.getTaskVertices()) {
+
+			// Now create a list of icdd for the migrating task, that will be send downstream to all consuming tasks
+			List<InputChannelDeploymentDescriptor> list = new ArrayList<>();
+
+			Map<Integer, IntermediateResultPartition> partitionMap = partitions.get(vertex.getParallelSubtaskIndex());
+
+			for (ExecutionVertex executionVertex : mapOperator.getTaskVertices()) {
+
+				Preconditions.checkArgument(executionVertex.getNumberOfInputs() == 1, vertex + " has not exactly one input");
+
+				InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForUpcomingOperator(
+					executionVertex.getCurrentAssignedResource(),
+					executionGraph.isQueuedSchedulingAllowed(),
+					partitionMap.get(executionVertex.getParallelSubtaskIndex()));
+
+				list.add(icdd);
+			}
+
+			pausingIDs.put(vertex.getCurrentExecutionAttempt().getAttemptId(), list);
+			notPausingOperators.add(vertex.getCurrentExecutionAttempt().getAttemptId());
+		}
+
+		// TODO Callback, when all sources spill to disk
+
+		triggerMigration(spillingToDiskIDs, pausingIDs, notPausingOperators,"Introducing filter operator");
+	}
+
 	public void migrateAllFromTaskmanager(ResourceID taskmanagerID) throws ExecutionGraphException {
 		Collection<ExecutionJobVertex> allVertices = executionGraph.getAllVertices().values();
 
@@ -690,8 +751,45 @@ public class ModificationCoordinator {
 		return slots;
 	}
 
+	private Map<ExecutionAttemptID, SimpleSlot> allocateSlots(List<ExecutionVertex> vertices) {
+		SlotProvider slotProvider = executionGraph.getSlotProvider();
+
+		Map<ExecutionAttemptID, SimpleSlot> slots = new HashMap<>();
+
+		for (ExecutionVertex executionVertex : vertices) {
+
+			ScheduledUnit scheduledUnit = executionVertex.getCurrentExecutionAttempt().getScheduledUnit();
+
+			Future<SimpleSlot> slotFuture = slotProvider.allocateSlot(scheduledUnit, executionGraph.isQueuedSchedulingAllowed());
+
+			if (!slotFuture.isDone()) {
+				throw new IllegalStateException("Allocating upcoming slots failed");
+			}
+
+			try {
+				SimpleSlot simpleSlot = slotFuture.get();
+
+				executionVertex.assignSlotForMigration(simpleSlot);
+				slots.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), simpleSlot);
+
+			} catch (InterruptedException | ExecutionException exception) {
+				LOG.error("Failed to retrieve slot", exception);
+				executionGraph.failGlobal(exception);
+			}
+		}
+
+		return slots;
+	}
+
 	private void triggerMigration(Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
 								  Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+								  final String description) {
+		triggerMigration(spillingToDiskIDs, pausingIDs, new HashSet<ExecutionAttemptID>(), description);
+	}
+
+	private void triggerMigration(Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
+								  Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+								  Set<ExecutionAttemptID> notPausingOperators,
 								  final String description) {
 
 		Preconditions.checkNotNull(spillingToDiskIDs);
@@ -772,6 +870,7 @@ public class ModificationCoordinator {
 						timestamp,
 						spillingToDiskIDs,
 						pausingIDs,
+						notPausingOperators,
 						checkpointIDToModify); // KeySet not serializable
 				}
 
@@ -877,7 +976,7 @@ public class ModificationCoordinator {
 		Collection<ExecutionJobVertex> vertices = executionGraph.getAllVertices().values();
 
 		for (ExecutionJobVertex vertex : vertices) {
-			if (vertex.getName().contains(operatorName)) {
+			if (vertex.getName().toLowerCase().contains(operatorName.toLowerCase())) {
 				return new ArrayList<>(Arrays.asList(vertex.getTaskVertices()));
 			}
 		}
@@ -1164,11 +1263,6 @@ public class ModificationCoordinator {
 
 		ExecutionJobVertex sourceOperator = findSource();
 
-		if (sourceOperator == null) {
-			executionGraph.failGlobal(new OperatorNotFoundException("Source", executionGraph.getJobID()));
-			return;
-		}
-
 		ExecutionJobVertex filterExecutionJobVertex = buildFilterExecutionJobVertex(sourceOperator, parallelism);
 
 		if (filterExecutionJobVertex == null) {
@@ -1177,6 +1271,23 @@ public class ModificationCoordinator {
 			LOG.debug("Starting {} instances of the filter operator", filterExecutionJobVertex.getTaskVertices().length);
 		}
 
+		setupFilterConfiguration(sourceOperator, filterExecutionJobVertex);
+
+		for (ExecutionVertex executionVertex : filterExecutionJobVertex.getTaskVertices()) {
+			executionVertex.getCurrentExecutionAttempt()
+				.scheduleForExecution(
+					executionGraph.getSlotProvider(),
+					executionGraph.isQueuedSchedulingAllowed());
+		}
+	}
+
+	private <F> F clean(F f) {
+		ClosureCleaner.clean(f, true);
+		ClosureCleaner.ensureSerializable(f);
+		return f;
+	}
+
+	private void setupFilterConfiguration(ExecutionJobVertex sourceOperator, ExecutionJobVertex filterExecutionJobVertex) {
 		Configuration sourceConfiguration = sourceOperator.getJobVertex().getConfiguration();
 		StreamConfig sourceStreamConfig = new StreamConfig(sourceConfiguration);
 		List<StreamEdge> outEdges = sourceStreamConfig.getOutEdges(executionGraph.getUserClassLoader());
@@ -1205,23 +1316,10 @@ public class ModificationCoordinator {
 		filterStreamConfig.setChainedOutputs(sourceStreamConfig.getChainedOutputs(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setStreamOperator(new StreamFilter<>(clean(new FilterFunction<Long>() {
 			@Override
-			public boolean filter(Long value) throws Exception {
+			public boolean filter(Long value) {
 				return value % 2 == 0;
 			}
 		})));
-
-		for (ExecutionVertex executionVertex : filterExecutionJobVertex.getTaskVertices()) {
-			boolean successful = executionVertex.getCurrentExecutionAttempt()
-				.scheduleForExecution(
-					executionGraph.getSlotProvider(),
-					executionGraph.isQueuedSchedulingAllowed());
-		}
-	}
-
-	private <F> F clean(F f) {
-		ClosureCleaner.clean(f, true);
-		ClosureCleaner.ensureSerializable(f);
-		return f;
 	}
 
 	public String getDetails() throws JobException {

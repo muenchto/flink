@@ -1516,6 +1516,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 								 long timestamp,
 								 Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
 								 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+								 Set<ExecutionAttemptID> notPausingOperators,
 								 long checkpointIDToModify) {
 		final SimpleSlot slot = assignedResource;
 
@@ -1529,6 +1530,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 				timestamp,
 				spillingToDiskIDs,
 				pausingIDs,
+				notPausingOperators,
 				checkpointIDToModify);
 		} else {
 			LOG.debug("The execution has no slot assigned. This indicates that the execution is " +

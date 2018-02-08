@@ -302,6 +302,7 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 								 long timestamp,
 								 Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
 								 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+								 Set<ExecutionAttemptID> notPausingOperators,
 								 long checkpointIDToModify) {
 		actorGateway.tell(
 			new TriggerMigration(jobId,
@@ -310,6 +311,7 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 				timestamp,
 				spillingToDiskIDs,
 				pausingIDs,
+				notPausingOperators,
 				checkpointIDToModify));
 	}
 

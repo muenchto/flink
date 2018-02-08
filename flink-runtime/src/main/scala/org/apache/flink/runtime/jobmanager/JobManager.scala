@@ -1144,6 +1144,23 @@ class JobManager(
                 (true, "Migrating all from taskmanager submitted")
               }
 
+            case msg if msg.startsWith("newFilter") =>
+
+              val m = msg.split(":")
+
+              if (m.length != 2) {
+                (false, s"migrateAll command $command")
+
+              } else {
+
+                val parallelism: Int = Integer.parseInt(m(1))
+
+                log.info(s"Attempting to start new filter operator with parallelism $parallelism")
+
+                modificationCoordinator.introduceNewOperator(parallelism)
+                (true, "Starting new filter operator submitted")
+              }
+
             case "jar" =>
               (false, s"Jar command $command")
 

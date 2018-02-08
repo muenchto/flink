@@ -110,7 +110,7 @@ public class TestInputChannel {
 		for (int i = 0; i < numberOfInputChannels; i++) {
 			mocks[i] = new TestInputChannel(inputGate, i);
 
-			inputGate.setInputChannel(new IntermediateResultPartitionID(), mocks[i].getInputChannel());
+			inputGate.setInputChannel(new IntermediateResultPartitionID(), mocks[i].getInputChannel(), i);
 		}
 
 		return mocks;

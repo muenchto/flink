@@ -238,4 +238,72 @@ public class InputChannelDeploymentDescriptor implements Serializable {
 
 		return new InputChannelDeploymentDescriptor(consumedPartitionId, partitionLocation);
 	}
+
+	/**
+	 * Creates an input channel deployment descriptor for each partition.
+	 */
+	public static InputChannelDeploymentDescriptor fromEdgesForUpcomingOperator(SimpleSlot consumerSlot,
+																				boolean allowLazyDeployment,
+																				IntermediateResultPartition consumedPartition) throws ExecutionGraphException {
+
+		final ResourceID consumerTaskManager = consumerSlot.getTaskManagerID();
+
+		final Execution producer = consumedPartition.getProducer().getCurrentExecutionAttempt();
+
+		final ExecutionState producerState = producer.getState();
+
+		SimpleSlot producerSlot;
+
+		if (consumedPartition.getProducer().getFutureSlot() == null) {
+			producerSlot = producer.getAssignedResource();
+		} else {
+			producerSlot = consumedPartition.getProducer().getFutureSlot(); // Get new assigned slot
+		}
+
+		final ResultPartitionLocation partitionLocation;
+
+		// The producing task needs to be RUNNING or already FINISHED
+		if (consumedPartition.isConsumable() && producerSlot != null &&
+			(producerState == ExecutionState.RUNNING ||
+				producerState == ExecutionState.FINISHED ||
+				producerState == ExecutionState.CREATED ||
+				producerState == ExecutionState.SCHEDULED ||
+				producerState == ExecutionState.DEPLOYING)) {
+
+			final TaskManagerLocation partitionTaskManagerLocation = producerSlot.getTaskManagerLocation();
+			final ResourceID partitionTaskManager = partitionTaskManagerLocation.getResourceID();
+
+			if (partitionTaskManager.equals(consumerTaskManager)) {
+				// Consuming task is deployed to the same TaskManager as the partition => local
+				partitionLocation = ResultPartitionLocation.createLocal();
+			} else {
+				// Different instances => remote
+				final ConnectionID connectionId = new ConnectionID(
+					partitionTaskManagerLocation,
+					consumedPartition.getIntermediateResult().getConnectionIndex());
+
+				partitionLocation = ResultPartitionLocation.createRemote(connectionId);
+			}
+		} else if (allowLazyDeployment) {
+			// The producing task might not have registered the partition yet
+			partitionLocation = ResultPartitionLocation.createUnknown();
+		} else if (producerState == ExecutionState.CANCELING
+			|| producerState == ExecutionState.CANCELED
+			|| producerState == ExecutionState.FAILED) {
+			String msg = "Trying to schedule a task whose inputs were canceled or failed. " +
+				"The producer is in state " + producerState + ".";
+			throw new ExecutionGraphException(msg);
+		} else {
+			String msg = String.format("Trying to eagerly schedule a task whose inputs " +
+					"are not ready (partition consumable? %s, producer state: %s, producer slot: %s).",
+				consumedPartition.isConsumable(),
+				producerState,
+				producerSlot);
+			throw new ExecutionGraphException(msg);
+		}
+
+		ResultPartitionID consumedPartitionId = new ResultPartitionID(consumedPartition.getPartitionId(), producer.getAttemptId());
+
+		return new InputChannelDeploymentDescriptor(consumedPartitionId, partitionLocation);
+	}
 }

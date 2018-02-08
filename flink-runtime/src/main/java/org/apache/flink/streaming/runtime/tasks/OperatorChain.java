@@ -487,7 +487,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 	public void broadcastStartMigrationEvent(ModificationMetaData metaData,
 											 Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
 											 Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
-											 long upcomingCheckpointID) throws Exception {
+											 Set<ExecutionAttemptID> notPausingOperators, long upcomingCheckpointID) throws Exception {
 
 		try {
 			StartMigrationMarker startMigrationMarker =
@@ -496,6 +496,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 					metaData.getTimestamp(),
 					spillingVertices,
 					stoppingVertices,
+					notPausingOperators,
 					upcomingCheckpointID);
 			for (RecordWriterOutput<?> streamOutput : streamOutputs) {
 				streamOutput.broadcastEvent(startMigrationMarker);

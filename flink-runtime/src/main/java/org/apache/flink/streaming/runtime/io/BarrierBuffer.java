@@ -469,6 +469,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 				checkpointMetaData,
 				startMigrationMarker.getSpillingVertices(),
 				startMigrationMarker.getStoppingVertices(),
+				startMigrationMarker.getNotPausingOperators(),
 				startMigrationMarker.getCheckpointIDToModify());
 
 		} else {

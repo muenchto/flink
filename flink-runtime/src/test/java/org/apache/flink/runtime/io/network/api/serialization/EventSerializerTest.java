@@ -119,7 +119,14 @@ public class EventSerializerTest {
 			stoppingVertices.put(executionAttemptID, list);
 		}
 
-		StartMigrationMarker marker = new StartMigrationMarker(modificationID, timestamp, spillingVertices, stoppingVertices, upcoming);
+		HashSet<ExecutionAttemptID> notPausingOperators = new HashSet<>();
+		notPausingOperators.add(new ExecutionAttemptID());
+		notPausingOperators.add(new ExecutionAttemptID());
+		notPausingOperators.add(new ExecutionAttemptID());
+		notPausingOperators.add(new ExecutionAttemptID());
+		notPausingOperators.add(new ExecutionAttemptID());
+
+		StartMigrationMarker marker = new StartMigrationMarker(modificationID, timestamp, spillingVertices, stoppingVertices, notPausingOperators, upcoming);
 
 		ByteBuffer serializedEvent = EventSerializer.toSerializedEvent(marker);
 		assertTrue(serializedEvent.hasRemaining());

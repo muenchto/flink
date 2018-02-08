@@ -89,7 +89,7 @@ public class IteratorWrappingTestSingleInputGate<T extends IOReadableWritable> e
 
 		when(inputChannel.getInputChannel().getNextBuffer()).thenAnswer(answer);
 
-		inputGate.setInputChannel(new IntermediateResultPartitionID(), inputChannel.getInputChannel());
+		inputGate.setInputChannel(new IntermediateResultPartitionID(), inputChannel.getInputChannel(), 1);
 
 		return this;
 	}

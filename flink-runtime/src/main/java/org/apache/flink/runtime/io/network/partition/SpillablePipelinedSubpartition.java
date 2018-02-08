@@ -148,7 +148,22 @@ public class SpillablePipelinedSubpartition extends ResultSubpartition {
 		}
 	}
 
-	public void spillToDisk(ModificationCoordinator.ModificationAction modificationAction) throws IOException {
+	public void spillToDiskWithoutMarker() throws IOException {
+		isSpilling = true;
+
+		LOG.debug("Trying to start spilling subpartition {} for task {} to disk without spilling marker.", this, parent.owningTaskName);
+
+		synchronized (buffers) {
+			this.spillWriter = ioManager.createBufferFileWriter(ioManager.createChannel());
+		}
+
+		LOG.debug("Start spilling subpartition {} for task {} without spilling marker.", this, parent.owningTaskName);
+
+		// From now on, we wait for a new readView to register
+		readView = null;
+	}
+
+	public void spillToDiskWithoutMarker(ModificationCoordinator.ModificationAction modificationAction) throws IOException {
 		final Buffer buffer = EventSerializer.toBuffer(new SpillToDiskMarker(modificationAction));
 
 		isSpilling = true;

@@ -187,7 +187,7 @@ public class SpillablePipelinedSubpartitionTest extends SubpartitionTestBase {
 		// Wait for producer and consumer to finish
 		producerResult.get();
 		System.out.println("Producer of InMemory-Phase done");
-		subpartition.spillToDisk(ModificationCoordinator.ModificationAction.STOPPING);
+		subpartition.spillToDiskWithoutMarker(ModificationCoordinator.ModificationAction.STOPPING);
 
 		consumerResult.get();
 

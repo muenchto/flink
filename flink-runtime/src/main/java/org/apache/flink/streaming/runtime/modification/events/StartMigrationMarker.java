@@ -10,6 +10,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -20,18 +21,20 @@ public class StartMigrationMarker extends RuntimeEvent {
 	private final long timestamp;
 	private final Map<ExecutionAttemptID, Set<Integer>> spillingVertices; // Mutually exclusive, either one or the other
 	private final Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices;
+	private final Set<ExecutionAttemptID> notPausingOperators;
 	private final long checkpointIDToModify;
 
 	public StartMigrationMarker(long modificationID,
 								long timestamp,
 								Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
 								Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices,
+								Set<ExecutionAttemptID> notPausingOperators,
 								long checkpointIDToModify) {
 		this.modificationID = modificationID;
 		this.timestamp = timestamp;
 		this.spillingVertices = spillingVertices;
 		this.stoppingVertices = stoppingVertices;
-
+		this.notPausingOperators = notPausingOperators;
 		this.checkpointIDToModify = checkpointIDToModify;
 	}
 
@@ -58,26 +61,19 @@ public class StartMigrationMarker extends RuntimeEvent {
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (!(o instanceof StartMigrationMarker)) return false;
-
-		StartMigrationMarker marker = (StartMigrationMarker) o;
-
-		if (modificationID != marker.modificationID) return false;
-		if (timestamp != marker.timestamp) return false;
-		if (checkpointIDToModify != marker.checkpointIDToModify) return false;
-		if (spillingVertices != null ? !spillingVertices.equals(marker.spillingVertices) : marker.spillingVertices != null)
-			return false;
-		return stoppingVertices != null ? stoppingVertices.equals(marker.stoppingVertices) : marker.stoppingVertices == null;
+		if (o == null || getClass() != o.getClass()) return false;
+		StartMigrationMarker that = (StartMigrationMarker) o;
+		return modificationID == that.modificationID &&
+			timestamp == that.timestamp &&
+			checkpointIDToModify == that.checkpointIDToModify &&
+			Objects.equals(spillingVertices, that.spillingVertices) &&
+			Objects.equals(stoppingVertices, that.stoppingVertices) &&
+			Objects.equals(notPausingOperators, that.notPausingOperators);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = (int) (modificationID ^ (modificationID >>> 32));
-		result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
-		result = 31 * result + (spillingVertices != null ? spillingVertices.hashCode() : 0);
-		result = 31 * result + (stoppingVertices != null ? stoppingVertices.hashCode() : 0);
-		result = 31 * result + (int) (checkpointIDToModify ^ (checkpointIDToModify >>> 32));
-		return result;
+		return Objects.hash(modificationID, timestamp, spillingVertices, stoppingVertices, notPausingOperators, checkpointIDToModify);
 	}
 
 	// ------------------------------------------------------------------------
@@ -110,5 +106,9 @@ public class StartMigrationMarker extends RuntimeEvent {
 			StringUtils.join(spillingVertices, ","),
 			StringUtils.join(stoppingVertices, ","),
 			timestamp);
+	}
+
+	public Set<ExecutionAttemptID> getNotPausingOperators() {
+		return notPausingOperators;
 	}
 }

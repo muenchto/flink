@@ -842,6 +842,7 @@ class TaskManager(
         val timestamp = message.getTimestamp
         val spillingVertices = message.getSpillingVertices
         val stoppingVertices = message.getStoppingVertices
+        val notPausingOperator = message.getNotPausingOperators
         val upcomingCheckpointID = message.getCheckpointIDToModify
 
         log.info(s"Receiver TriggerModification $modificationID@$timestamp for $taskExecutionId.")
@@ -849,7 +850,7 @@ class TaskManager(
         val task = runningTasks.get(taskExecutionId)
 
         if (task != null) {
-          task.triggerStartMigrationMessage(modificationID, timestamp, spillingVertices, stoppingVertices, upcomingCheckpointID)
+          task.triggerStartMigrationMessage(modificationID, timestamp, spillingVertices, stoppingVertices, notPausingOperator, upcomingCheckpointID)
         } else {
           log.info(s"TaskManager received a modification request for unknown task $taskExecutionId.")
         }

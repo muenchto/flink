@@ -87,10 +87,10 @@ public class SingleInputGateTest {
 		};
 
 		inputGate.setInputChannel(
-			new IntermediateResultPartitionID(), inputChannels[0].getInputChannel());
+			new IntermediateResultPartitionID(), inputChannels[0].getInputChannel(), 1);
 
 		inputGate.setInputChannel(
-			new IntermediateResultPartitionID(), inputChannels[1].getInputChannel());
+			new IntermediateResultPartitionID(), inputChannels[1].getInputChannel(), 1);
 
 		// Test
 		inputChannels[0].readBuffer();
@@ -154,8 +154,8 @@ public class SingleInputGateTest {
 		InputChannel unknown = new UnknownInputChannel(inputGate, 1, unknownPartitionId, partitionManager, taskEventDispatcher, mock(ConnectionManager.class), 0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup());
 
 		// Set channels
-		inputGate.setInputChannel(localPartitionId.getPartitionId(), local);
-		inputGate.setInputChannel(unknownPartitionId.getPartitionId(), unknown);
+		inputGate.setInputChannel(localPartitionId.getPartitionId(), local, 1);
+		inputGate.setInputChannel(unknownPartitionId.getPartitionId(), unknown, 1);
 
 		// Request partitions
 		inputGate.requestPartitions();
@@ -205,7 +205,7 @@ public class SingleInputGateTest {
 			new LocalConnectionManager(),
 			0, 0, new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup());
 
-		inputGate.setInputChannel(unknown.partitionId.getPartitionId(), unknown);
+		inputGate.setInputChannel(unknown.partitionId.getPartitionId(), unknown, 1);
 
 		// Update to a local channel and verify that no request is triggered
 		inputGate.updateInputChannel(new InputChannelDeploymentDescriptor(
@@ -245,7 +245,7 @@ public class SingleInputGateTest {
 			0, 0,
 			new UnregisteredTaskMetricsGroup.DummyTaskIOMetricGroup());
 
-		inputGate.setInputChannel(unknown.partitionId.getPartitionId(), unknown);
+		inputGate.setInputChannel(unknown.partitionId.getPartitionId(), unknown, 1);
 
 		// Start the consumer in a separate Thread
 		Thread asyncConsumer = new Thread() {

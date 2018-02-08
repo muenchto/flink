@@ -135,6 +135,8 @@ public class SingleInputGate implements InputGate {
 	 */
 	private final Map<IntermediateResultPartitionID, InputChannel> inputChannels;
 
+	private final Map<Integer, IntermediateResultPartitionID> inputChannelsToIndex;
+
 	/** Channels, which notified this input gate about available data. */
 	private final ArrayDeque<InputChannel> inputChannelsWithData = new ArrayDeque<>();
 
@@ -190,6 +192,7 @@ public class SingleInputGate implements InputGate {
 		this.numberOfInputChannels = numberOfInputChannels;
 
 		this.inputChannels = new HashMap<>(numberOfInputChannels);
+		this.inputChannelsToIndex = new HashMap<Integer, IntermediateResultPartitionID>(numberOfInputChannels);
 		this.channelsWithEndOfPartitionEvents = new BitSet(numberOfInputChannels);
 
 		this.taskActions = checkNotNull(taskActions);
@@ -273,7 +276,14 @@ public class SingleInputGate implements InputGate {
 	}
 
 	public void setInputChannel(IntermediateResultPartitionID partitionId, InputChannel inputChannel) {
+		setInputChannel(partitionId, inputChannel, -1);
+	}
+
+	public void setInputChannel(IntermediateResultPartitionID partitionId, InputChannel inputChannel, int index) {
 		synchronized (requestLock) {
+
+			inputChannelsToIndex.put(index, partitionId);
+
 			if (inputChannels.put(checkNotNull(partitionId), checkNotNull(inputChannel)) == null
 					&& inputChannel.getClass() == UnknownInputChannel.class) {
 
@@ -649,7 +659,7 @@ public class SingleInputGate implements InputGate {
 				throw new IllegalStateException("Unexpected partition location.");
 			}
 
-			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i]);
+			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i], i);
 		}
 
 		LOG.debug("Task {} created {} input channels (local: {}, remote: {}, unknown: {}).",
@@ -768,7 +778,7 @@ public class SingleInputGate implements InputGate {
 				throw new IllegalStateException("Unexpected partition location.");
 			}
 
-			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i]);
+			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i], i);
 		}
 
 		LOG.debug("Task {} created {} input channels (local: {}, remote: {}, unknown: {}).",
@@ -866,7 +876,7 @@ public class SingleInputGate implements InputGate {
 				throw new IllegalStateException("Unexpected partition location.");
 			}
 
-			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i]);
+			inputGate.setInputChannel(partitionId.getPartitionId(), inputChannels[i], i);
 		}
 
 //		final ResultPartitionID partitionId = icdd[0].getConsumedPartitionId();
@@ -902,7 +912,7 @@ public class SingleInputGate implements InputGate {
 
 		numRemoteChannels++;
 
-		inputGate.setInputChannel(newPartitionID, inputChannels[inputChannels.length - 1]);
+//		inputGate.setInputChannel(newPartitionID, inputChannels[inputChannels.length - 1], i);
 
 		LOG.debug("Task {} created {} input channels (local: {}, remote: {}, unknown: {}).",
 			owningTaskName,
@@ -920,16 +930,22 @@ public class SingleInputGate implements InputGate {
 			" SubPartitionIndex: " + consumedSubpartitionIndex;
 	}
 
-	public void updateInputChannel(IntermediateResultPartitionID partitionId, InputChannel newChannel) throws IOException, InterruptedException {
+	public void updateInputChannel(IntermediateResultPartitionID partitionId, InputChannel newChannel, int index)
+		throws IOException, InterruptedException {
 		synchronized (requestLock) {
 			if (isReleased) {
 				// There was a race with a task failure/cancel
 				return;
 			}
 
-			InputChannel oldChannel = inputChannels.put(partitionId, newChannel);
+			InputChannel oldChannel;
 
-			if (oldChannel == null) {
+			if (inputChannels.containsKey(partitionId)) {
+				oldChannel = inputChannels.put(partitionId, newChannel);
+			} else if (inputChannels.containsKey(inputChannelsToIndex.get(index))) {
+				oldChannel = inputChannels.remove(inputChannelsToIndex.get(index));
+				inputChannels.put(partitionId, newChannel);
+			} else {
 				throw new RuntimeException("No previous input channel.");
 			}
 

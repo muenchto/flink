@@ -250,6 +250,7 @@ public interface TaskManagerGateway {
 						  long timestamp,
 						  Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs,
 						  Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs,
+						  Set<ExecutionAttemptID> notPausingOperators,
 						  long checkpointIDToModify);
 
 	/**
