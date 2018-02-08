@@ -221,6 +221,15 @@ public interface Environment {
 	 */
 	void ignoreModification(long modificationID);
 
+	/**
+	 * Confirms that the invokable has successfully completed all required steps for
+	 * the checkpoint with the give state-migration-ID. This method does include
+	 * the given state in the checkpoint.
+	 *
+	 * @param modificationID ID of this modification
+	 */
+	void acknowledgeSpillingForNewOperator(long modificationID);
+
 	ModificationHandler getModificationHandler();
 
 	/**

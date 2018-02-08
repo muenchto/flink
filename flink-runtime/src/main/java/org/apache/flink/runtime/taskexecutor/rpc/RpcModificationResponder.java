@@ -32,4 +32,9 @@ public class RpcModificationResponder implements ModificationResponder {
 	public void acknowledgeStateMigration(JobID jobId, ExecutionAttemptID executionId, long checkpointId, CheckpointMetrics checkpointMetrics, SubtaskState subtaskState) {
 		throw new UnsupportedOperationException();
 	}
+
+	@Override
+	public void acknowledgeSpillingForNewOperator(JobID jobId, ExecutionAttemptID executionId, long modificationID) {
+
+	}
 }

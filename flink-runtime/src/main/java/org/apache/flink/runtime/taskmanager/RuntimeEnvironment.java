@@ -301,6 +301,11 @@ public class RuntimeEnvironment implements Environment {
 	}
 
 	@Override
+	public void acknowledgeSpillingForNewOperator(long modificationID) {
+		modificationResponder.acknowledgeSpillingForNewOperator(jobId, executionId, modificationID);
+	}
+
+	@Override
 	public ModificationHandler getModificationHandler() {
 		return modificationHandler;
 	}

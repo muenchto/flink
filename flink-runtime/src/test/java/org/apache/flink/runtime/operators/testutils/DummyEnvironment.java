@@ -176,6 +176,11 @@ public class DummyEnvironment implements Environment {
 	@Override
 	public void ignoreModification(long modificationID) {}
 
+	@Override
+	public void acknowledgeSpillingForNewOperator(long modificationID) {
+
+	}
+
 	public ModificationHandler getModificationHandler() { throw new NotImplementedException(); }
 
 	@Override

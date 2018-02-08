@@ -375,6 +375,11 @@ public class MockEnvironment implements Environment {
 	public void ignoreModification(long modificationID) { }
 
 	@Override
+	public void acknowledgeSpillingForNewOperator(long modificationID) {
+
+	}
+
+	@Override
 	public ModificationHandler getModificationHandler() { throw new NotImplementedException(); }
 
 	@Override

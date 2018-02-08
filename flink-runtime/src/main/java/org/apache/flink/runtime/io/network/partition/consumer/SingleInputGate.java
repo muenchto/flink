@@ -942,16 +942,19 @@ public class SingleInputGate implements InputGate {
 
 			if (inputChannels.containsKey(partitionId)) {
 				oldChannel = inputChannels.put(partitionId, newChannel);
+
+				ensureChannelDoesNotContainPendingData(oldChannel);
+
+				oldChannel.releaseAllResources();
 			} else if (inputChannels.containsKey(inputChannelsToIndex.get(index))) {
 				oldChannel = inputChannels.remove(inputChannelsToIndex.get(index));
+
+				ensureChannelDoesNotContainPendingData(oldChannel);
+				
 				inputChannels.put(partitionId, newChannel);
 			} else {
 				throw new RuntimeException("No previous input channel.");
 			}
-
-			ensureChannelDoesNotContainPendingData(oldChannel);
-
-			oldChannel.releaseAllResources();
 
 			LOG.debug("Updated existing input channel to {}.", newChannel);
 

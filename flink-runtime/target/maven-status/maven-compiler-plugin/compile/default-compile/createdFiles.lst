@@ -717,6 +717,7 @@ org/apache/flink/runtime/plugable/SerializationDelegate.class
 org/apache/flink/streaming/runtime/operators/TimestampsAndPeriodicWatermarksOperator.class
 org/apache/flink/streaming/api/graph/StreamGraphHasher.class
 org/apache/flink/optimizer/dag/SinkJoiner.class
+org/apache/flink/runtime/messages/modification/AcknowledgeSpillingMessage.class
 org/apache/flink/runtime/state/RegisteredOperatorBackendStateMetaInfo$1.class
 org/apache/flink/runtime/util/SignalHandler$Handler.class
 org/apache/flink/runtime/resourcemanager/slotmanager/SlotManager$2.class

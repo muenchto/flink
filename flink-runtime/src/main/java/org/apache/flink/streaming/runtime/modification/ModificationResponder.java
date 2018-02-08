@@ -60,4 +60,8 @@ public interface ModificationResponder {
 								   long checkpointId,
 								   CheckpointMetrics checkpointMetrics,
 								   SubtaskState subtaskState);
+
+	void acknowledgeSpillingForNewOperator(JobID jobId,
+										   ExecutionAttemptID executionId,
+										   long modificationID);
 }

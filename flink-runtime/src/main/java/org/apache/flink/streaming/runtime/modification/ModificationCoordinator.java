@@ -1,6 +1,7 @@
 package org.apache.flink.streaming.runtime.modification;
 
 import com.google.common.base.Joiner;
+import io.netty.util.internal.ConcurrentSet;
 import org.apache.commons.lang.StringUtils;
 import org.apache.curator.shaded.com.google.common.collect.Sets;
 import org.apache.flink.api.common.functions.FilterFunction;
@@ -23,10 +24,8 @@ import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
-import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
-import org.apache.flink.runtime.messages.modification.DeclineModification;
-import org.apache.flink.runtime.messages.modification.IgnoreModification;
-import org.apache.flink.runtime.messages.modification.StateMigrationModification;
+import org.apache.flink.runtime.messages.Acknowledge;
+import org.apache.flink.runtime.messages.modification.*;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.taskmanager.TaskExecutionState;
@@ -77,6 +76,10 @@ public class ModificationCoordinator {
 	private Set<ExecutionAttemptID> migratingVertices = new HashSet<>();
 	private Set<ExecutionAttemptID> readyVertices = new HashSet<>();
 	private Set<ExecutionVertex> waitingVertices = new HashSet<>();
+
+	private Set<ExecutionAttemptID> newOperatorWaitingVertices = new ConcurrentSet<>();
+
+	private ExecutionJobVertex filterExecutionJobVertex;
 
 	private final ExecutionGraph executionGraph;
 
@@ -286,6 +289,46 @@ public class ModificationCoordinator {
 						modificationID, message.getTaskExecutionId());
 				}
 			}
+		}
+	}
+
+	public void acknowledgeSpillingMessage(AcknowledgeSpillingMessage message) {
+		if (message == null) {
+			LOG.error("Received empty AcknowledgeSpillingMessage message for job id {}: {}", message.getJobID(), message);
+			throw new IllegalStateException();
+		}
+
+		// TODO Masterthesis Comparison should be done with equals(), change in other parts as well
+		if (!message.getJobID().equals(executionGraph.getJobID())) {
+			LOG.error("Received wrong StateMigrationModification message for job id {}: {}", message.getJobID(), message);
+			executionGraph.failGlobal(new IllegalStateException("Received wrong message"));
+			throw new IllegalStateException();
+		}
+
+		synchronized (lock) {
+
+			if (message.getTaskExecutionId() == null) {
+				LOG.error("TaskExecutionId is null while receiving state {}: {}", message.getJobID(), message);
+				throw new IllegalStateException();
+			} else {
+				LOG.info("Everything fine {}", message.getJobID(), message);
+			}
+		}
+
+		boolean removed = newOperatorWaitingVertices.remove(message.getTaskExecutionId());
+
+		if (removed) {
+			if (newOperatorWaitingVertices.isEmpty()) {
+				for (ExecutionVertex vertex : filterExecutionJobVertex.getTaskVertices()) {
+					try {
+						vertex.getCurrentExecutionAttempt().scheduleForMigration();
+					} catch (JobException e) {
+						executionGraph.failGlobal(e);
+					}
+				}
+			}
+		} else {
+			throw new IllegalStateException("Received acknowledge from wrong message");
 		}
 	}
 
@@ -602,7 +645,7 @@ public class ModificationCoordinator {
 		ExecutionJobVertex sourceOperator = findSource();
 		ExecutionJobVertex mapOperator = findMap();
 
-		ExecutionJobVertex filterExecutionJobVertex = buildFilterExecutionJobVertex(sourceOperator, parallelism);
+		filterExecutionJobVertex = buildFilterExecutionJobVertex(sourceOperator, parallelism);
 		List<ExecutionVertex> filterTaskVertices = Arrays.asList(filterExecutionJobVertex.getTaskVertices());
 
 		setupFilterConfiguration(sourceOperator, filterExecutionJobVertex);
@@ -649,9 +692,8 @@ public class ModificationCoordinator {
 
 			pausingIDs.put(vertex.getCurrentExecutionAttempt().getAttemptId(), list);
 			notPausingOperators.add(vertex.getCurrentExecutionAttempt().getAttemptId());
+			newOperatorWaitingVertices.add(vertex.getCurrentExecutionAttempt().getAttemptId());
 		}
-
-		// TODO Callback, when all sources spill to disk
 
 		triggerMigration(spillingToDiskIDs, pausingIDs, notPausingOperators,"Introducing filter operator");
 	}
@@ -1518,18 +1560,6 @@ public class ModificationCoordinator {
 
 			executionGraph.getVerticesInCreationOrder().add(vertex);
 			executionGraph.addNumVertices(vertex.getParallelism());
-
-			// TODO Masterthesis Job specific, that filter is introduce between source and map
-			// Clear all current inputs and add new inputs
-			ExecutionJobVertex map = findMap();
-			map.getJobVertex().getInputs().clear();
-			map.getJobVertex().connectDataSetAsInput(filterIDS, DistributionPattern.ALL_TO_ALL);
-			try {
-				map.connectToPredecessors(executionGraph.getAllIntermediateResults());
-			} catch (JobException e) {
-				executionGraph.failGlobal(e);
-				LOG.error("Failed to connectToPredecessors.", e);
-			}
 
 			return vertex;
 		} catch (JobException jobException) {

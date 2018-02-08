@@ -406,6 +406,31 @@ class JobManager(
           case None => log.error(s"Received IgnoreModification for unavailable job $jid")
         }
 
+      case spillingMessage: AcknowledgeSpillingMessage =>
+        val jid = spillingMessage.getJobID()
+        currentJobs.get(jid) match {
+          case Some((graph, _)) =>
+            val modificationCoordinator = graph.getModificationCoordinator()
+
+            if (modificationCoordinator != null) {
+              future {
+                try {
+                  modificationCoordinator.acknowledgeSpillingMessage(spillingMessage)
+                }
+                catch {
+                  case t: Throwable =>
+                    log.error(s"Error in ModificationCoordinator while processing $spillingMessage", t)
+                }
+              }(context.dispatcher)
+            }
+            else {
+              log.error(
+                s"Received IgnoreModification message for job $jid with no ModificationCoordinator")
+            }
+
+          case None => log.error(s"Received IgnoreModification for unavailable job $jid")
+        }
+
       // unknown checkpoint message
       case _ => unhandled(modificationMessage)
     }

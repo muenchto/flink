@@ -786,6 +786,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	private volatile boolean alreadyTriggerMigration = false;
 
+	private volatile long modificationID;
+
 	@Override
 	public boolean triggerMigration(ModificationMetaData metaData,
 									Map<ExecutionAttemptID, Set<Integer>> spillingVertices,
@@ -810,6 +812,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					} else {
 						return true;
 					}
+
+					modificationID = metaData.getModificationID();
 
 					Set<Integer> spillingIndices = spillingVertices.get(getEnvironment().getExecutionId());
 					List<InputChannelDeploymentDescriptor> location = stoppingVertices.get(getEnvironment().getExecutionId());
@@ -1227,6 +1231,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 								ModificationStatus.BROADCASTED_NEW_LOCATION_FOR_DOWNSTREAM_OPERATOR)) {
 								throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
 							}
+
+							getEnvironment().acknowledgeSpillingForNewOperator(modificationID);
 
 							break;
 

@@ -5,10 +5,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.instance.ActorGateway;
-import org.apache.flink.runtime.messages.modification.AcknowledgeModification;
-import org.apache.flink.runtime.messages.modification.DeclineModification;
-import org.apache.flink.runtime.messages.modification.IgnoreModification;
-import org.apache.flink.runtime.messages.modification.StateMigrationModification;
+import org.apache.flink.runtime.messages.modification.*;
 import org.apache.flink.streaming.runtime.modification.ModificationResponder;
 import org.apache.flink.util.Preconditions;
 
@@ -46,5 +43,12 @@ public class ActorGatewayModificationResponder implements ModificationResponder 
 		StateMigrationModification ignore = new StateMigrationModification(jobId, executionId, checkpointId, checkpointMetrics, subtaskState);
 
 		actorGateway.tell(ignore);
+	}
+
+	@Override
+	public void acknowledgeSpillingForNewOperator(JobID jobId, ExecutionAttemptID executionId, long modificationID) {
+		AcknowledgeSpillingMessage message = new AcknowledgeSpillingMessage(jobId, executionId, modificationID);
+
+		actorGateway.tell(message);
 	}
 }
