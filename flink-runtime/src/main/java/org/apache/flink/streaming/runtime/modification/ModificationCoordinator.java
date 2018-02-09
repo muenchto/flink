@@ -452,14 +452,16 @@ public class ModificationCoordinator {
 
 	private boolean allUpstreamOperatorsMigratedOrUnmodified(ExecutionVertex vertex) {
 
-		ExecutionJobVertex upstreamOperator = getUpstreamOperator(vertex).get(0);
+		List<ExecutionJobVertex> upstreamOperator = getUpstreamOperator(vertex);
 
-		if (upstreamOperator == null) {
+		if (upstreamOperator.size() == 0) {
 			return true;
 		} else {
-			for (ExecutionVertex executionVertex : upstreamOperator.getTaskVertices()) {
-				if (!readyVertices.contains(executionVertex.getCurrentExecutionAttempt().getAttemptId())) {
-					return false;
+			for (ExecutionJobVertex executionJobVertex : upstreamOperator) {
+				for (ExecutionVertex executionVertex : executionJobVertex.getTaskVertices()) {
+					if (!readyVertices.contains(executionVertex.getCurrentExecutionAttempt().getAttemptId())) {
+						return false;
+					}
 				}
 			}
 		}
@@ -917,6 +919,9 @@ public class ModificationCoordinator {
 				// Check if checkpointing is enabled
 				if (checkpointIdCounter.getCurrent() >= 2) {
 					checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
+				} else {
+					executionGraph.failGlobal(new IllegalStateException("Checkpointing seems to be disabled"));
+					throw new IllegalStateException("Checkpointing seems to be disabled");
 				}
 
 				ExecutionVertex[] triggerVertices = executionGraph.getCheckpointCoordinator().getTriggerVertices();
