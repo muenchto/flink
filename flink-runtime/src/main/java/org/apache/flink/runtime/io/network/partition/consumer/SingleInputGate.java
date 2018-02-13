@@ -976,11 +976,25 @@ public class SingleInputGate implements InputGate {
 		}
 	}
 
-	private void ensureChannelDoesNotContainPendingData(InputChannel channel) {
+	private void ensureChannelDoesNotContainPendingData(InputChannel channel) throws IOException, InterruptedException {
 		synchronized (inputChannelsWithData) {
 
 			if (inputChannelsWithData.contains(channel)) {
-				throw new IllegalStateException("Channel " + channel + " should not contain pending data");
+
+				String message = "";
+				BufferAndAvailability nextBuffer = channel.getNextBuffer();
+
+				message += "More available? " + nextBuffer.moreAvailable();
+
+				Buffer buffer = nextBuffer.buffer();
+
+				if (buffer.isBuffer()) {
+					throw new IllegalStateException("Channel " + channel + " should not contain pending data. Data " + buffer + " - " + message);
+				} else {
+					final AbstractEvent event = EventSerializer.fromBuffer(buffer, getClass().getClassLoader());
+
+					throw new IllegalStateException("Channel " + channel + " should not contain pending data. Event " + event.getClass() + " - " + event.toString() + " - " + message);
+				}
 			}
 		}
 	}

@@ -136,6 +136,10 @@ public class EventSerializerTest {
 		assertEquals(marker, deserialized);
 	}
 
+	/**
+	 * AssertTrue for remaining buffer space are useless as last call in EventSerializer resets buffer position
+	 * and therefore hasRemaining will always be true.
+	 */
 	@Test
 	public void testPausingMarker() throws IOException {
 		ResultPartitionID resultPartitionID = new ResultPartitionID();

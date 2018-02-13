@@ -178,6 +178,11 @@ public class InputChannelDeploymentDescriptor implements Serializable {
 																				   int index) throws ExecutionGraphException {
 
 		final ResourceID consumerTaskManager = consumerSlot.getTaskManagerID();
+
+		if (edges.length <= index) {
+			throw new IllegalStateException();
+		}
+
 		final IntermediateResultPartition consumedPartition = edges[index].getSource();
 
 		final Execution producer = consumedPartition.getProducer().getCurrentExecutionAttempt();

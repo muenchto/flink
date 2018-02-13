@@ -209,7 +209,7 @@ public class RemoteInputChannel extends InputChannel {
 
 	@Override
 	public String toString() {
-		return "RemoteInputChannel [" + partitionId + " at " + connectionId + "] with ChannelIndex"
+		return "RemoteInputChannel [" + partitionId + " at " + connectionId + "] with ChannelIndex "
 			+ getChannelIndex() + " and queued buffers " + getNumberOfQueuedBuffers();
 	}
 

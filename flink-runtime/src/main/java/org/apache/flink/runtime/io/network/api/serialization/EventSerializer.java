@@ -42,6 +42,8 @@ import org.apache.flink.streaming.runtime.modification.events.StartMigrationMark
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -54,6 +56,8 @@ import java.util.*;
  * Utility class to serialize and deserialize task events.
  */
 public class EventSerializer {
+
+	private static final Logger LOG = LoggerFactory.getLogger(EventSerializer.class);
 
 	private static final Charset STRING_CODING_CHARSET = Charset.forName("UTF-8");
 
@@ -145,6 +149,10 @@ public class EventSerializer {
 
 					buf.putInt(location.getConnectionId().getConnectionIndex());
 				}
+			}
+
+			if (buf.hasRemaining()) {
+				throw new IllegalStateException("Buffer has remaining, even though it should not happen");
 			}
 
 			buf.position(0);
@@ -296,6 +304,10 @@ public class EventSerializer {
 				buf.putLong(executionAttemptID.getUpperPart());
 			}
 
+			if (buf.hasRemaining()) {
+				throw new IllegalStateException("Buffer has remaining, even though it should not happen");
+			}
+
 			buf.position(0);
 
 			return buf;
@@ -337,6 +349,10 @@ public class EventSerializer {
 			for (int index = 32 + executionAttemptIDS.size() * 16, i = 0; i < subTaskIndices.size(); i++, index += 4) {
 				Integer taskIndex = subTaskIndicesArray[i];
 				buf.putInt(index, taskIndex);
+			}
+
+			if (buf.hasRemaining()) {
+				throw new IllegalStateException("Buffer has remaining, even though it should not happen");
 			}
 
 			return buf;
@@ -598,6 +614,9 @@ public class EventSerializer {
 				return new CancelModificationMarker(modificationID, timestamp, ids);
 
 			} else if (type == MIGRATION_START_EVENT) {
+
+				LOG.debug("Unpacking migration start event with limit {} and capacity {} and position {}",
+					buffer.limit(), buffer.capacity(), buffer.position());
 
 				Map<ExecutionAttemptID, Set<Integer>> spillingVertices = new HashMap<>();
 				Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> stoppingVertices = new HashMap<>();
