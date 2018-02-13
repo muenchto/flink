@@ -1564,14 +1564,14 @@ public class ModificationCoordinator {
 		}
 
 		ExecutionJobVertex map = findMap();
-		map.getJobVertex().connectDataSetAsInput(filterIDS, DistributionPattern.ALL_TO_ALL);
+		map.getJobVertex().connectDataSetAsInput(filterIDS, DistributionPattern.POINTWISE);
 
 		IntermediateDataSet sourceProducedDataset = sourceProducedDatasets.get(0);
 
 		sourceProducedDataset.getConsumers().clear();
 
 		// Connect source IDS as input for FilterOperator
-		filterJobVertex.connectDataSetAsInput(sourceProducedDataset, DistributionPattern.ALL_TO_ALL);
+		filterJobVertex.connectDataSetAsInput(sourceProducedDataset, DistributionPattern.POINTWISE);
 
 		try {
 			ExecutionJobVertex vertex =
