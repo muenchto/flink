@@ -8,6 +8,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -54,6 +55,23 @@ public class StartModificationMarker extends RuntimeEvent {
 
 	public Set<Integer> getSubTasksToPause() {
 		return subTasksToPause;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		StartModificationMarker that = (StartModificationMarker) o;
+		return modificationID == that.modificationID &&
+			timestamp == that.timestamp &&
+			Objects.equals(vertexIds, that.vertexIds) &&
+			Objects.equals(subTasksToPause, that.subTasksToPause) &&
+			modificationAction == that.modificationAction;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(modificationID, timestamp, vertexIds, subTasksToPause, modificationAction);
 	}
 
 	// ------------------------------------------------------------------------

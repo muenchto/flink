@@ -7,7 +7,11 @@ import org.apache.curator.shaded.com.google.common.collect.Sets;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
+import org.apache.flink.api.common.typeinfo.TypeHint;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.ClosureCleaner;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
@@ -30,6 +34,7 @@ import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.taskmanager.TaskExecutionState;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.operators.StreamFilter;
@@ -41,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -1382,12 +1388,6 @@ public class ModificationCoordinator {
 		filterStreamConfig.setNonChainedOutputs(sourceStreamConfig.getNonChainedOutputs(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setOutEdges(sourceStreamConfig.getOutEdges(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setVertexID(42);
-		try {
-			filterStreamConfig.setTypeSerializerIn1(BasicTypeInfo.LONG_TYPE_INFO.createSerializer(executionGraph.getJobInformation().getSerializedExecutionConfig().deserializeValue(executionGraph.getUserClassLoader())));
-		} catch (IOException | ClassNotFoundException e) {
-			executionGraph.failGlobal(e);
-			e.printStackTrace();
-		}
 		filterStreamConfig.setTypeSerializerOut(sourceStreamConfig.getTypeSerializerOut(executionGraph.getUserClassLoader()));
 		filterStreamConfig.setNumberOfInputs(1);
 		filterStreamConfig.setNumberOfOutputs(1);
@@ -1395,12 +1395,35 @@ public class ModificationCoordinator {
 		filterStreamConfig.setOutEdgesInOrder(sourceStreamConfig.getOutEdgesInOrder(executionGraph.getUserClassLoader()));
 
 		filterStreamConfig.setChainedOutputs(sourceStreamConfig.getChainedOutputs(executionGraph.getUserClassLoader()));
-		filterStreamConfig.setStreamOperator(new StreamFilter<>(clean(new FilterFunction<Long>() {
-			@Override
-			public boolean filter(Long value) {
-				return value % 2 == 0;
+
+		FilterFunction function;
+
+		if (executionGraph.getCheckpointCoordinator().getTriggerVertices()[0].getTaskName().toLowerCase().contains("socket")) {
+			function = new FilterFunction<Tuple2<Timestamp, Long>>() {
+				@Override
+				public boolean filter(Tuple2<Timestamp, Long> value) {
+					return value.f1 % 2 == 0;
+				}
+			};
+			TypeInformation<Tuple2<Timestamp, Long>> typeInformation = TypeInformation.of(new TypeHint<Tuple2<Timestamp, Long>>() {});
+			TypeSerializer<Tuple2<Timestamp, Long>> serializer = typeInformation.createSerializer(StreamExecutionEnvironment.getExecutionEnvironment().getConfig());
+			filterStreamConfig.setTypeSerializerIn1(serializer);
+		} else {
+			function = new FilterFunction<Long>() {
+				@Override
+				public boolean filter(Long value) {
+					return value % 2 == 0;
+				}
+			};
+			try {
+				filterStreamConfig.setTypeSerializerIn1(BasicTypeInfo.LONG_TYPE_INFO.createSerializer(executionGraph.getJobInformation().getSerializedExecutionConfig().deserializeValue(executionGraph.getUserClassLoader())));
+			} catch (IOException | ClassNotFoundException e) {
+				executionGraph.failGlobal(e);
+				e.printStackTrace();
 			}
-		})));
+		}
+
+		filterStreamConfig.setStreamOperator(new StreamFilter<>(clean(function)));
 	}
 
 	public String getDetails() throws JobException {

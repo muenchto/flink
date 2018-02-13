@@ -40,7 +40,9 @@ import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.util.TestTaskEvent;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
 import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
+import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
 import org.junit.Test;
 
 public class EventSerializerTest {
@@ -72,7 +74,7 @@ public class EventSerializerTest {
 	}
 
 	@Test
-	public void testStartModificationMarker() throws IOException {
+	public void testStartMigrationMarker() throws IOException {
 
 		long modificationID = 123, upcoming = 123321, timestamp = 123434324234L;
 
@@ -190,6 +192,47 @@ public class EventSerializerTest {
 
 		serializedEvent = EventSerializer.toSerializedEvent(marker);
 		assertTrue(serializedEvent.hasRemaining());
+
+		deserialized = EventSerializer.fromSerializedEvent(serializedEvent, getClass().getClassLoader());
+		assertNotNull(deserialized);
+		assertEquals(marker, deserialized);
+	}
+
+	/**
+	 * AssertTrue for remaining buffer space are useless as last call in EventSerializer resets buffer position
+	 * and therefore hasRemaining will always be true.
+	 */
+	@Test
+	public void testStartModificationMarker() throws IOException {
+
+		long modificationID = 1337;
+		long timestamp = 232342342;
+
+		Set<ExecutionAttemptID> attemptIDS = new HashSet<>();
+		for (int i = 0; i < 10; i++) {
+			attemptIDS.add(new ExecutionAttemptID());
+		}
+
+		Set<Integer> indices = new HashSet<>();
+		for (int i = 0; i < 10; i++) {
+			indices.add(i);
+		}
+
+		ModificationCoordinator.ModificationAction action = ModificationCoordinator.ModificationAction.STOPPING;
+
+		StartModificationMarker marker = new StartModificationMarker(modificationID, timestamp, attemptIDS, indices, action);
+
+		ByteBuffer serializedEvent = EventSerializer.toSerializedEvent(marker);
+
+		AbstractEvent deserialized = EventSerializer.fromSerializedEvent(serializedEvent, getClass().getClassLoader());
+		assertNotNull(deserialized);
+		assertEquals(marker, deserialized);
+
+		action = ModificationCoordinator.ModificationAction.PAUSING;
+
+		marker = new StartModificationMarker(modificationID, timestamp, new HashSet<ExecutionAttemptID>(), new HashSet<Integer>(), action);
+
+		serializedEvent = EventSerializer.toSerializedEvent(marker);
 
 		deserialized = EventSerializer.fromSerializedEvent(serializedEvent, getClass().getClassLoader());
 		assertNotNull(deserialized);

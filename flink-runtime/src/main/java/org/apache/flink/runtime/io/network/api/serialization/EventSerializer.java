@@ -328,32 +328,27 @@ public class EventSerializer {
 			int bufferSize = executionAttemptIDS.size() * 16 + subTaskIndices.size() * 4 + 32;
 
 			ByteBuffer buf = ByteBuffer.allocate(bufferSize);
-			buf.putInt(0, MODIFICATION_START_EVENT);
-			buf.putLong(4, marker.getModificationID());
-			buf.putLong(12, marker.getTimestamp());
-			buf.putInt(20, marker.getModificationAction().ordinal());
-			buf.putInt(24, executionAttemptIDS.size());
-			buf.putInt(28, subTaskIndices.size());
+			buf.putInt(MODIFICATION_START_EVENT);
+			buf.putLong(marker.getModificationID());
+			buf.putLong(marker.getTimestamp());
+			buf.putInt(marker.getModificationAction().ordinal());
+			buf.putInt(executionAttemptIDS.size());
+			buf.putInt(subTaskIndices.size());
 
-			ExecutionAttemptID[] executionAttempts =
-				executionAttemptIDS.toArray(new ExecutionAttemptID[executionAttemptIDS.size()]);
-
-			for (int index = 32, i = 0; i < executionAttemptIDS.size(); i++, index += 16) {
-				ExecutionAttemptID vertexID = executionAttempts[i];
-				buf.putLong(index, vertexID.getLowerPart());
-				buf.putLong(index + 8, vertexID.getUpperPart());
+			for (ExecutionAttemptID executionAttemptID : executionAttemptIDS) {
+				buf.putLong(executionAttemptID.getLowerPart());
+				buf.putLong(executionAttemptID.getUpperPart());
 			}
 
-			Integer[] subTaskIndicesArray = subTaskIndices.toArray(new Integer[subTaskIndices.size()]);
-
-			for (int index = 32 + executionAttemptIDS.size() * 16, i = 0; i < subTaskIndices.size(); i++, index += 4) {
-				Integer taskIndex = subTaskIndicesArray[i];
-				buf.putInt(index, taskIndex);
+			for (Integer subTaskIndex : subTaskIndices) {
+				buf.putInt(subTaskIndex);
 			}
 
 			if (buf.hasRemaining()) {
 				throw new IllegalStateException("Buffer has remaining, even though it should not happen");
 			}
+
+			buf.position(0);
 
 			return buf;
 

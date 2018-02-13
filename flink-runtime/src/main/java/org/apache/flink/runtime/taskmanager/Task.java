@@ -1948,6 +1948,12 @@ public class Task implements Runnable, TaskActions {
 
 					inputGate.retriggerPartitionRequest(resultPartitionId.getPartitionId());
 
+				} else if (producerState == ExecutionState.CREATED) {
+
+					// Retrigger the partition request
+					// Task has not been created
+					inputGate.retriggerPartitionRequest(resultPartitionId.getPartitionId());
+
 				} else {
 					// Any other execution state is unexpected. Currently, only
 					// state CREATED is left out of the checked states. If we
