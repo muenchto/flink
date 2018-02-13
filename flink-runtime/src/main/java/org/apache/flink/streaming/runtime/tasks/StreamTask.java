@@ -643,6 +643,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	private void triggerStateMigration() throws Exception {
 
+		LOG.error("BENCHMARK:Operator {} ({}) is now starting state migration", getName(), getEnvironment().getExecutionId());
+
 		StateMigrationMetaData stateMigrationMetaData =
 			new StateMigrationMetaData(new Random().nextLong(), System.currentTimeMillis());
 
@@ -1081,8 +1083,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 			if (transitionState(ModificationStatus.SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR, ModificationStatus.PAUSING)) {
 
-				LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
-					getName(), getEnvironment().getJobVertexId());
+				LOG.error("BENCHMARK:Operator {} is now pausing: {}.", getName(), getEnvironment().getExecutionId());
 			} else {
 				throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
 			}
@@ -1119,8 +1120,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 					if (transitionState(ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR, ModificationStatus.PAUSING)) {
 
-						LOG.info("Operator {} successfully acknowledged SpillingToDisk and is now pausing: {}.",
-							getName(), getEnvironment().getJobVertexId());
+						LOG.error("BENCHMARK:Operator {} is now pausing: {}.", getName(), getEnvironment().getExecutionId());
 
 						return true;
 					} else {
@@ -1217,6 +1217,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 						case OPERATOR_WAITING_FOR_UPCOMING_CHECKPOINT_TO_BROADCAST_NEW_DOWNSTREAM_OPERATOR_LOCATION:
 
+							LOG.error("BENCHMARK:Operator {} ({}) is now broadcasting new location.", getName(), getEnvironment().getExecutionId());
+
 							broadcastPausingMarkersDownstream();
 
 							resultPartition = getStreamOutputs()[0].getRecordWriter().getResultPartitionWriter().getResultPartition();
@@ -1238,6 +1240,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 						case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK:
 
+							LOG.error("BENCHMARK:Operator {} ({}) is now spilling to disk", getName(), getEnvironment().getExecutionId());
+
 							resultPartition = getStreamOutputs()[0].getRecordWriter().getResultPartitionWriter().getResultPartition();
 
 							subpartitions = resultPartition.getSubpartitions();
@@ -1257,6 +1261,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR:
 
 							// Pausing operator, and therefore propagating new location
+
+							LOG.error("BENCHMARK:Operator {} ({}) is now pausing and propagating new location.", getName(), getEnvironment().getExecutionId());
 
 							broadcastPausingMarkersDownstream();
 
@@ -1315,6 +1321,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	private void checkpointStateForMigration(StateMigrationMetaData stateMigrationMetaData,
 											 CheckpointMetrics checkpointMetrics) throws Exception {
+
+		LOG.error("BENCHMARK:Operator {} ({}) is now starting synchronous checkpoint part", getName(), getEnvironment().getExecutionId());
 
 		SynchronousCheckpointingOperation synchronousCheckpointingOperation = new SynchronousCheckpointingOperation(
 			this,
@@ -1973,6 +1981,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					checkpointStreamOperator(op);
 				}
 
+				LOG.error("BENCHMARK:Operator {} ({}) is now starting asynchronous checkpoint part",
+					owner.getName(), owner.getEnvironment().getExecutionId());
+
 				LOG.debug("Finished synchronous checkpoints for checkpoint {} on task {}",
 					stateMigrationMetaData.getStateMigrationId(), owner.getName());
 
@@ -2141,6 +2152,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 				if (asyncCheckpointState.compareAndSet(CheckpointingOperation.AsynCheckpointState.RUNNING,
 					CheckpointingOperation.AsynCheckpointState.COMPLETED)) {
+
+					LOG.error("BENCHMARK:Operator {} ({}) is now completed asynchronous checkpoint part",
+						owner.getName(), owner.getEnvironment().getExecutionId());
 
 					owner.getEnvironment().acknowledgeStateMigration(
 						stateMigrationMetaData.getStateMigrationId(),

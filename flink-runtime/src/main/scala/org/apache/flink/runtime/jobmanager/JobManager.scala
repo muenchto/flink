@@ -1011,7 +1011,7 @@ class JobManager(
       }(context.dispatcher)
 
     case ModifyJob(jobId, command) =>
-      log.info(s"Received command '$command' from JobClient for $jobId")
+      log.error(s"BENCHMARK:Received command '$command' from JobClient for $jobId")
 
       currentJobs.get(jobId) match {
         case Some((executionGraph, jobInfo)) =>

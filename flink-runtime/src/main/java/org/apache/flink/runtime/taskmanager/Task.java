@@ -925,6 +925,8 @@ public class Task implements Runnable, TaskActions {
 				throw new IllegalStateException("Illegal state during initialization: " + executionState);
 			}
 
+			LOG.error("BENCHMARKING: Swichting to running for  '{}'.", this.invokable.getEnvironment().getTaskInfo().getTaskNameWithSubtasks());
+
 			// run the invokable
 			this.invokable.invoke();
 
@@ -1217,6 +1219,8 @@ public class Task implements Runnable, TaskActions {
 	}
 
 	private void initializeState(AbstractInvokable invokable) throws Exception {
+		LOG.error("BENCHMARKING: Setting up initial state for '{}'.", invokable.getEnvironment().getTaskInfo().getTaskNameWithSubtasks());
+
 		if (null != taskStateHandles) {
 			if (invokable instanceof StatefulTask) {
 				StatefulTask op = (StatefulTask) invokable;

@@ -109,7 +109,7 @@ public class ModificationCoordinator {
 		}
 
 		if (message.getJobID() != executionGraph.getJobID()) {
-			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJobID(), message);
+			LOG.info("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJobID(), message);
 		}
 
 		final long modificationID = message.getModificationID();
@@ -216,7 +216,7 @@ public class ModificationCoordinator {
 		}
 
 		if (message.getJobID() != executionGraph.getJobID()) {
-			LOG.error("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJobID(), message);
+			LOG.info("Received wrong AcknowledgeCheckpoint message for job id {}: {}", message.getJobID(), message);
 		}
 
 		final long modificationID = message.getModificationID();
@@ -260,7 +260,7 @@ public class ModificationCoordinator {
 		}
 
 		if (message.getJobID() != executionGraph.getJobID()) {
-			LOG.error("Received wrong IgnoreModification message for job id {}: {}", message.getJobID(), message);
+			LOG.info("Received wrong IgnoreModification message for job id {}: {}", message.getJobID(), message);
 		}
 
 		final long modificationID = message.getModificationID();
@@ -300,7 +300,7 @@ public class ModificationCoordinator {
 
 		// TODO Masterthesis Comparison should be done with equals(), change in other parts as well
 		if (!message.getJobID().equals(executionGraph.getJobID())) {
-			LOG.error("Received wrong StateMigrationModification message for job id {}: {}", message.getJobID(), message);
+			LOG.info("Received wrong StateMigrationModification message for job id {}: {}", message.getJobID(), message);
 			executionGraph.failGlobal(new IllegalStateException("Received wrong message"));
 			throw new IllegalStateException();
 		}
@@ -339,8 +339,10 @@ public class ModificationCoordinator {
 		}
 
 		if (message.getJobID() != executionGraph.getJobID()) {
-			LOG.error("Received wrong StateMigrationModification message for job id {}: {}", message.getJobID(), message);
+			LOG.info("Received wrong StateMigrationModification message for job id {}: {}", message.getJobID(), message);
 		}
+
+		LOG.error("BENCHMARK:Operator {} has transmitted state",message.getTaskExecutionId());
 
 		final long modificationID = message.getModificationID();
 
@@ -352,14 +354,14 @@ public class ModificationCoordinator {
 			}
 
 			if (message.getSubtaskState() == null) {
-				LOG.error("SubtaskState is null while receiving state {}: {}", message.getJobID(), message);
+				LOG.error("BENCHMARK:SubtaskState is null form {} - {}", message.getTaskExecutionId(), message);
 				statelessTasks.add(message.getTaskExecutionId());
 			} else if (storedState.put(message.getTaskExecutionId(), message.getSubtaskState()) != null) {
 				LOG.info("Received duplicate StateMigrationModification for {} from task {}. Removed previous.",
 					modificationID, message.getTaskExecutionId());
 			} else {
-				LOG.info("Received valid StateMigrationModification for {} from task {}",
-					modificationID, message.getTaskExecutionId());
+				LOG.error("BENCHMARK:Received valid StateMigrationModification for {} from task {} with size {}",
+					modificationID, message.getTaskExecutionId(), message.getSubtaskState().getStateSize());
 			}
 
 			PendingModification pendingModification = pendingModifications.get(modificationID);
@@ -385,6 +387,10 @@ public class ModificationCoordinator {
 		ExecutionVertex executionVertex = vertexToRestart.get(message.getTaskExecutionId());
 
 		if (executionVertex != null) {
+
+			LOG.error("BENCHMARK:Operator {} ({}) has transmitted state",
+				executionVertex.getTaskNameWithSubtaskIndex(), message.getTaskExecutionId());
+
 			restartIfStoppedAndStateReceived(executionVertex);
 		}
 	}
@@ -490,6 +496,9 @@ public class ModificationCoordinator {
 				vertex.getTaskNameWithSubtaskIndex(),
 				vertex.getCurrentExecutionAttempt().getAttemptId(),
 				vertex.getFutureSlot().getTaskManagerLocation());
+
+			LOG.error("BENCHMARK: Restarting operator {} ({}) with previous state size {}",
+				vertex.getTaskNameWithSubtaskIndex(), vertex.getCurrentExecutionAttempt().getAttemptId(), state != null ? state.getStateSize() : -1);
 
 			readyVertices.add(currentExecutionAttempt.getAttemptId());
 
@@ -856,7 +865,7 @@ public class ModificationCoordinator {
 		Preconditions.checkNotNull(pausingIDs);
 		Preconditions.checkNotNull(description);
 
-		LOG.info("Triggering modification '{}'.", description);
+		LOG.error("BENCHMARKING: Triggering modification '{}'.", description);
 
 		Map<ExecutionAttemptID, ExecutionVertex> ackTasks = new HashMap<>();
 
@@ -923,6 +932,9 @@ public class ModificationCoordinator {
 					executionGraph.failGlobal(new IllegalStateException("Checkpointing seems to be disabled"));
 					throw new IllegalStateException("Checkpointing seems to be disabled");
 				}
+
+				LOG.error("BENCHMARKING: Triggering modification {} - {} - {} - SpillingSize {} - PausingSize {} - NotPausingSize {} - CheckpointID {}.",
+					modificationId, timestamp, description, spillingToDiskIDs.size(), pausingIDs.size(), notPausingOperators.size(), checkpointIDToModify);
 
 				ExecutionVertex[] triggerVertices = executionGraph.getCheckpointCoordinator().getTriggerVertices();
 
@@ -1552,14 +1564,14 @@ public class ModificationCoordinator {
 		}
 
 		ExecutionJobVertex map = findMap();
-		map.getJobVertex().connectDataSetAsInput(filterIDS, DistributionPattern.POINTWISE);
+		map.getJobVertex().connectDataSetAsInput(filterIDS, DistributionPattern.ALL_TO_ALL);
 
 		IntermediateDataSet sourceProducedDataset = sourceProducedDatasets.get(0);
 
 		sourceProducedDataset.getConsumers().clear();
 
 		// Connect source IDS as input for FilterOperator
-		filterJobVertex.connectDataSetAsInput(sourceProducedDataset, DistributionPattern.POINTWISE);
+		filterJobVertex.connectDataSetAsInput(sourceProducedDataset, DistributionPattern.ALL_TO_ALL);
 
 		try {
 			ExecutionJobVertex vertex =
