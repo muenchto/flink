@@ -672,6 +672,10 @@ public class ModificationCoordinator {
 		Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs = new HashMap<>();
 		Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs = new HashMap<>();
 
+		if (filterExecutionJobVertex.getParallelism() != sourceOperator.getParallelism()) {
+			throw new IllegalStateException("FilterExecutionVertex has different parallelism than source");
+		}
+
 		Map<Integer, IntermediateResultPartition> partitions = new HashMap<>();
 
 		for (ExecutionVertex vertex : filterTaskVertices) {
