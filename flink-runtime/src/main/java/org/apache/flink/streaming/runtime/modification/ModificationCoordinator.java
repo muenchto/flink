@@ -348,8 +348,6 @@ public class ModificationCoordinator {
 			LOG.info("Received wrong StateMigrationModification message for job id {}: {}", message.getJobID(), message);
 		}
 
-		LOG.error("BENCHMARK:Operator {} has transmitted state",message.getTaskExecutionId());
-
 		final long modificationID = message.getModificationID();
 
 		synchronized (lock) {
@@ -454,6 +452,10 @@ public class ModificationCoordinator {
 
 				for (ExecutionVertex waitingVertex : waitingVertices) {
 					restartIfStoppedAndStateReceived(waitingVertex);
+				}
+
+				if (vertexToRestart.isEmpty() && statelessTasks.isEmpty()) {
+					LOG.error("BENCHMARK: Restarted all operators");
 				}
 
 			} else {
@@ -785,12 +787,24 @@ public class ModificationCoordinator {
 
 			if (downstreamOperator != null) {
 				for (ExecutionVertex executionVertex : downstreamOperator.getTaskVertices()) {
-					// TODO Currently only works for one input streams
 
-					Preconditions.checkArgument(executionVertex.getNumberOfInputs() == 1, vertex + " has not exactly one input");
+					// Necessary for two input stream, e.g. joins
+					int inputIndex = -1;
+
+					for (int i = 0; i < executionVertex.getNumberOfInputs(); i++) {
+						IntermediateResultPartitionID partitionId = executionVertex.getInputEdges(i)[0].getSource().getPartitionId();
+
+						if (vertex.getProducedPartitions().keySet().contains(partitionId)) {
+							inputIndex = i;
+						}
+					}
+
+					if (inputIndex == -1) {
+						throw new IllegalStateException("Failure to find correct input for : " + vertex + " and " + executionVertex);
+					}
 
 					InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForSpecificPartition(
-						executionVertex.getInputEdges(0),
+						executionVertex.getInputEdges(inputIndex),
 						executionVertex.getCurrentAssignedResource(),
 						executionGraph.isQueuedSchedulingAllowed(),
 						vertex.getParallelSubtaskIndex());

@@ -713,12 +713,22 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					case SPILLED_TO_DISK_AFTER_CHECKPOINT:
 
 						InputGate[] allInputGates = getEnvironment().getAllInputGates();
+						SingleInputGate inputGate;
 
-						if (allInputGates.length != 1 || !(allInputGates[0] instanceof SingleInputGate)) {
-							throw new IllegalStateException("More than one InputGate encountered");
+						if (allInputGates.length != 1) {
+
+							// TODO Masterthesis, only works for one and two input streams
+
+							inputGate = mapIndexToSingleInputGate(allInputGates, channelIndex);
+
+							channelIndex = mapIndexToChannelIndex(allInputGates, channelIndex);
+
+							if (inputGate == null || channelIndex == -1) {
+								throw new IllegalStateException("Error in logic");
+							}
+						} else {
+							inputGate = (SingleInputGate) allInputGates[0];
 						}
-
-						SingleInputGate inputGate = (SingleInputGate) allInputGates[0];
 
 						updateInputChannel(inputGate, channelIndex, inputChannelDeploymentDescriptor);
 
@@ -741,6 +751,36 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
 			}
 		}
+	}
+
+	private int mapIndexToChannelIndex(InputGate[] allInputGates, int channelIndex) {
+		int index = 0;
+
+		for (InputGate allInputGate : allInputGates) {
+			for (int j = 0; j < allInputGate.getNumberOfInputChannels(); j++) {
+				if (index == channelIndex) {
+					return j;
+				}
+				index++;
+			}
+		}
+
+		return -1;
+	}
+
+	public SingleInputGate mapIndexToSingleInputGate(InputGate[] allInputGates, int channelIndex) {
+		int index = 0;
+
+		for (InputGate allInputGate : allInputGates) {
+			for (int j = 0; j < allInputGate.getNumberOfInputChannels(); j++) {
+				if (index == channelIndex) {
+					return (SingleInputGate) allInputGate;
+				}
+				index++;
+			}
+		}
+
+		return null;
 	}
 
 	private void updateInputChannel(SingleInputGate inputGate, int channelIndex, InputChannelDeploymentDescriptor icdd) {

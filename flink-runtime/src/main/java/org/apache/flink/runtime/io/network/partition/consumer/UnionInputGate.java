@@ -107,6 +107,10 @@ public class UnionInputGate implements InputGate, InputGateListener {
 		this.totalNumberOfInputChannels = currentNumberOfInputChannels;
 	}
 
+	public Map<InputGate, Integer> getInputGateToIndexOffsetMap() {
+		return inputGateToIndexOffsetMap;
+	}
+
 	/**
 	 * Returns the total number of input channels across all unioned input gates.
 	 */

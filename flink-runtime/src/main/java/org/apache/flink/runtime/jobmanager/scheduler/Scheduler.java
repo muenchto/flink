@@ -228,10 +228,6 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 			Instance instanceToUse = instanceLocalityPair.getLeft();
 			Locality locality = instanceLocalityPair.getRight();
 
-			if (instanceToUse == null) {
-				throw new IllegalStateException("Why?");
-			}
-
 			try {
 				SimpleSlot slot = instanceToUse.allocateSimpleSlot(vertex.getJobId());
 
@@ -388,6 +384,10 @@ public class Scheduler implements InstanceListener, SlotAvailabilityListener, Sl
 			instance = entry.getValue();
 			instancesWithAvailableResources.remove(entry.getKey());
 			break;
+		}
+
+		if (instance == null) {
+			throw new IllegalStateException("Not enough resources on other TaskManagers");
 		}
 
 		return new ImmutablePair<>(instance, Locality.UNCONSTRAINED);
