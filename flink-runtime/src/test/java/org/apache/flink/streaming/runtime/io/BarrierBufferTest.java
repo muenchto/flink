@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.runtime.io;
 
+import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.core.memory.MemorySegmentFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
@@ -1515,6 +1516,11 @@ public class BarrierBufferTest {
 		@Override
 		public void notifyCheckpointComplete(long checkpointId) throws Exception {
 			throw new UnsupportedOperationException("should never be called");
+		}
+
+		@Override
+		public void switchFunction(Function newUserFunction) {
+
 		}
 
 		@Override

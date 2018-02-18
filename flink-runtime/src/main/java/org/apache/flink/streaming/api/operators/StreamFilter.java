@@ -44,6 +44,10 @@ public class StreamFilter<IN> extends AbstractUdfStreamOperator<IN, FilterFuncti
 		}
 	}
 
+	public void setFilterFunction(FilterFunction filterFunction) {
+		userFunction = filterFunction;
+	}
+
 	@Override
 	public String toString() {
 		return getClass().getSimpleName();

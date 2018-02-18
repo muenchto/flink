@@ -23,6 +23,7 @@ import org.apache.flink.api.common.accumulators.Accumulator;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.accumulators.StringifiedAccumulatorResult;
+import org.apache.flink.runtime.blob.BlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.concurrent.ApplyFunction;
@@ -1540,5 +1541,21 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 
 	public void scheduleForMigration() throws JobException {
 		deployToSlot(vertex.getFutureSlot());
+	}
+
+	public void switchFunction(BlobKey key, String className) {
+		final SimpleSlot slot = assignedResource;
+
+		if (slot != null) {
+			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
+
+			taskManagerGateway.switchFunction(
+				attemptId,
+				getVertex().getJobId(),
+				key,
+				className);
+		} else {
+			LOG.error("Failed to switch function for " + this);
+		}
 	}
 }

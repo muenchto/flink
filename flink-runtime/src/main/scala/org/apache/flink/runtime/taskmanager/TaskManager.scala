@@ -47,7 +47,7 @@ import org.apache.flink.runtime.concurrent.Executors
 import org.apache.flink.runtime.deployment._
 import org.apache.flink.runtime.execution.ExecutionState
 import org.apache.flink.runtime.execution.librarycache.{BlobLibraryCacheManager, FallbackLibraryCacheManager, LibraryCacheManager}
-import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, IntermediateResultPartition, PartitionInfo}
+import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, IllegalExecutionStateException, IntermediateResultPartition, PartitionInfo}
 import org.apache.flink.runtime.filecache.FileCache
 import org.apache.flink.runtime.highavailability.HighAvailabilityServicesUtils.AddressResolution
 import org.apache.flink.runtime.highavailability.{HighAvailabilityServices, HighAvailabilityServicesUtils}
@@ -593,8 +593,43 @@ class TaskManager(
             log.debug(s"Cannot find task to modify output for new consumer: $executionAttemptID)")
             sender ! decorateMessage(Acknowledge.get())
           }
+
+        case SwitchFunction(jobID, executionAttemptID, blobKey, className) =>
+          val task = runningTasks.get(executionAttemptID)
+          if (task != null) {
+
+            log.debug(s"Attempting to switch function to $className for map $executionAttemptID")
+
+            try {
+
+              val libCache = libraryCacheManager match {
+                case Some(manager) => manager
+                case None => throw new IllegalStateException("There is no valid library cache manager.")
+              }
+
+              val blobLibraryCacheManager = libCache.asInstanceOf[BlobLibraryCacheManager]
+
+              val classLoader = blobLibraryCacheManager.getAdditionalJar(blobKey)
+
+              val customClass = classLoader.loadClass(className)
+
+              val customObject = customClass.newInstance()
+
+              log.info(s"Instantiated '$customObject' on TaskManager for $className")
+            } catch {
+              case t : Throwable => log.error(s"Encountered $t while instantiating user class on TaskManager")
+                throw new IllegalStateException("There is no valid library cache manager.")
+            }
+
+            task.switchFunction(blobKey, className)
+
+            sender ! decorateMessage(Acknowledge.get())
+          } else {
+            log.debug(s"Cannot find task to switch function name: $executionAttemptID)")
+            sender ! decorateMessage(Acknowledge.get())
+          }
       }
-      }
+    }
   }
 
   private def reconfigureOutputs(task: Task) : Unit = {

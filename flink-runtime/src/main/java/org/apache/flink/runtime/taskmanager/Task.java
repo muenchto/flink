@@ -24,6 +24,7 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.TaskInfo;
 import org.apache.flink.api.common.cache.DistributedCache;
+import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.fs.FileSystemSafetyNet;
@@ -47,6 +48,7 @@ import org.apache.flink.runtime.deployment.ResultPartitionLocation;
 import org.apache.flink.runtime.execution.CancelTaskException;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.execution.ExecutionState;
+import org.apache.flink.runtime.execution.librarycache.BlobLibraryCacheManager;
 import org.apache.flink.runtime.execution.librarycache.LibraryCacheManager;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.JobInformation;
@@ -1731,6 +1733,60 @@ public class Task implements Runnable, TaskActions {
 		}
 		else {
 			LOG.debug("Ignoring checkpoint commit notification for non-running task {}.", taskNameWithSubtask);
+		}
+	}
+
+	public void switchFunction(BlobKey key, final String className) {
+		AbstractInvokable invokable = this.invokable;
+
+		if (executionState == ExecutionState.RUNNING && invokable != null) {
+			if (invokable instanceof StatefulTask) {
+
+				// build a local closure
+				final StatefulTask statefulTask = (StatefulTask) invokable;
+
+				try {
+
+					BlobLibraryCacheManager manager = (BlobLibraryCacheManager) libraryCache;
+
+					final ClassLoader classLoader = manager.getAdditionalJar(key);
+
+					Class<?> aClass = classLoader.loadClass(className);
+
+					Object o = aClass.newInstance();
+
+					final Function function = (Function) o;
+
+					LOG.error("Instantiated class on TM", o);
+
+					Runnable runnable = new Runnable() {
+						@Override
+						public void run() {
+							try {
+								statefulTask.switchFunction(function);
+							}
+							catch (Throwable t) {
+								if (getExecutionState() == ExecutionState.RUNNING) {
+									failExternally(new RuntimeException("Error while switching function", t));
+								}
+							}
+						}
+					};
+
+					executeAsyncCallRunnable(runnable, "Switching function for " + taskNameWithSubtask);
+
+				} catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+					LOG.error("Failed to instantiate class {}", className);
+					failExternally(e);
+					return;
+				}
+			}
+			else {
+				LOG.error("Switching function failed - {}.", taskNameWithSubtask);
+			}
+		}
+		else {
+			LOG.debug("Ignoring swichting function for non-running task {}.", taskNameWithSubtask);
 		}
 	}
 

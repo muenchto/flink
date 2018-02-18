@@ -340,6 +340,15 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className) {
+		Preconditions.checkNotNull(attemptId);
+		Preconditions.checkNotNull(jobId);
+		Preconditions.checkNotNull(className);
+
+		actorGateway.tell(new TaskMessages.SwitchFunction(jobId, attemptId, blobKey, className));
+	}
+
+	@Override
 	public Future<BlobKey> requestTaskManagerLog(Time timeout) {
 		return requestTaskManagerLog((TaskManagerMessages.RequestTaskManagerLog) TaskManagerMessages.getRequestTaskManagerLog(), timeout);
 	}

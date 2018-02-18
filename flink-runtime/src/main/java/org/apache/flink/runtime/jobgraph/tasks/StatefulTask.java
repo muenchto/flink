@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.jobgraph.tasks;
 
+import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
@@ -93,6 +94,13 @@ public interface StatefulTask {
 	 * @throws Exception The notification method may forward its exceptions.
 	 */
 	void notifyCheckpointComplete(long checkpointId) throws Exception;
+
+	/**
+	 * Instructs the StreamTask to change its function to the one specified by the parameter className.
+	 *  @param newUserFunction
+	 *
+	 */
+	void switchFunction(Function newUserFunction);
 
 	/**
 	 * This method is called to trigger a modification of the graph.

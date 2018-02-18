@@ -21,6 +21,8 @@ import com.google.common.base.Joiner;
 import org.apache.commons.lang.StringUtils;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.accumulators.Accumulator;
+import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.core.fs.FileSystemSafetyNet;
@@ -52,6 +54,7 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.OperatorSnapshotResult;
 import org.apache.flink.streaming.api.operators.Output;
+import org.apache.flink.streaming.api.operators.StreamFilter;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.modification.ModificationCoordinator;
@@ -1392,6 +1395,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				LOG.debug("Ignoring notification of complete checkpoint for not-running task {}", getName());
 			}
 		}
+	}
+
+	@Override
+	public void switchFunction(Function newUserFunction) {
+		StreamOperator<?>[] allOperators = operatorChain.getAllOperators();
+
+		assert allOperators.length == 1;
+
+		StreamFilter streamFilter = (StreamFilter) allOperators[0];
+
+		LOG.error("Saw operator {}", streamFilter);
+
+		streamFilter.setFilterFunction((FilterFunction) newUserFunction);
 	}
 
 	private void checkpointState(

@@ -22,6 +22,7 @@ import java.util
 import java.util.List
 
 import org.apache.flink.api.common.JobID
+import org.apache.flink.runtime.blob.BlobKey
 import org.apache.flink.runtime.clusterframework.types.AllocationID
 import org.apache.flink.runtime.deployment.{InputChannelDeploymentDescriptor, InputGateDeploymentDescriptor, TaskDeploymentDescriptor}
 import org.apache.flink.runtime.executiongraph.{ExecutionAttemptID, PartitionInfo}
@@ -94,6 +95,9 @@ object TaskMessages {
     * @param attemptID The execution attempt ID of the source operator
     */
   case class PrepareForNewConsumer(jobID: JobID, attemptID: ExecutionAttemptID)
+    extends TaskMessage with RequiresLeaderSessionID
+
+  case class SwitchFunction(jobID: JobID, attemptID: ExecutionAttemptID, key: BlobKey, className: String)
     extends TaskMessage with RequiresLeaderSessionID
 
   /**

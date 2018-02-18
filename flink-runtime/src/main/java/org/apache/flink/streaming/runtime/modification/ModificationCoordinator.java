@@ -1209,6 +1209,18 @@ public class ModificationCoordinator {
 		this.blobKeys.addAll(blobKeys);
 	}
 
+	public void switchFunction(String className) {
+		ExecutionJobVertex filter = findFilter();
+
+		assert this.blobKeys.size() == 1;
+
+		for (ExecutionVertex vertex : filter.getTaskVertices()) {
+			vertex
+				.getCurrentExecutionAttempt()
+				.switchFunction(blobKeys.iterator().next(), className);
+		}
+	}
+
 	public void pauseSink() {
 		ExecutionJobVertex sink = findSink();
 

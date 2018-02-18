@@ -29,6 +29,7 @@ import akka.pattern.Patterns;
 import akka.testkit.CallingThreadDispatcher;
 import akka.testkit.JavaTestKit;
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
@@ -591,6 +592,11 @@ public class JobManagerHARecoveryTest extends TestLogger {
 			if (completedCheckpoints++ > NUM_CHECKPOINTS_TO_COMPLETE) {
 				completedCheckpointsLatch.countDown();
 			}
+		}
+
+		@Override
+		public void switchFunction(Function newUserFunction) {
+
 		}
 
 		@Override

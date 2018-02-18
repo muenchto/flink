@@ -284,4 +284,6 @@ public interface TaskManagerGateway {
 	FlinkFuture<Acknowledge> triggerResumeWithNewInputs(Time rpcCallTimeout,
 														ExecutionAttemptID attemptId,
 														List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor);
+
+	void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className);
 }

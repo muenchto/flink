@@ -176,6 +176,11 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className) {
+
+	}
+
+	@Override
 	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 																	 ExecutionAttemptID currentSinkAttempt,
 																	 int stoppedMapSubTaskIndex, List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {

@@ -228,6 +228,23 @@ public final class BlobLibraryCacheManager extends TimerTask implements LibraryC
 		}
 	}
 
+	public ClassLoader getAdditionalJar(BlobKey blobKey) {
+
+		synchronized (lockObject) {
+
+			try {
+				URL url = blobService.getURL(blobKey);
+				URL[] urls = new URL[1];
+				urls[0] = url;
+
+				return new FlinkUserCodeClassLoader(urls);
+			} catch (IOException exception) {
+				LOG.error("Failed to get key", exception);
+				throw new IllegalStateException();
+			}
+		}
+	}
+
 	@Override
 	public ClassLoader getClassLoader(JobID id) {
 		if (id == null) {
@@ -362,8 +379,7 @@ public final class BlobLibraryCacheManager extends TimerTask implements LibraryC
 			this.referenceHolders = new HashSet<>();
 			this.referenceHolders.add(initialReference);
 		}
-		
-		
+
 		public ClassLoader getClassLoader() {
 			return classLoader;
 		}

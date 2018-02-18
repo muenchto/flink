@@ -63,7 +63,7 @@ public abstract class AbstractUdfStreamOperator<OUT, F extends Function>
 
 
 	/** The user function. */
-	protected final F userFunction;
+	protected F userFunction;
 
 	/** Flag to prevent duplicate function.close() calls in close() and dispose(). */
 	private transient boolean functionsClosed = false;

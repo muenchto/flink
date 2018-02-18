@@ -20,6 +20,7 @@ package org.apache.flink.runtime.taskmanager;
 
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.blob.BlobKey;
@@ -273,6 +274,11 @@ public class TaskAsyncCallTest {
 					notifyAll();
 				}
 			}
+		}
+
+		@Override
+		public void switchFunction(Function newUserFunction) {
+
 		}
 
 		@Override

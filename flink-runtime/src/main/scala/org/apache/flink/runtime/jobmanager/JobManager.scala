@@ -36,7 +36,7 @@ import org.apache.flink.metrics.groups.UnregisteredMetricsGroup
 import org.apache.flink.metrics.{Gauge, MetricGroup}
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot
 import org.apache.flink.runtime.akka.{AkkaUtils, ListeningBehaviour}
-import org.apache.flink.runtime.blob.{BlobServer, BlobStore}
+import org.apache.flink.runtime.blob.{BlobKey, BlobServer, BlobStore}
 import org.apache.flink.runtime.checkpoint._
 import org.apache.flink.runtime.checkpoint.savepoint.{SavepointLoader, SavepointStore}
 import org.apache.flink.runtime.client._
@@ -1188,6 +1188,31 @@ class JobManager(
 
             case "jar" =>
               (false, s"Jar command $command")
+
+            case msg if msg.startsWith("switchFunction") =>
+
+              val m = msg.split(":")
+
+              if (m.length != 2) {
+                (false, s"Faulty switchFunction command $command")
+
+              } else {
+
+                try {
+                  val classLoader = libraryCacheManager.getClassLoader(jobId)
+
+                  val customClass = classLoader.loadClass(m(1))
+
+                  val customObject = customClass.newInstance()
+
+                  log.info(s"Instantiated '$customObject' from JobClient for $jobId")
+                } catch {
+                  case t : Throwable => log.error(s"Encountered $t while instantiating user class on JobManager")
+                }
+
+                modificationCoordinator.switchFunction(m(1))
+                (true, s"Switching function successfully submitted")
+              }
 
             case default =>
 
