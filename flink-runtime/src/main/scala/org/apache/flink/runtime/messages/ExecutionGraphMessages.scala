@@ -97,7 +97,7 @@ object ExecutionGraphMessages {
   //  Utilities
   // --------------------------------------------------------------------------
   
-  private val DATE_FORMATTER: SimpleDateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")
+  private val DATE_FORMATTER: SimpleDateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss:SSS")
 
   private def timestampToString(timestamp: Long): String = {
     DATE_FORMATTER.synchronized {
