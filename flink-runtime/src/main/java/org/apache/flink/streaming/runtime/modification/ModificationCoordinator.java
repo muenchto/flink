@@ -28,7 +28,6 @@ import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
-import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.modification.*;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
@@ -38,7 +37,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.operators.StreamFilter;
-import org.apache.flink.streaming.runtime.modification.exceptions.OperatorNotFoundException;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
@@ -52,6 +50,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ModificationCoordinator {
+
 
 	public enum ModificationAction {
 		PAUSING, // For introducing operators to the job
@@ -98,6 +97,8 @@ public class ModificationCoordinator {
 	private ExecutionAttemptID stoppedExecutionAttemptID;
 
 	private int stoppedSubTaskIndex;
+
+	private String newOperatorClassName;
 
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
@@ -325,9 +326,14 @@ public class ModificationCoordinator {
 
 		if (removed) {
 			if (newOperatorWaitingVertices.isEmpty()) {
+
+				if (!blobKeys.iterator().hasNext()) {
+					throw new IllegalStateException("");
+				}
+
 				for (ExecutionVertex vertex : filterExecutionJobVertex.getTaskVertices()) {
 					try {
-						vertex.getCurrentExecutionAttempt().scheduleForMigration();
+						vertex.getCurrentExecutionAttempt().scheduleForNewOperator(blobKeys.iterator().next(), newOperatorClassName);
 					} catch (JobException e) {
 						executionGraph.failGlobal(e);
 					}
@@ -658,8 +664,9 @@ public class ModificationCoordinator {
 		return details.toString();
 	}
 
-	public void introduceNewOperator(int parallelism) throws ExecutionGraphException {
-		Collection<ExecutionJobVertex> allVertices = executionGraph.getAllVertices().values();
+	public void introduceNewOperator(int parallelism, String className) throws ExecutionGraphException {
+
+		this.newOperatorClassName = className;
 
 		ExecutionJobVertex sourceOperator = findSource();
 		ExecutionJobVertex mapOperator = findMap();
@@ -800,7 +807,8 @@ public class ModificationCoordinator {
 					}
 
 					if (inputIndex == -1) {
-						throw new IllegalStateException("Failure to find correct input for : " + vertex + " and " + executionVertex);
+//						throw new IllegalStateException("Failure to find correct input for : " + vertex + " and " + executionVertex);
+						inputIndex = 0;
 					}
 
 					InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForSpecificPartition(

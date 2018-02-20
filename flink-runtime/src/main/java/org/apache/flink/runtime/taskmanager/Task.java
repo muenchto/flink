@@ -278,6 +278,9 @@ public class Task implements Runnable, TaskActions {
 	/** Exported from run() method */
 	private TaskKvStateRegistry kvStateRegistry;
 
+	private BlobKey newJarKey;
+	private String newClassName;
+
 	/**
 	 * <p><b>IMPORTANT:</b> This constructor may not start any work that would need to
 	 * be undone in the case of a failing task deployment.</p>
@@ -699,6 +702,12 @@ public class Task implements Runnable, TaskActions {
 		executingThread.start();
 	}
 
+	public void startTaskThread(BlobKey key, String className) {
+		executingThread.start();
+		this.newJarKey = key;
+		this.newClassName = className;
+	}
+
 	private Map<String, Future<Path>> distributedCacheEntries = new HashMap<String, Future<Path>>();
 
 	private volatile ClassLoader userCodeClassLoader;
@@ -794,6 +803,25 @@ public class Task implements Runnable, TaskActions {
 
 				// now load the task's invokable code
 				invokable = loadAndInstantiateInvokable(userCodeClassLoader, nameOfInvokableClass);
+
+				if (newJarKey != null && newClassName != null) {
+
+					LOG.error("BENCHMARKING: Downloading jar, switching function for key {} and classname {}", newJarKey, newClassName);
+
+					BlobLibraryCacheManager manager = (BlobLibraryCacheManager) libraryCache;
+
+					final ClassLoader classLoader = manager.getAdditionalJar(newJarKey);
+
+					Class<?> aClass = classLoader.loadClass(newClassName);
+
+					Object o = aClass.newInstance();
+
+					final Function function = (Function) o;
+
+					LOG.error("BENCHMARKING: Instantiated class on TM", o);
+
+					invokable.setCustomFunction(function);
+				}
 
 				if (isCanceledOrFailed()) {
 					throw new CancelTaskException();

@@ -118,6 +118,11 @@ object TaskMessages {
                                        inputGateDeploymentDescriptor: util.List[InputGateDeploymentDescriptor] )
     extends TaskMessage with RequiresLeaderSessionID
 
+  case class NewOperator(tdd: TaskDeploymentDescriptor,
+                         key: BlobKey,
+                         className: String)
+    extends TaskMessage with RequiresLeaderSessionID
+
   case class ResumeWithIncreasedDoP(sinkExecutionAttemptID: ExecutionAttemptID,
                                     newInput: ExecutionAttemptID,
                                     irpid: IntermediateResultPartitionID,

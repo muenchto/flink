@@ -1173,7 +1173,7 @@ class JobManager(
 
               val m = msg.split(":")
 
-              if (m.length != 2) {
+              if (m.length != 3) {
                 (false, s"migrateAll command $command")
 
               } else {
@@ -1182,7 +1182,7 @@ class JobManager(
 
                 log.info(s"Attempting to start new filter operator with parallelism $parallelism")
 
-                modificationCoordinator.introduceNewOperator(parallelism)
+                modificationCoordinator.introduceNewOperator(parallelism, m(2))
                 (true, "Starting new filter operator submitted")
               }
 

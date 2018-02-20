@@ -39,7 +39,7 @@ import org.apache.flink.core.fs.FileSystem
 import org.apache.flink.migration.streaming.runtime.streamrecord.StreamRecordSerializer
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot
 import org.apache.flink.runtime.akka.{AkkaUtils, DefaultQuarantineHandler, QuarantineMonitor}
-import org.apache.flink.runtime.blob.{BlobCache, BlobClient, BlobService}
+import org.apache.flink.runtime.blob.{BlobCache, BlobClient, BlobKey, BlobService}
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager
 import org.apache.flink.runtime.clusterframework.messages.StopCluster
 import org.apache.flink.runtime.clusterframework.types.{AllocationID, ResourceID}
@@ -565,6 +565,9 @@ class TaskManager(
             log.debug(s"Cannot find task to resume with different inputs for execution $currentSinkAttempt)")
             sender ! decorateMessage(Acknowledge.get())
           }
+
+        case NewOperator(tdd, key, name) =>
+          submitNewOperator(tdd, key, name)
 
         case ResumeWithIncreasedDoP(currentSinkAttempt, executionAttemptID, irpid, tmLocation, connectionIndex, subTaskIndex) =>
           val task = runningTasks.get(currentSinkAttempt)
@@ -1469,6 +1472,127 @@ class TaskManager(
   // --------------------------------------------------------------------------
   //  Task Operations
   // --------------------------------------------------------------------------
+
+  /**
+    * Receives a [[TaskDeploymentDescriptor]] describing the task to be executed. It eagerly
+    * acknowledges the task reception to the sender and asynchronously starts the initialization of
+    * the task.
+    *
+    * @param tdd TaskDeploymentDescriptor describing the task to be executed on this [[TaskManager]]
+    */
+  private def submitNewOperator(tdd: TaskDeploymentDescriptor, key: BlobKey, className: String): Unit = {
+    try {
+      // grab some handles and sanity check on the fly
+      val jobManagerActor = currentJobManager match {
+        case Some(jm) => jm
+        case None =>
+          throw new IllegalStateException("TaskManager is not associated with a JobManager.")
+      }
+      val libCache = libraryCacheManager match {
+        case Some(manager) => manager
+        case None => throw new IllegalStateException("There is no valid library cache manager.")
+      }
+
+      val slot = tdd.getTargetSlotNumber
+      if (slot < 0 || slot >= numberOfSlots) {
+        throw new IllegalArgumentException(s"Target slot $slot does not exist on TaskManager.")
+      }
+
+      val (checkpointResponder,
+      modificationResponder,
+      partitionStateChecker,
+      resultPartitionConsumableNotifier,
+      taskManagerConnection) = connectionUtils match {
+        case Some(x) => x
+        case None => throw new IllegalStateException("The connection utils have not been initialized.")
+      }
+
+      // create the task. this does not grab any TaskManager resources or download
+      // and libraries - the operation does not block
+
+      val jobManagerGateway = new AkkaActorGateway(jobManagerActor, leaderSessionID.orNull)
+
+      val jobInformation = try {
+        tdd.getSerializedJobInformation.deserializeValue(getClass.getClassLoader)
+      } catch {
+        case e @ (_: IOException | _: ClassNotFoundException) =>
+          throw new IOException("Could not deserialize the job information.", e)
+      }
+
+      val taskInformation = try {
+        tdd.getSerializedTaskInformation.deserializeValue(getClass.getClassLoader)
+      } catch {
+        case e@(_: IOException | _: ClassNotFoundException) =>
+          throw new IOException("Could not deserialize the job vertex information.", e)
+      }
+
+      val taskMetricGroup = taskManagerMetricGroup.addTaskForJob(
+        jobInformation.getJobId,
+        jobInformation.getJobName,
+        taskInformation.getJobVertexId,
+        tdd.getExecutionAttemptId,
+        taskInformation.getTaskName,
+        tdd.getSubtaskIndex,
+        tdd.getAttemptNumber)
+
+      val inputSplitProvider = new TaskInputSplitProvider(
+        jobManagerGateway,
+        jobInformation.getJobId,
+        taskInformation.getJobVertexId,
+        tdd.getExecutionAttemptId,
+        new FiniteDuration(
+          config.getTimeout().getSize(),
+          config.getTimeout().getUnit()))
+
+      val task = new Task(
+        jobInformation,
+        taskInformation,
+        tdd.getExecutionAttemptId,
+        tdd.getAllocationId,
+        tdd.getSubtaskIndex,
+        tdd.getAttemptNumber,
+        tdd.getProducedPartitions,
+        tdd.getInputGates,
+        tdd.getTargetSlotNumber,
+        tdd.getTaskStateHandles,
+        memoryManager,
+        ioManager,
+        network,
+        bcVarManager,
+        taskManagerConnection,
+        inputSplitProvider,
+        checkpointResponder,
+        modificationResponder,
+        libCache,
+        fileCache,
+        config,
+        taskMetricGroup,
+        resultPartitionConsumableNotifier,
+        partitionStateChecker,
+        context.dispatcher)
+
+      log.info(s"Received task ${task.getTaskInfo.getTaskNameWithSubtasks()}")
+
+      val execId = tdd.getExecutionAttemptId
+      // add the task to the map
+      val prevTask = runningTasks.put(execId, task)
+      if (prevTask != null) {
+        // already have a task for that ID, put if back and report an error
+        runningTasks.put(execId, prevTask)
+        throw new IllegalStateException("TaskManager already contains a task for id " + execId)
+      }
+
+      // all good, we kick off the task, which performs its own initialization
+      task.startTaskThread(key, className)
+
+      sender ! decorateMessage(Acknowledge.get())
+    }
+    catch {
+      case t: Throwable =>
+        log.error("SubmitTask failed", t)
+        sender ! decorateMessage(Status.Failure(t))
+    }
+  }
 
   /**
    * Receives a [[TaskDeploymentDescriptor]] describing the task to be executed. It eagerly

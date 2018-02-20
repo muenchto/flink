@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobgraph.tasks;
 
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.operators.BatchTask;
@@ -36,6 +37,7 @@ public abstract class AbstractInvokable {
 
 	/** The environment assigned to this invokable. */
 	private Environment environment;
+	public Function function;
 
 	/**
 	 * Starts the execution.
@@ -65,6 +67,10 @@ public abstract class AbstractInvokable {
 
 	public void pause() throws Exception {
 		// the default implementation does nothing
+	}
+
+	public void setCustomFunction(Function function) {
+		this.function = function;
 	}
 	
 	/**

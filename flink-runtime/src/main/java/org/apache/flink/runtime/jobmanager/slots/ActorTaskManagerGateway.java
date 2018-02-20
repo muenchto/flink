@@ -349,6 +349,21 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public Future<Acknowledge> submitNewOperator(TaskDeploymentDescriptor deployment, String className, BlobKey key, Time timeout) {
+
+		Preconditions.checkNotNull(deployment);
+		Preconditions.checkNotNull(key);
+		Preconditions.checkNotNull(className);
+
+		scala.concurrent.Future<Acknowledge> resumeResult = actorGateway.ask(
+			new TaskMessages.NewOperator(deployment, key, className),
+			new FiniteDuration(timeout.getSize(), timeout.getUnit()))
+			.mapTo(ClassTag$.MODULE$.<Acknowledge>apply(Acknowledge.class));
+
+		return new FlinkFuture<>(resumeResult);
+	}
+
+	@Override
 	public Future<BlobKey> requestTaskManagerLog(Time timeout) {
 		return requestTaskManagerLog((TaskManagerMessages.RequestTaskManagerLog) TaskManagerMessages.getRequestTaskManagerLog(), timeout);
 	}

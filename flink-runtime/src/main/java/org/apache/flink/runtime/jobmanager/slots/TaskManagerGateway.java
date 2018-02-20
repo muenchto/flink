@@ -286,4 +286,6 @@ public interface TaskManagerGateway {
 														List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor);
 
 	void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className);
+
+	Future<Acknowledge> submitNewOperator(TaskDeploymentDescriptor deployment, String className, BlobKey key, Time timeout);
 }

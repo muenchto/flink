@@ -181,6 +181,11 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public Future<Acknowledge> submitNewOperator(TaskDeploymentDescriptor deployment, String className, BlobKey key, Time timeout) {
+		return null;
+	}
+
+	@Override
 	public FlinkFuture<Acknowledge> triggerResumeWithDifferentInputs(Time timeout,
 																	 ExecutionAttemptID currentSinkAttempt,
 																	 int stoppedMapSubTaskIndex, List<InputGateDeploymentDescriptor> inputGateDeploymentDescriptor) {

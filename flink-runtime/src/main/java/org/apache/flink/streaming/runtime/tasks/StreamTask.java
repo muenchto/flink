@@ -330,6 +330,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				throw new CancelTaskException();
 			}
 
+			if (function != null) {
+				LOG.error("BENCHMARKING: Using different user function");
+				switchFunction(function);
+			}
+
 			// let the task do its work
 			pausedForModification = false;
 			isRunning = true;

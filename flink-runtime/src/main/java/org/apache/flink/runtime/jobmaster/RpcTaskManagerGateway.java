@@ -209,6 +209,11 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
+	public Future<Acknowledge> submitNewOperator(TaskDeploymentDescriptor deployment, String className, BlobKey key, Time timeout) {
+		return null;
+	}
+
+	@Override
 	public void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className) {
 
 	}

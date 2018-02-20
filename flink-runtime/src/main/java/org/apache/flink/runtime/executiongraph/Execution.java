@@ -1543,6 +1543,87 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		deployToSlot(vertex.getFutureSlot());
 	}
 
+	public void scheduleForNewOperator(BlobKey key, String classname) throws JobException {
+		deployToSlot(vertex.getFutureSlot(), key, classname);
+	}
+
+	public void deployToSlot(final SimpleSlot slot, BlobKey key, String className) throws JobException {
+		checkNotNull(slot);
+
+		// Check if the TaskManager died in the meantime
+		// This only speeds up the response to TaskManagers failing concurrently to deployments.
+		// The more general check is the timeout of the deployment call
+		if (!slot.isAlive()) {
+			throw new JobException("Target slot (TaskManager) for deployment is no longer alive.");
+		}
+
+		// make sure exactly one deployment call happens from the correct state
+		// note: the transition from CREATED to DEPLOYING is for testing purposes only
+		ExecutionState previous = this.state;
+		if (previous == SCHEDULED || previous == CREATED) {
+			if (!transitionState(previous, DEPLOYING)) {
+				// race condition, someone else beat us to the deploying call.
+				// this should actually not happen and indicates a race somewhere else
+				throw new IllegalStateException("Cannot deploy task: Concurrent deployment call race.");
+			}
+		}
+		else {
+			// vertex may have been cancelled, or it was already scheduled
+			throw new IllegalStateException("The vertex must be in CREATED or SCHEDULED state to be deployed. Found state " + previous);
+		}
+
+		try {
+			// good, we are allowed to deploy
+			if (!slot.setExecutedVertex(this)) {
+				throw new JobException("Could not assign the ExecutionVertex to the slot " + slot);
+			}
+			this.assignedResource = slot;
+
+			// race double check, did we fail/cancel and do we need to release the slot?
+			if (this.state != DEPLOYING) {
+				slot.releaseSlot();
+				return;
+			}
+
+			if (LOG.isInfoEnabled()) {
+				LOG.info(String.format("Deploying %s (attempt #%d) to %s", vertex.getTaskNameWithSubtaskIndex(),
+					attemptNumber, getAssignedResourceLocation().getHostname()));
+			}
+
+			final TaskDeploymentDescriptor deployment = vertex.createDeploymentDescriptor(
+				attemptId,
+				slot,
+				taskState,
+				attemptNumber);
+
+			final TaskManagerGateway taskManagerGateway = slot.getTaskManagerGateway();
+
+			final Future<Acknowledge> submitResultFuture =
+				taskManagerGateway.submitNewOperator(deployment, className, key, timeout);
+
+			submitResultFuture.exceptionallyAsync(new ApplyFunction<Throwable, Void>() {
+				@Override
+				public Void apply(Throwable failure) {
+					if (failure instanceof TimeoutException) {
+						String taskname = vertex.getTaskNameWithSubtaskIndex()+ " (" + attemptId + ')';
+
+						markFailed(new Exception(
+							"Cannot deploy task " + taskname + " - TaskManager (" + getAssignedResourceLocation()
+								+ ") not responding after a timeout of " + timeout, failure));
+					}
+					else {
+						markFailed(failure);
+					}
+					return null;
+				}
+			}, executor);
+		}
+		catch (Throwable t) {
+			markFailed(t);
+			ExceptionUtils.rethrow(t);
+		}
+	}
+
 	public void switchFunction(BlobKey key, String className) {
 		final SimpleSlot slot = assignedResource;
 
