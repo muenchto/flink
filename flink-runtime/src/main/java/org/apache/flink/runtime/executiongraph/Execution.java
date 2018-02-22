@@ -1241,6 +1241,10 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 			if (currentState == PAUSED || currentState == PAUSING) {
 				LOG.debug("Concurrent PAUSED message overtook.", getVertexWithAttempt());
 				return true;
+			} else if (currentState == RUNNING) {
+				LOG.error("Concurrent PAUSED message overtook {} with current state RUNNING", getVertexWithAttempt());
+				markFailed(new Exception("Invalid state. INVESTIGATE"));
+				// return true;
 			} else if (currentState == FINISHED || currentState == CANCELED) {
 				LOG.debug("Concurrent finished/canceling of {} while deployment was in progress.", getVertexWithAttempt());
 			} else {

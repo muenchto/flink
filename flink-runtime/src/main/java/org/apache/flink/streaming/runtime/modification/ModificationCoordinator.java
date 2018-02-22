@@ -410,7 +410,7 @@ public class ModificationCoordinator {
 		ExecutionVertex executionVertex = vertexToRestart.get(state.getID());
 
 		if (executionVertex == null) {
-			LOG.info("Informed about vertex, that should not be restarted {}", state.getID());
+			LOG.error("Informed about vertex, that should not be restarted {}", state.getID());
 			return;
 		}
 
@@ -421,9 +421,13 @@ public class ModificationCoordinator {
 			case FAILED:
 			case PAUSING:
 			case RESUMING:
+
+				LOG.error("BENCHMARK: Not restarting vertex {} with state ", executionVertex, state);
 				return;
 
 			case PAUSED:
+				LOG.error("BENCHMARK: Restarting vertex {}", executionVertex);
+
 				restartIfStoppedAndStateReceived(executionVertex);
 				break;
 
@@ -433,7 +437,29 @@ public class ModificationCoordinator {
 		}
 	}
 
+	private boolean timeoutTriggerSet = false;
+
 	private synchronized void restartIfStoppedAndStateReceived(ExecutionVertex vertex) {
+
+		if (!timeoutTriggerSet) {
+			final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+			executor.schedule(new Runnable() {
+				@Override
+				public void run() {
+					if (!vertexToRestart.isEmpty()) {
+						LOG.error("BENCHMARK: Failed, as have not restarted vertices after 1 minute timeout");
+						for (ExecutionVertex executionVertex : vertexToRestart.values()) {
+							LOG.error("BENCHMARK: Vertex has not yet been restarted - {}", executionVertex);
+						}
+						executionGraph.failGlobal(new IllegalStateException("Not restarted all vertices after 1 minute"));
+					} else {
+						LOG.error("BENCHMARK: Successfully restarted all vertices after 1 minute timeout");
+					}
+				}
+			}, 1, TimeUnit.MINUTES);
+
+			timeoutTriggerSet = true;
+		}
 
 		ExecutionAttemptID attemptID = vertex.getCurrentExecutionAttempt().getAttemptId();
 
