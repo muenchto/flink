@@ -26,6 +26,7 @@ import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.core.fs.FileSystemSafetyNet;
+import org.apache.flink.metrics.Gauge;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
@@ -47,6 +48,7 @@ import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartit
 import org.apache.flink.runtime.io.network.partition.consumer.*;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
+import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.state.*;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.taskmanager.RuntimeEnvironment;
@@ -1654,6 +1656,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 	private static final class AsyncCheckpointRunnable implements Runnable, Closeable {
 
+		private static final String ASYNC_DURATION_MILLIS = "asyncDurationMillis";
+		public static final String SYNC_DURATION_MILLIS = "syncDurationMillis";
+		public static final String ALIGNMENT_DURATION_MILLIS = "alignmentDurationMillis";
+		public static final String BYTES_ALIGNMENT = "bytesAlignment";
+
 		private final StreamTask<?, ?> owner;
 
 		private final List<OperatorSnapshotResult> snapshotInProgressList;
@@ -1695,6 +1702,38 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					this.futureKeyedStreamStateHandles = snapshotInProgress.getKeyedStateRawFuture();
 				}
 			}
+
+			//Ventura: motification starts
+			TaskMetricGroup tmGroup = owner.getEnvironment().getMetricGroup();
+			tmGroup.gauge(ASYNC_DURATION_MILLIS, new Gauge<Long>() {
+				@Override
+				public Long getValue() {
+					return 0L;
+				}
+			});
+
+			tmGroup.gauge(SYNC_DURATION_MILLIS, new Gauge<Long>() {
+				@Override
+				public Long getValue() {
+					return 0L;
+				}
+			});
+
+
+			tmGroup.gauge(ALIGNMENT_DURATION_MILLIS, new Gauge<Long>() {
+				@Override
+				public Long getValue() {
+					return 0L;
+				}
+			});
+
+
+			tmGroup.gauge(BYTES_ALIGNMENT, new Gauge<Long>() {
+				@Override
+				public Long getValue() {
+					return 0L;
+				}
+			});
 		}
 
 		@Override
@@ -1743,6 +1782,42 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 				if (asyncCheckpointState.compareAndSet(CheckpointingOperation.AsynCheckpointState.RUNNING,
 					CheckpointingOperation.AsynCheckpointState.COMPLETED)) {
+
+					final long syncDurationMillis = checkpointMetrics.getSyncDurationMillis();
+					final long alignemnt = checkpointMetrics.getAlignmentDurationNanos() / 1_000_000;
+					final long bytesAlignment = checkpointMetrics.getBytesBufferedInAlignment();
+
+					TaskMetricGroup tmGroup = owner.getEnvironment().getMetricGroup();
+
+					tmGroup.gauge(ASYNC_DURATION_MILLIS, new Gauge<Long>() {
+						@Override
+						public Long getValue() {
+							return asyncDurationMillis;
+						}
+					});
+
+					tmGroup.gauge(SYNC_DURATION_MILLIS, new Gauge<Long>() {
+						@Override
+						public Long getValue() {
+							return syncDurationMillis;
+						}
+					});
+
+
+					tmGroup.gauge(ALIGNMENT_DURATION_MILLIS, new Gauge<Long>() {
+						@Override
+						public Long getValue() {
+							return alignemnt;
+						}
+					});
+
+
+					tmGroup.gauge(BYTES_ALIGNMENT, new Gauge<Long>() {
+						@Override
+						public Long getValue() {
+							return bytesAlignment;
+						}
+					});
 
 					owner.getEnvironment().acknowledgeCheckpoint(
 						checkpointMetaData.getCheckpointId(),
@@ -2214,8 +2289,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				if (asyncCheckpointState.compareAndSet(CheckpointingOperation.AsynCheckpointState.RUNNING,
 					CheckpointingOperation.AsynCheckpointState.COMPLETED)) {
 
-					LOG.error("BENCHMARK:Operator {} ({}) is now completed asynchronous checkpoint part",
-						owner.getName(), owner.getEnvironment().getExecutionId());
+					LOG.error("BENCHMARK:Operator {} ({}) is now completed asynchronous checkpoint part with size {}",
+						owner.getName(), owner.getEnvironment().getExecutionId(), subtaskState.getStateSize());
 
 					owner.getEnvironment().acknowledgeStateMigration(
 						stateMigrationMetaData.getStateMigrationId(),

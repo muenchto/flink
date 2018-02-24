@@ -22,10 +22,9 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.annotation.VisibleForTesting;
@@ -771,7 +770,7 @@ public abstract class AbstractStreamOperator<OUT>
 		public Map<String, HashMap<String, Double>> getValue() {
 			while (true) {
 				try {
-					Map<String, HashMap<String, Double>> ret = new HashMap<>();
+					Map<String, HashMap<String, Double>> ret = new CustomMap<>();
 					for (Map.Entry<LatencySourceDescriptor, DescriptiveStatistics> source : latencyStats.entrySet()) {
 						HashMap<String, Double> sourceStatistics = new HashMap<>(6);
 						sourceStatistics.put("max", source.getValue().getMax());
@@ -791,6 +790,29 @@ public abstract class AbstractStreamOperator<OUT>
 					LOG.debug("Unable to report latency statistics", ignore);
 				}
 			}
+		}
+	}
+
+	static class CustomMap<K, V> extends HashMap<K, V> {
+		@Override
+		public String toString() {
+
+			StringBuilder builder = new StringBuilder();
+
+			builder.append("[");
+			for (Iterator<Entry<K, V>> iterator = entrySet().iterator(); iterator.hasNext(); ) {
+				Entry<K, V> entry = iterator.next();
+				builder.append(entry.getKey())
+					.append("#")
+					.append(entry.getValue());
+
+				if (iterator.hasNext()) {
+					builder.append(":");
+				}
+			}
+			builder.append("]");
+
+			return builder.toString();
 		}
 	}
 
@@ -856,10 +878,8 @@ public abstract class AbstractStreamOperator<OUT>
 
 		@Override
 		public String toString() {
-			return "LatencySourceDescriptor{" +
-					"vertexID=" + vertexID +
-					", subtaskIndex=" + subtaskIndex +
-					'}';
+			return "vertexID=" + vertexID +
+					"-subtaskIndex=" + subtaskIndex;
 		}
 	}
 

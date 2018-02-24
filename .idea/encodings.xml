@@ -55,15 +55,14 @@
     <file url="file://$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-metrics/flink-metrics-graphite" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-metrics/flink-metrics-jmx" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/flink-metrics/flink-metrics-slf4j" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-metrics/flink-metrics-statsd" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/flink-optimizer" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-optimizer" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-quickstart" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-quickstart/flink-quickstart-java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-quickstart/flink-quickstart-scala" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-runtime" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-runtime-web" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/flink-scala" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-scala" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-scala-shell" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-shaded-curator" charset="UTF-8" />
@@ -73,12 +72,6 @@
     <file url="file://$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-shaded-hadoop/flink-shaded-hadoop2-uber" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-streaming-java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/flink-streaming-java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/flink-streaming-java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/flink-streaming-java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/flink-streaming-scala" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/flink-streaming-scala" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/flink-streaming-scala" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-streaming-scala" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-test-utils-parent" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/flink-test-utils-parent/flink-test-utils" charset="UTF-8" />

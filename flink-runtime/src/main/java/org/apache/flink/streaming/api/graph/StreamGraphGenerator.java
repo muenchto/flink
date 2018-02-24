@@ -472,7 +472,7 @@ public class StreamGraphGenerator {
 				source.getOperator(),
 				null,
 				source.getOutputType(),
-				"Source: " + source.getName());
+				source.getName());
 		if (source.getOperator().getUserFunction() instanceof InputFormatSourceFunction) {
 			InputFormatSourceFunction<T> fs = (InputFormatSourceFunction<T>) source.getOperator().getUserFunction();
 			streamGraph.setInputFormat(source.getId(), fs.getFormat());
@@ -496,7 +496,7 @@ public class StreamGraphGenerator {
 				sink.getOperator(),
 				sink.getInput().getOutputType(),
 				null,
-				"Sink: " + sink.getName());
+				sink.getName());
 
 		streamGraph.setParallelism(sink.getId(), sink.getParallelism());
 		streamGraph.setMaxParallelism(sink.getId(), sink.getMaxParallelism());

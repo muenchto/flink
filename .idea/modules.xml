@@ -47,6 +47,7 @@
       <module fileurl="file://$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/flink-metrics-ganglia.iml" filepath="$PROJECT_DIR$/flink-metrics/flink-metrics-ganglia/flink-metrics-ganglia.iml" />
       <module fileurl="file://$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/flink-metrics-graphite.iml" filepath="$PROJECT_DIR$/flink-metrics/flink-metrics-graphite/flink-metrics-graphite.iml" />
       <module fileurl="file://$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/flink-metrics-jmx.iml" filepath="$PROJECT_DIR$/flink-metrics/flink-metrics-jmx/flink-metrics-jmx.iml" />
+      <module fileurl="file://$PROJECT_DIR$/flink-metrics/flink-metrics-slf4j/flink-metrics-slf4j.iml" filepath="$PROJECT_DIR$/flink-metrics/flink-metrics-slf4j/flink-metrics-slf4j.iml" />
       <module fileurl="file://$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/flink-metrics-statsd.iml" filepath="$PROJECT_DIR$/flink-metrics/flink-metrics-statsd/flink-metrics-statsd.iml" />
       <module fileurl="file://$PROJECT_DIR$/flink-libraries/flink-ml/flink-ml_2.10.iml" filepath="$PROJECT_DIR$/flink-libraries/flink-ml/flink-ml_2.10.iml" />
       <module fileurl="file://$PROJECT_DIR$/flink-libraries/flink-python/flink-python_2.10.iml" filepath="$PROJECT_DIR$/flink-libraries/flink-python/flink-python_2.10.iml" />

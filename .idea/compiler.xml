@@ -49,6 +49,7 @@
         <module name="flink-metrics-ganglia" />
         <module name="flink-metrics-graphite" />
         <module name="flink-metrics-jmx" />
+        <module name="flink-metrics-slf4j" />
         <module name="flink-metrics-statsd" />
         <module name="flink-ml_2.10" />
         <module name="flink-python_2.10" />
@@ -123,6 +124,7 @@
       <module name="flink-metrics-ganglia" target="1.7" />
       <module name="flink-metrics-graphite" target="1.7" />
       <module name="flink-metrics-jmx" target="1.7" />
+      <module name="flink-metrics-slf4j" target="1.7" />
       <module name="flink-metrics-statsd" target="1.7" />
       <module name="flink-ml_2.10" target="1.7" />
       <module name="flink-optimizer_2.10" target="1.7" />

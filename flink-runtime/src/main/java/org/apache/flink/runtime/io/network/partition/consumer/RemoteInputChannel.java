@@ -135,9 +135,8 @@ public class RemoteInputChannel extends InputChannel {
 
 	@Override
 	BufferAndAvailability getNextBuffer() throws IOException {
-		if (!isReleased.get()) {
+		if (isReleased.get()) {
 			throw new IllegalStateException("Channel " + this + " should not contain pending data. Task: " + owningTaskName);
-
 //			checkState(!isReleased.get(), "Queried for a buffer after channel has been closed.");
 		}
 		checkState(partitionRequestClient != null, "Queried for a buffer before requesting a queue.");
