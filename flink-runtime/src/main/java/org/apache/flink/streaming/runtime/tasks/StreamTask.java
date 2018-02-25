@@ -75,10 +75,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -407,11 +404,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 			// stop all asynchronous checkpoint threads
 			try {
-				cancelables.close();
-				shutdownAsyncThreads();
+
+				if (pausedForModification) {
+					if (!asyncOperationsThreadPool.isShutdown()) {
+						asyncOperationsThreadPool.shutdown();
+						asyncOperationsThreadPool.awaitTermination(1, TimeUnit.MINUTES);
+					}
+				} else {
+					shutdownAsyncThreads();
+					cancelables.close();
+				}
 			} catch (Throwable t) {
 				// catch and log the exception to not replace the original exception
-				LOG.error("Could not shut down async checkpoint threads", t);
+				LOG.error("Task {} could not shut down async checkpoint threads or waited to long: {}", getName(), t);
 			}
 
 			LOG.debug("Closing Operators for task {} from modification {}", getName(), pausedForModification);
@@ -2289,8 +2294,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				if (asyncCheckpointState.compareAndSet(CheckpointingOperation.AsynCheckpointState.RUNNING,
 					CheckpointingOperation.AsynCheckpointState.COMPLETED)) {
 
-					LOG.error("BENCHMARK:Operator {} ({}) is now completed asynchronous checkpoint part with size {}",
-						owner.getName(), owner.getEnvironment().getExecutionId(), subtaskState.getStateSize());
+					if (subtaskState != null) {
+						LOG.error("BENCHMARK:Operator {} ({}) is now completed asynchronous checkpoint part with size {}",
+							owner.getName(), owner.getEnvironment().getExecutionId(), subtaskState.getStateSize());
+					} else {
+						LOG.error("BENCHMARK:Operator {} ({}) is now completed asynchronous checkpoint part without state",
+							owner.getName(), owner.getEnvironment().getExecutionId());
+					}
 
 					owner.getEnvironment().acknowledgeStateMigration(
 						stateMigrationMetaData.getStateMigrationId(),
