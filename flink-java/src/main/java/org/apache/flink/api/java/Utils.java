@@ -59,7 +59,7 @@ public final class Utils {
 
 		StackTraceElement elem = stackTrace[depth];
 
-		return String.format("%s(%s:%d)", elem.getMethodName(), elem.getFileName(), elem.getLineNumber());
+		return String.format("%s(%s-%d)", elem.getMethodName(), elem.getFileName(), elem.getLineNumber());
 	}
 
 	// --------------------------------------------------------------------------------------------
