@@ -793,9 +793,9 @@ public class ModificationCoordinator {
 		Map<ExecutionAttemptID, Set<Integer>> spillingToDiskIDs = new HashMap<>();
 		Map<ExecutionAttemptID, List<InputChannelDeploymentDescriptor>> pausingIDs = new HashMap<>();
 
-		for (ExecutionVertex vertex : allVerticesOnTM) {
+		for (ExecutionVertex migratingVertex : allVerticesOnTM) {
 
-			List<ExecutionJobVertex> upstreamOperators = getUpstreamOperator(vertex);
+			List<ExecutionJobVertex> upstreamOperators = getUpstreamOperator(migratingVertex);
 
 			for (ExecutionJobVertex upstreamOperator : upstreamOperators) {
 				// Non-Source operator
@@ -806,48 +806,57 @@ public class ModificationCoordinator {
 					Set<Integer> subIndices = spillingToDiskIDs.get(executionVertex.getCurrentExecutionAttempt().getAttemptId());
 
 					if (subIndices == null) {
-						HashSet<Integer> indices = Sets.newHashSet(vertex.getParallelSubtaskIndex());
+						HashSet<Integer> indices = Sets.newHashSet(migratingVertex.getParallelSubtaskIndex());
 						spillingToDiskIDs.put(executionVertex.getCurrentExecutionAttempt().getAttemptId(), indices);
 					} else {
-						subIndices.add(vertex.getParallelSubtaskIndex());
+						subIndices.add(migratingVertex.getParallelSubtaskIndex());
 					}
 				}
 			}
 
 			// Now create a list of icdd for the migrating task, that will be send downstream to all consuming tasks
 			List<InputChannelDeploymentDescriptor> list = new ArrayList<>();
-			ExecutionJobVertex downstreamOperator = getDownstreamOperator(vertex);
+			ExecutionJobVertex downstreamOperator = getDownstreamOperator(migratingVertex);
 
 			if (downstreamOperator != null) {
-				for (ExecutionVertex executionVertex : downstreamOperator.getTaskVertices()) {
+				for (ExecutionVertex downstreamEV : downstreamOperator.getTaskVertices()) {
 
 					// Necessary for two input stream, e.g. joins
 					int inputIndex = -1;
 
-					for (int i = 0; i < executionVertex.getNumberOfInputs(); i++) {
-						IntermediateResultPartitionID partitionId = executionVertex.getInputEdges(i)[0].getSource().getPartitionId();
+					for (int i = 0; i < downstreamEV.getNumberOfInputs(); i++) {
+						for (ExecutionEdge executionEdge : downstreamEV.getInputEdges(i)) {
 
-						if (vertex.getProducedPartitions().keySet().contains(partitionId)) {
-							inputIndex = i;
+							boolean sawOneOutput = false;
+							for (IntermediateResultPartitionID intermediateResultPartitionID : migratingVertex.getProducedPartitions().keySet()) {
+								if (sawOneOutput) {
+									throw new IllegalStateException();
+								}
+
+								if (executionEdge.getSource().getPartitionId().equals(intermediateResultPartitionID)) {
+									inputIndex = i;
+								}
+
+								sawOneOutput = true;
+							}
 						}
 					}
 
 					if (inputIndex == -1) {
-//						throw new IllegalStateException("Failure to find correct input for : " + vertex + " and " + executionVertex);
-						inputIndex = 0;
+						throw new IllegalStateException("Failure to find correct input for : " + migratingVertex + " and " + downstreamEV);
 					}
 
 					InputChannelDeploymentDescriptor icdd = InputChannelDeploymentDescriptor.fromEdgesForSpecificPartition(
-						executionVertex.getInputEdges(inputIndex),
-						executionVertex.getCurrentAssignedResource(),
+						downstreamEV.getInputEdges(inputIndex),
+						downstreamEV.getCurrentAssignedResource(),
 						executionGraph.isQueuedSchedulingAllowed(),
-						vertex.getParallelSubtaskIndex());
+						migratingVertex.getParallelSubtaskIndex());
 
 					list.add(icdd);
 				}
 			}
 
-			ExecutionAttemptID attemptId = vertex.getCurrentExecutionAttempt().getAttemptId();
+			ExecutionAttemptID attemptId = migratingVertex.getCurrentExecutionAttempt().getAttemptId();
 			pausingIDs.put(attemptId, list);
 		}
 

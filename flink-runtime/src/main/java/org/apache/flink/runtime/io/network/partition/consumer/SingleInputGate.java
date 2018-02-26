@@ -28,6 +28,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.NetworkEnvironment;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
+import org.apache.flink.runtime.io.network.api.PausingOperatorMarker;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.buffer.BufferPool;
@@ -579,8 +580,12 @@ public class SingleInputGate implements InputGate {
 
 	// ------------------------------------------------------------------------
 
-	Map<IntermediateResultPartitionID, InputChannel> getInputChannels() {
+	public Map<IntermediateResultPartitionID, InputChannel> getInputChannels() {
 		return inputChannels;
+	}
+
+	public Map<Integer, IntermediateResultPartitionID> getInputChannelIndices() {
+		return inputChannelsToIndex;
 	}
 
 	// ------------------------------------------------------------------------
@@ -930,7 +935,7 @@ public class SingleInputGate implements InputGate {
 			" SubPartitionIndex: " + consumedSubpartitionIndex;
 	}
 
-	public void updateInputChannel(IntermediateResultPartitionID partitionId, InputChannel newChannel, int index)
+	public void updateInputChannel(IntermediateResultPartitionID partitionId, InputChannel newChannel)
 		throws IOException, InterruptedException {
 		synchronized (requestLock) {
 			if (isReleased) {
@@ -946,12 +951,6 @@ public class SingleInputGate implements InputGate {
 				ensureChannelDoesNotContainPendingData(oldChannel);
 
 				oldChannel.releaseAllResources();
-			} else if (inputChannels.containsKey(inputChannelsToIndex.get(index))) {
-				oldChannel = inputChannels.remove(inputChannelsToIndex.get(index));
-
-				ensureChannelDoesNotContainPendingData(oldChannel);
-
-				inputChannels.put(partitionId, newChannel);
 			} else {
 				throw new RuntimeException("No previous input channel.");
 			}

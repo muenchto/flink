@@ -46,6 +46,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.ResultSubpartition;
 import org.apache.flink.runtime.io.network.partition.SpillablePipelinedSubpartition;
 import org.apache.flink.runtime.io.network.partition.consumer.*;
+import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
@@ -730,13 +731,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						InputGate[] allInputGates = getEnvironment().getAllInputGates();
 						SingleInputGate inputGate;
 
+						getInputGateForICDD(allInputGates, inputChannelDeploymentDescriptor);
+
 						if (allInputGates.length != 1) {
 
 							// TODO Masterthesis, only works for one and two input streams
 
-							inputGate = mapIndexToSingleInputGate(allInputGates, channelIndex);
-
-							channelIndex = mapIndexToChannelIndex(allInputGates, channelIndex);
+							inputGate = getInputGateForICDD(allInputGates, inputChannelDeploymentDescriptor);
 
 							if (inputGate == null || channelIndex == -1) {
 								throw new IllegalStateException("Error in logic");
@@ -745,7 +746,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 							inputGate = (SingleInputGate) allInputGates[0];
 						}
 
-						updateInputChannel(inputGate, channelIndex, inputChannelDeploymentDescriptor);
+						updateInputChannel(inputGate, inputChannelDeploymentDescriptor);
 
 						transitionState(ModificationStatus.NOT_MODIFIED,ModificationStatus.UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR);
 						transitionState(ModificationStatus.NOT_MODIFIED,ModificationStatus.SPILLED_TO_DISK_AFTER_CHECKPOINT);
@@ -766,6 +767,20 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
 			}
 		}
+	}
+
+	private SingleInputGate getInputGateForICDD(InputGate[] allInputGates, InputChannelDeploymentDescriptor icdd) {
+		for (InputGate gate : allInputGates) {
+			SingleInputGate singleInputGate = (SingleInputGate) gate;
+
+			for (IntermediateResultPartitionID intermediateResultPartitionID : singleInputGate.getInputChannels().keySet()) {
+				if (icdd.getConsumedPartitionId().getPartitionId().equals(intermediateResultPartitionID)) {
+					return singleInputGate;
+				}
+			}
+		}
+
+		throw new IllegalStateException();
 	}
 
 	private int mapIndexToChannelIndex(InputGate[] allInputGates, int channelIndex) {
@@ -798,12 +813,28 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		return null;
 	}
 
-	private void updateInputChannel(SingleInputGate inputGate, int channelIndex, InputChannelDeploymentDescriptor icdd) {
+	private void updateInputChannel(SingleInputGate inputGate, InputChannelDeploymentDescriptor icdd) {
 
 		NetworkEnvironment networkEnvironment = ((RuntimeEnvironment) getEnvironment()).getNetwork();
 
 		final ResultPartitionID partitionId = icdd.getConsumedPartitionId();
 		final ResultPartitionLocation partitionLocation = icdd.getConsumedPartitionLocation();
+
+		int channelIndex = -1;
+
+		for (Map.Entry<IntermediateResultPartitionID, InputChannel> entry : inputGate.getInputChannels().entrySet()) {
+			if (entry.getKey().equals(icdd.getConsumedPartitionId().getPartitionId())) {
+				for (Map.Entry<Integer, IntermediateResultPartitionID> indexEntry : inputGate.getInputChannelIndices().entrySet()) {
+					if (entry.getKey().equals(indexEntry.getValue())) {
+						channelIndex = indexEntry.getKey();
+					}
+				}
+			}
+		}
+
+		if (channelIndex == -1) {
+			throw new IllegalStateException();
+		}
 
 		InputChannel inputChannel;
 
@@ -833,7 +864,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 
 		try {
-			inputGate.updateInputChannel(partitionId.getPartitionId(), inputChannel, channelIndex);
+			inputGate.updateInputChannel(partitionId.getPartitionId(), inputChannel);
 		} catch (IOException | InterruptedException e) {
 			throw new IllegalStateException("Could not update InputChannel", e);
 		}
