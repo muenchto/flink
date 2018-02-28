@@ -51,16 +51,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
@@ -772,6 +764,12 @@ public class CheckpointCoordinator {
 				}
 			}
 		}
+	}
+
+	static final Set<ExecutionAttemptID> MIGRATING_TASKS = new ConcurrentSkipListSet<>();
+
+	public void addExecutionIdToPendingTask(ExecutionAttemptID attemptID) {
+		MIGRATING_TASKS.add(attemptID);
 	}
 
 	/**

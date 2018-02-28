@@ -1825,14 +1825,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 					TaskMetricGroup tmGroup = owner.getEnvironment().getMetricGroup();
 
-					tmGroup.gauge(ASYNC_DURATION_MILLIS, new Gauge<Long>() {
+					tmGroup.gauge(ASYNC_DURATION_MILLIS + "_after", new Gauge<Long>() {
 						@Override
 						public Long getValue() {
 							return asyncDurationMillis;
 						}
 					});
 
-					tmGroup.gauge(SYNC_DURATION_MILLIS, new Gauge<Long>() {
+					tmGroup.gauge(SYNC_DURATION_MILLIS + "_after", new Gauge<Long>() {
 						@Override
 						public Long getValue() {
 							return syncDurationMillis;
@@ -1840,7 +1840,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					});
 
 
-					tmGroup.gauge(ALIGNMENT_DURATION_MILLIS, new Gauge<Long>() {
+					tmGroup.gauge(ALIGNMENT_DURATION_MILLIS + "_after", new Gauge<Long>() {
 						@Override
 						public Long getValue() {
 							return alignemnt;
@@ -1848,7 +1848,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					});
 
 
-					tmGroup.gauge(BYTES_ALIGNMENT, new Gauge<Long>() {
+					tmGroup.gauge(BYTES_ALIGNMENT + "_after", new Gauge<Long>() {
 						@Override
 						public Long getValue() {
 							return bytesAlignment;

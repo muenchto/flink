@@ -24,6 +24,8 @@ import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 
 import java.io.Serializable;
 
+import static org.apache.flink.util.Preconditions.checkNotNull;
+
 /**
  * Runtime identifier of a produced {@link IntermediateResultPartition}.
  *
@@ -44,8 +46,8 @@ public final class ResultPartitionID implements Serializable {
 	}
 
 	public ResultPartitionID(IntermediateResultPartitionID partitionId, ExecutionAttemptID producerId) {
-		this.partitionId = partitionId;
-		this.producerId = producerId;
+		this.partitionId = checkNotNull(partitionId);
+		this.producerId = checkNotNull(producerId);
 	}
 
 	public IntermediateResultPartitionID getPartitionId() {
