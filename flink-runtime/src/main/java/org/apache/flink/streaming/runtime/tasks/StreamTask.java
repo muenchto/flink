@@ -351,7 +351,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				// Paused this StreamTask for modification, do not attempt to clean up
 				if (pausedForModification) {
 
-					LOG.debug("Paused task {} for migration", getName());
+					LOG.error("Paused task {} for migration", getName());
 
 					triggerStateMigration();
 
@@ -885,7 +885,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 		try {
 
-			LOG.info("Starting migration ({}) for '{}' on task {} with jobVertexID {}",
+			LOG.error("MIGRATION: Starting migration ({}) for '{}' on task {} with jobVertexID {}",
 				metaData.getModificationID(),
 				StringUtils.join(spillingVertices.entrySet(), ","),
 				getName(),
@@ -1184,7 +1184,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	public boolean receivedBlockingMarkersFromAllInputs(ModificationCoordinator.ModificationAction action) throws Exception {
 
 
-		LOG.info("Operator {} acknowledges SpillingToDisk {}.", getName(), getEnvironment().getJobVertexId());
+		LOG.error("BENCHMARK: Operator {} acknowledges SpillingToDisk {}.", getName(), getEnvironment().getJobVertexId());
 
 		synchronized (lock) {
 			if (isRunning) {
@@ -1252,9 +1252,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					checkpointOptions);
 
 				// TODO basically does two checkpoints, the normal one, and the one for sending the state if exiting
-				reactOnCheckpoint(checkpointMetaData.getCheckpointId());
+				boolean isPausing = reactOnCheckpoint(checkpointMetaData.getCheckpointId());
 
-				checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
+				if (!isPausing) {
+					checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
+				}
 
 				return true;
 			} else {
@@ -1285,7 +1287,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
-	private void reactOnCheckpoint(long checkpointId) throws IOException, InterruptedException {
+	private boolean reactOnCheckpoint(long checkpointId) throws IOException, InterruptedException {
 
 		synchronized (lock) {
 			if (isRunning) {
@@ -1299,7 +1301,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 						case PAUSING:
 						case NOT_MODIFIED:
 						case UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR:
-							break;
+							return false;
 
 						case OPERATOR_WAITING_FOR_UPCOMING_CHECKPOINT_TO_BROADCAST_NEW_DOWNSTREAM_OPERATOR_LOCATION:
 
@@ -1322,7 +1324,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 							getEnvironment().acknowledgeSpillingForNewOperator(modificationID);
 
-							break;
+							return false;
 
 						case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_SPILL_TO_DISK:
 
@@ -1342,7 +1344,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 								throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
 							}
 
-							break;
+							return false;
 
 						case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR:
 
@@ -1354,10 +1356,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 							shutdownAfterSendingOperatorPausedEvent(ModificationCoordinator.ModificationAction.STOPPING);
 
-							break;
+							return true;
 
 						default:
+							throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
 					}
+				} else {
+					return false;
 				}
 			} else {
 				throw new IllegalStateException("" + getName() + " - " + STATE_UPDATER.get(this));
@@ -1448,9 +1453,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 		StreamFilter streamFilter = (StreamFilter) allOperators[0];
 
-		LOG.error("Saw operator {}", streamFilter);
-
 		streamFilter.setFilterFunction((FilterFunction) newUserFunction);
+
+		LOG.error("Replaced function {}", streamFilter);
 	}
 
 	private void checkpointState(

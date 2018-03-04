@@ -189,7 +189,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 					processCancellationBarrier((CancelCheckpointMarker) next.getEvent());
 				} else if (next.getEvent().getClass() == PausingOperatorMarker.class) {
 
-					LOG.info("Acknowledge Pausing for channel {}", next.getChannelIndex());
+					LOG.error("Acknowledge Pausing for channel {}", next.getChannelIndex());
 
 					countBlockingMarker(ModificationCoordinator.ModificationAction.STOPPING);
 
@@ -202,7 +202,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 					return next;
 
 				} else if (next.getEvent().getClass() == StartModificationMarker.class) {
-					LOG.info("Received ModificationMarker:  {}", StartModificationMarker.class);
+					LOG.error("Received ModificationMarker:  {}", StartModificationMarker.class);
 
 					notifyModification((StartModificationMarker) next.getEvent());
 
@@ -210,15 +210,19 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 
 				} else if (next.getEvent().getClass() == SpillToDiskMarker.class) {
 
+					LOG.error("Received SpillToDiskMarker: {}", CancelModificationMarker.class);
+
 					countBlockingMarker(((SpillToDiskMarker) next.getEvent()).getAction());
 
 					return next;
 
 				} else if (next.getEvent().getClass() == CancelModificationMarker.class) {
-					LOG.info("Received ModificationMarker: {}", CancelModificationMarker.class);
+					LOG.error("Received ModificationMarker: {}", CancelModificationMarker.class);
 
 					return next;
 				} else if (next.getEvent().getClass() == StartMigrationMarker.class) {
+
+					LOG.error("Received StartMigrationMarker: {}", CancelModificationMarker.class);
 
 					notifyMigration((StartMigrationMarker) next.getEvent());
 
@@ -273,7 +277,7 @@ public class BarrierBuffer implements CheckpointBarrierHandler {
 	private void receivedMarkersFromAllInputs(ModificationCoordinator.ModificationAction action) throws Exception {
 		if (statefulTask != null) {
 
-			LOG.debug("Received all SpillToDisk-Marker and now spilling to disk");
+			LOG.error("Received all SpillToDisk-Marker and now spilling to disk");
 
 			statefulTask.receivedBlockingMarkersFromAllInputs(action);
 

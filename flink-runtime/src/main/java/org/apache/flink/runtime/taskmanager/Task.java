@@ -1775,6 +1775,8 @@ public class Task implements Runnable, TaskActions {
 
 				try {
 
+					LOG.error("BENCHMARKING: Starting JAR download");
+
 					BlobLibraryCacheManager manager = (BlobLibraryCacheManager) libraryCache;
 
 					final ClassLoader classLoader = manager.getAdditionalJar(key);
@@ -1785,7 +1787,7 @@ public class Task implements Runnable, TaskActions {
 
 					final Function function = (Function) o;
 
-					LOG.error("Instantiated class on TM", o);
+					LOG.error("BENCHMARKING: Finished JAR download");
 
 					Runnable runnable = new Runnable() {
 						@Override

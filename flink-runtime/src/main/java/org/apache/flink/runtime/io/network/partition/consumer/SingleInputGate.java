@@ -955,7 +955,7 @@ public class SingleInputGate implements InputGate {
 				throw new RuntimeException("No previous input channel.");
 			}
 
-			LOG.debug("Updated existing input channel to {}.", newChannel);
+			LOG.error("BENCHMARK: Updated existing input channel to {}.", newChannel);
 
 			newChannel.requestSubpartition(consumedSubpartitionIndex);
 

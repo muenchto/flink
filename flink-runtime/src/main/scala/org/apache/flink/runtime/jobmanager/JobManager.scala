@@ -1232,6 +1232,8 @@ class JobManager(
               (false, s"Unkown command $command")
           }
 
+          log.error(s"BENCHMARK:Finished command '$command' from JobClient for $jobId")
+
           if (result._1) {
             sender() ! ModifyJobSuccess(jobId, s"Successfully executing command $command: ${result._2}")
           } else {

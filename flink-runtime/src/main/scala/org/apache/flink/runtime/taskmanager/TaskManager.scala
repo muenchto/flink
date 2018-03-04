@@ -601,7 +601,7 @@ class TaskManager(
           val task = runningTasks.get(executionAttemptID)
           if (task != null) {
 
-            log.debug(s"Attempting to switch function to $className for map $executionAttemptID")
+            log.error(s"BENCHMARK: Taskmanager: Attempting to switch function to $className for map $executionAttemptID")
 
             try {
 

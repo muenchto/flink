@@ -416,7 +416,7 @@ public class JobClient {
 		checkNotNull(jobGraph, "The jobGraph must not be null.");
 		checkNotNull(timeout, "The timeout must not be null.");
 
-		LOG.info("Checking and uploading JAR files");
+		LOG.error("BENCHMARK: Checking and uploading JAR files");
 		try {
 			jobGraph.uploadUserJars(jobManagerGateway, timeout, config);
 		}
@@ -424,6 +424,8 @@ public class JobClient {
 			throw new JobSubmissionException(jobGraph.getJobID(),
 				"Could not upload the program's JAR files to the JobManager.", e);
 		}
+		LOG.error("BENCHMARK: Uploaded JAR files");
+
 
 		Object result;
 		try {

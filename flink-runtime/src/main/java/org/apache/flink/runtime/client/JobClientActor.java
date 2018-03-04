@@ -274,7 +274,7 @@ public abstract class JobClientActor extends FlinkUntypedActor implements Leader
 	}
 
 	private void logAndPrintMessage(ExecutionGraphMessages.ExecutionStateChanged message) {
-		LOG.info(message.toString());
+		LOG.error(message.toString());
 		if (sysoutUpdates) {
 			System.out.println(message.toString());
 		}

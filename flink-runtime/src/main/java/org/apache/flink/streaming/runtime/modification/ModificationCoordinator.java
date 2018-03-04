@@ -331,6 +331,8 @@ public class ModificationCoordinator {
 					throw new IllegalStateException("");
 				}
 
+				LOG.error("BENCHMARK: Starting new operator {}", message.getJobID(), message);
+
 				for (ExecutionVertex vertex : filterExecutionJobVertex.getTaskVertices()) {
 					try {
 						vertex.getCurrentExecutionAttempt().scheduleForNewOperator(blobKeys.iterator().next(), newOperatorClassName);
@@ -338,6 +340,9 @@ public class ModificationCoordinator {
 						executionGraph.failGlobal(e);
 					}
 				}
+
+				LOG.error("BENCHMARK: Finished starting new operator {}", message.getJobID(), message);
+
 			}
 		} else {
 			throw new IllegalStateException("Received acknowledge from wrong message");
