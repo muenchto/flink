@@ -600,6 +600,11 @@ public class JobManagerHARecoveryTest extends TestLogger {
 		}
 
 		@Override
+		public void switchFunction(Function newUserFunction, long checkpointID) {
+
+		}
+
+		@Override
 		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs, Set<Integer> subTasksToPause, ModificationCoordinator.ModificationAction action) throws Exception {
 			return false;
 		}

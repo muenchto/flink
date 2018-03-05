@@ -214,7 +214,7 @@ public class RpcTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className) {
+	public void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className, long modificationId) {
 
 	}
 }

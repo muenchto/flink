@@ -551,6 +551,11 @@ public class BarrierTrackerTest {
 		}
 
 		@Override
+		public void switchFunction(Function newUserFunction, long checkpointID) {
+
+		}
+
+		@Override
 		public boolean triggerModification(ModificationMetaData modificationMetaData, Set<ExecutionAttemptID> jobVertexIDs, Set<Integer> subTasksToPause, ModificationCoordinator.ModificationAction action) throws Exception {
 			throw new UnsupportedOperationException("should never be called");
 		}

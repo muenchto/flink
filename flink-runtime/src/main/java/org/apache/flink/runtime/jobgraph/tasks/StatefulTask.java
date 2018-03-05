@@ -102,6 +102,8 @@ public interface StatefulTask {
 	 */
 	void switchFunction(Function newUserFunction);
 
+	void switchFunction(Function newUserFunction, long checkpointID);
+
 	/**
 	 * This method is called to trigger a modification of the graph.
 	 * This methods pauses the current task, if it contains a operator for the JobVertexID specified

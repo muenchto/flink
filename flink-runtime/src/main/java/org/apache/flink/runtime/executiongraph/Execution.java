@@ -1628,7 +1628,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		}
 	}
 
-	public void switchFunction(BlobKey key, String className) {
+	public void switchFunction(BlobKey key, String className, long modificationId) {
 		final SimpleSlot slot = assignedResource;
 
 		if (slot != null) {
@@ -1638,7 +1638,8 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 				attemptId,
 				getVertex().getJobId(),
 				key,
-				className);
+				className,
+				modificationId);
 		} else {
 			LOG.error("Failed to switch function for " + this);
 		}

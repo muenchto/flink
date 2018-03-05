@@ -597,7 +597,7 @@ class TaskManager(
             sender ! decorateMessage(Acknowledge.get())
           }
 
-        case SwitchFunction(jobID, executionAttemptID, blobKey, className) =>
+        case SwitchFunction(jobID, executionAttemptID, blobKey, className, checkpointID) =>
           val task = runningTasks.get(executionAttemptID)
           if (task != null) {
 

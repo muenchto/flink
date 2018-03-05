@@ -1257,15 +1257,23 @@ public class ModificationCoordinator {
 		this.blobKeys.addAll(blobKeys);
 	}
 
-	public void switchFunction(String className) {
+	public void switchFunction(String className) throws Exception {
 		ExecutionJobVertex filter = findFilter();
 
 		assert this.blobKeys.size() == 1;
 
+		long checkpointIDToModify = -1;
+		CheckpointIDCounter checkpointIdCounter = executionGraph.getCheckpointCoordinator().getCheckpointIdCounter();
+
+		// Check if checkpointing is enabled
+		if (checkpointIdCounter.getCurrent() >= 2) {
+			checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
+		}
+
 		for (ExecutionVertex vertex : filter.getTaskVertices()) {
 			vertex
 				.getCurrentExecutionAttempt()
-				.switchFunction(blobKeys.iterator().next(), className);
+				.switchFunction(blobKeys.iterator().next(), className, checkpointIDToModify);
 		}
 	}
 

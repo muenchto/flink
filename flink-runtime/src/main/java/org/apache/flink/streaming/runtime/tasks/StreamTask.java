@@ -145,7 +145,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR, // Operators only
 		UPDATING_INPUT_CHANNEL_IN_REPONSE_TO_MIGRATING_UPSTREAM_OPERATOR, // Operators only
 		BROADCASTED_NEW_LOCATION_FOR_DOWNSTREAM_OPERATOR,
-		PAUSING,
+		PAUSING, SWITCHING_FUNCTION,
 	}
 
 	private static final AtomicReferenceFieldUpdater<StreamTask, ModificationStatus> STATE_UPDATER =
@@ -1346,6 +1346,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
 							return false;
 
+						case SWITCHING_FUNCTION:
+
+							LOG.error("BENCHMARK:Operator {} ({}) is now switching function ", getName(), getEnvironment().getExecutionId());
+
+							switchFunction(functionOnCheckpoint);
+
+							return false;
+
 						case SOURCE_WAITING_FOR_UPCOMING_CHECKPOINT_TO_PAUSE_OPERATOR:
 
 							// Pausing operator, and therefore propagating new location
@@ -1456,6 +1464,32 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		streamFilter.setFilterFunction((FilterFunction) newUserFunction);
 
 		LOG.error("Replaced function {}", streamFilter);
+	}
+
+	private Function functionOnCheckpoint;
+
+	@Override
+	public void switchFunction(Function newUserFunction, long checkpointID) {
+		synchronized (lock) {
+			if (isRunning) {
+				LOG.error("switchFunction for task {}", getName());
+
+				if (transitionState(ModificationStatus.NOT_MODIFIED, ModificationStatus.SWITCHING_FUNCTION)) {
+
+					LOG.error("BENCHMARK:Operator {} is now newUserFunction: {}.", getName(), getEnvironment().getExecutionId());
+
+					functionOnCheckpoint = newUserFunction;
+
+				} else {
+
+					LOG.info("Operator {} successfully acknowledged SpillingToDisk but failed to transition state: {}.",
+						getName(), getEnvironment().getJobVertexId());
+				}
+
+			} else {
+				LOG.error("Ignoring switchFunction for not-running task {}", getName());
+			}
+		}
 	}
 
 	private void checkpointState(

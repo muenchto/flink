@@ -340,12 +340,12 @@ public class ActorTaskManagerGateway implements TaskManagerGateway {
 	}
 
 	@Override
-	public void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className) {
+	public void switchFunction(ExecutionAttemptID attemptId, JobID jobId, BlobKey blobKey, String className, long checkpointID) {
 		Preconditions.checkNotNull(attemptId);
 		Preconditions.checkNotNull(jobId);
 		Preconditions.checkNotNull(className);
 
-		actorGateway.tell(new TaskMessages.SwitchFunction(jobId, attemptId, blobKey, className));
+		actorGateway.tell(new TaskMessages.SwitchFunction(jobId, attemptId, blobKey, className, checkpointID));
 	}
 
 	@Override

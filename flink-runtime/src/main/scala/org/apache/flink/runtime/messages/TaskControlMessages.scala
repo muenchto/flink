@@ -97,7 +97,7 @@ object TaskMessages {
   case class PrepareForNewConsumer(jobID: JobID, attemptID: ExecutionAttemptID)
     extends TaskMessage with RequiresLeaderSessionID
 
-  case class SwitchFunction(jobID: JobID, attemptID: ExecutionAttemptID, key: BlobKey, className: String)
+  case class SwitchFunction(jobID: JobID, attemptID: ExecutionAttemptID, key: BlobKey, className: String, modificationID: Long)
     extends TaskMessage with RequiresLeaderSessionID
 
   /**
