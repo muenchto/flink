@@ -64,11 +64,11 @@ public class CheckpointProperties implements Serializable {
 		this.discardSuspended = discardSuspended;
 
 		// Not persisted, but needs manual clean up
-		if (!externalize && !(discardSubsumed && discardFinished && discardCancelled
-				&& discardFailed && discardSuspended)) {
-			throw new IllegalStateException("CheckpointProperties say to *not* persist the " +
-					"checkpoint, but the checkpoint requires manual cleanup.");
-		}
+//		if (!externalize && !(discardSubsumed && discardFinished && discardCancelled
+//				&& discardFailed && discardSuspended)) {
+//			throw new IllegalStateException("CheckpointProperties say to *not* persist the " +
+//					"checkpoint, but the checkpoint requires manual cleanup.");
+//		}
 	}
 
 	// ------------------------------------------------------------------------
@@ -247,8 +247,8 @@ public class CheckpointProperties implements Serializable {
 	private static final CheckpointProperties STANDARD_CHECKPOINT = new CheckpointProperties(
 			false,
 			false,
-			true,
-			true,
+			false,
+			false,
 			true,
 			true,
 			true);

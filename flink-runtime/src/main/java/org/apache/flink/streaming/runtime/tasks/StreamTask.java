@@ -662,15 +662,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		LOG.error("BENCHMARK:Operator {} ({}) is now starting state migration", getName(), getEnvironment().getExecutionId());
 
 		StateMigrationMetaData stateMigrationMetaData =
-			new StateMigrationMetaData(new Random().nextLong(), System.currentTimeMillis());
-
-		// No alignment if we inject a checkpoint
-		CheckpointMetrics checkpointMetrics = new CheckpointMetrics()
-			.setBytesBufferedInAlignment(0L)
-			.setAlignmentDurationNanos(0L);
+			new StateMigrationMetaData(modificationID, migrationCheckpointMetaData.getCheckpointId(),System.currentTimeMillis());
 
 		try {
-			performStateTransferToJobManager(stateMigrationMetaData, checkpointMetrics);
+			performStateTransferToJobManager(stateMigrationMetaData);
 		} catch (CancelTaskException e) {
 			LOG.info("Operator {} was cancelled while performing state migration {}.",
 				getName(), stateMigrationMetaData.getStateMigrationId());
@@ -1251,11 +1246,17 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					checkpointMetaData.getTimestamp(),
 					checkpointOptions);
 
-				// TODO basically does two checkpoints, the normal one, and the one for sending the state if exiting
-				boolean isPausing = reactOnCheckpoint(checkpointMetaData.getCheckpointId());
+				boolean isPausing = reactOnCheckpoint(checkpointMetaData, checkpointOptions, checkpointMetrics);
 
 				if (!isPausing) {
-					checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
+					if (STATE_UPDATER.get(this) != ModificationStatus.WAITING_FOR_SPILLING_MARKER_TO_PAUSE_OPERATOR || checkpointToReactTo != checkpointMetaData.getCheckpointId()) {
+						LOG.error("BENCHMARK: {} Performing Checkpoint checkpoint for checkpointID {} with upcomonigID {}", getName(), checkpointMetaData.getCheckpointId(), checkpointToReactTo);
+						checkpointState(checkpointMetaData, checkpointOptions, checkpointMetrics);
+					} else {
+						LOG.error("BENCHMARK: {} Skipping checkpoint for checkpointID {} with upcomonigID {}", getName(), checkpointMetaData.getCheckpointId(), checkpointToReactTo);
+					}
+				} else {
+					LOG.error("BENCHMARK: {} Skipping checkpoint for checkpointID {} because pausing with upcomonigID {}", getName(), checkpointMetaData.getCheckpointId(), checkpointToReactTo);
 				}
 
 				return true;
@@ -1287,11 +1288,17 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
-	private boolean reactOnCheckpoint(long checkpointId) throws IOException, InterruptedException {
+	private boolean reactOnCheckpoint(CheckpointMetaData checkpointMetaData,
+									  CheckpointOptions checkpointOptions,
+									  CheckpointMetrics checkpointMetrics) throws IOException, InterruptedException {
+
+		migrationCheckpointMetrics = checkpointMetrics;
+		migrationCheckpointMetaData = checkpointMetaData;
+		migrationCheckpointOptions = checkpointOptions;
 
 		synchronized (lock) {
 			if (isRunning) {
-				if (checkpointId == checkpointToReactTo) {
+				if (checkpointMetaData.getCheckpointId() == checkpointToReactTo) {
 
 					ResultPartition resultPartition;
 					ResultSubpartition[] subpartitions;
@@ -1378,6 +1385,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
+	private CheckpointMetaData migrationCheckpointMetaData;
+	private CheckpointOptions migrationCheckpointOptions;
+	private CheckpointMetrics migrationCheckpointMetrics;
+
 	private void broadcastPausingMarkersDownstream() throws IOException, InterruptedException {
 
 		if (isSinkOperator()) {
@@ -1398,8 +1409,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		return getName().toLowerCase().contains("sink");
 	}
 
-	private boolean performStateTransferToJobManager(StateMigrationMetaData stateMigrationMetaData,
-													 CheckpointMetrics checkpointMetrics) throws Exception {
+	private boolean performStateTransferToJobManager(StateMigrationMetaData stateMigrationMetaData) throws Exception {
 		LOG.debug("Starting state migration ({}) on task {}",
 			stateMigrationMetaData.getStateMigrationId(), getName());
 
@@ -1407,7 +1417,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			if (isRunning) {
 				// we can do a state migration
 
-				checkpointStateForMigration(stateMigrationMetaData, checkpointMetrics);
+				checkpointStateForMigration(stateMigrationMetaData);
 				return true;
 			} else {
 				LOG.debug("Failed state migration ({}) on task {} as it is not running",
@@ -1418,16 +1428,15 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 	}
 
-	private void checkpointStateForMigration(StateMigrationMetaData stateMigrationMetaData,
-											 CheckpointMetrics checkpointMetrics) throws Exception {
+	private void checkpointStateForMigration(StateMigrationMetaData stateMigrationMetaData) throws Exception {
 
 		LOG.error("BENCHMARK:Operator {} ({}) is now starting synchronous checkpoint part", getName(), getEnvironment().getExecutionId());
 
 		SynchronousCheckpointingOperation synchronousCheckpointingOperation = new SynchronousCheckpointingOperation(
 			this,
 			stateMigrationMetaData,
-			CheckpointOptions.forFullCheckpoint(),
-			checkpointMetrics);
+			migrationCheckpointOptions,
+			migrationCheckpointMetrics);
 
 		synchronousCheckpointingOperation.executeCheckpointing();
 	}
@@ -2238,12 +2247,12 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			if (null != op) {
 				// first call the legacy checkpoint code paths
 				nonPartitionedStates.add(op.snapshotLegacyOperatorState(
-					stateMigrationMetaData.getStateMigrationId(),
+					stateMigrationMetaData.getCheckpointID(),
 					stateMigrationMetaData.getTimestamp(),
 					checkpointOptions));
 
 				OperatorSnapshotResult snapshotInProgress = op.snapshotState(
-					stateMigrationMetaData.getStateMigrationId(),
+					stateMigrationMetaData.getCheckpointID(),
 					stateMigrationMetaData.getTimestamp(),
 					checkpointOptions);
 

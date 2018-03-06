@@ -384,12 +384,12 @@ public class PendingCheckpoint {
 			if (vertex == null) {
 				if (acknowledgedTasks.contains(executionAttemptId)) {
 					return TaskAcknowledgeResult.DUPLICATE;
-				} else if (CheckpointCoordinator.MIGRATING_TASKS.contains(executionAttemptId)) {
+				} else if (CheckpointCoordinator.runningAttemptIDs.containsKey(executionAttemptId)) {
 					LOG.debug("Received successful acknowledge for migrated task - Resuming.");
 
-					// Remove random taskExecutionID in order to let task successfully finish
-					ExecutionAttemptID attemptID = notYetAcknowledgedTasks.keySet().iterator().next();
-					vertex = notYetAcknowledgedTasks.remove(attemptID);
+					ExecutionAttemptID old = CheckpointCoordinator.runningAttemptIDs.get(executionAttemptId);
+
+					vertex = notYetAcknowledgedTasks.remove(old);
 				} else {
 					return TaskAcknowledgeResult.UNKNOWN;
 				}

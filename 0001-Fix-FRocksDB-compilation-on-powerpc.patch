@@ -1,0 +1,147 @@
+From 707e55ccdeceec914464d02998c2d32299341f22 Mon Sep 17 00:00:00 2001
+From: Bonaventura Del Monte <bdelmonte@ibm-power-1.dima.tu-berlin.de>
+Date: Mon, 27 Nov 2017 13:43:03 +0100
+Subject: [PATCH] Fix FRocksDB compilation on powerpc
+
+---
+ Makefile                                             | 19 +++++++++++++------
+ java/src/main/java/org/rocksdb/util/Environment.java | 10 +++++++++-
+ utilities/persistent_cache/block_cache_tier_file.cc  |  2 +-
+ utilities/persistent_cache/block_cache_tier_file.h   |  1 +
+ utilities/persistent_cache/hash_table_evictable.h    |  2 +-
+ 5 files changed, 25 insertions(+), 9 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 445c31ce..64db4352 100644
+--- a/Makefile
++++ b/Makefile
+@@ -85,7 +85,7 @@ endif
+ 
+ # compile with -O2 if debug level is not 2
+ ifneq ($(DEBUG_LEVEL), 2)
+-OPT += -O2 -fno-omit-frame-pointer
++OPT += -O2 -fno-omit-frame-pointer -fpermissive
+ # Skip for archs that don't support -momit-leaf-frame-pointer
+ ifeq (,$(shell $(CXX) -fsyntax-only -momit-leaf-frame-pointer -xc /dev/null 2>&1))
+ OPT += -momit-leaf-frame-pointer
+@@ -213,7 +213,7 @@ PLATFORM_CXXFLAGS += -isystem $(GTEST_DIR)
+ # This (the first rule) must depend on "all".
+ default: all
+ 
+-WARNING_FLAGS = -W -Wextra -Wall -Wsign-compare -Wshadow \
++WARNING_FLAGS = -std=c++14 -W -Wextra -Wall -Wsign-compare -Wshadow \
+   -Wno-unused-parameter
+ 
+ ifndef DISABLE_WARNING_AS_ERROR
+@@ -1275,7 +1275,14 @@ ifeq ($(PLATFORM), OS_SOLARIS)
+ else
+ 	ARCH := $(shell getconf LONG_BIT)
+ endif
+-ROCKSDBJNILIB = librocksdbjni-linux$(ARCH).so
++#ROCKSDBJNILIB = librocksdbjni-linux$(ARCH).so
++
++ifeq (,$(findstring ppc,$(MACHINE)))
++        ROCKSDBJNILIB = librocksdbjni-linux$(ARCH).so
++else
++        ROCKSDBJNILIB = librocksdbjni-linux-$(MACHINE).so
++endif
++
+ ROCKSDB_JAR = rocksdbjni-$(ROCKSDB_MAJOR).$(ROCKSDB_MINOR).$(ROCKSDB_PATCH)-linux$(ARCH).jar
+ ROCKSDB_JAR_ALL = rocksdbjni-$(ROCKSDB_MAJOR).$(ROCKSDB_MINOR).$(ROCKSDB_PATCH).jar
+ ROCKSDB_JAVADOCS_JAR = rocksdbjni-$(ROCKSDB_MAJOR).$(ROCKSDB_MINOR).$(ROCKSDB_PATCH)-javadoc.jar
+@@ -1298,7 +1305,7 @@ endif
+ 
+ libz.a:
+ 	-rm -rf zlib-1.2.8
+-	curl -O http://zlib.net/zlib-1.2.8.tar.gz
++	curl -O https://zlib.net/fossils/zlib-1.2.8.tar.gz
+ 	tar xvzf zlib-1.2.8.tar.gz
+ 	cd zlib-1.2.8 && CFLAGS='-fPIC' ./configure --static && make
+ 	cp zlib-1.2.8/libz.a .
+@@ -1312,7 +1319,7 @@ libbz2.a:
+ 
+ libsnappy.a:
+ 	-rm -rf snappy-1.1.1
+-	curl -O https://snappy.googlecode.com/files/snappy-1.1.1.tar.gz
++	curl -O http://pkgs.fedoraproject.org/repo/pkgs/snappy/snappy-1.1.1.tar.gz/8887e3b7253b22a31f5486bca3cbc1c2/snappy-1.1.1.tar.gz
+ 	tar xvzf snappy-1.1.1.tar.gz
+ 	cd snappy-1.1.1 && ./configure --with-pic --enable-static
+ 	cd snappy-1.1.1 && make
+@@ -1351,7 +1358,7 @@ rocksdbjavastatic: $(java_static_libobjects)
+ 	cd java/src/main/java;jar -cf ../../../target/$(ROCKSDB_SOURCES_JAR) org
+ 
+ rocksdbjavastaticrelease: rocksdbjavastatic
+-	cd java/crossbuild && vagrant destroy -f && vagrant up linux32 && vagrant halt linux32 && vagrant up linux64 && vagrant halt linux64
++#	cd java/crossbuild && vagrant destroy -f && vagrant up linux32 && vagrant halt linux32 && vagrant up linux64 && vagrant halt linux64
+ 	cd java;jar -cf target/$(ROCKSDB_JAR_ALL) HISTORY*.md
+ 	cd java/target;jar -uf $(ROCKSDB_JAR_ALL) librocksdbjni-*.so librocksdbjni-*.jnilib
+ 	cd java/target/classes;jar -uf ../$(ROCKSDB_JAR_ALL) org/rocksdb/*.class org/rocksdb/util/*.class
+diff --git a/java/src/main/java/org/rocksdb/util/Environment.java b/java/src/main/java/org/rocksdb/util/Environment.java
+index 6fccc43b..860aa7dd 100644
+--- a/java/src/main/java/org/rocksdb/util/Environment.java
++++ b/java/src/main/java/org/rocksdb/util/Environment.java
+@@ -8,6 +8,10 @@ public class Environment {
+     return (OS.contains("win"));
+   }
+ 
++  public static boolean isPowerPC() {
++    return ARCH.contains("ppc");
++  }
++
+   public static boolean isMac() {
+     return (OS.contains("mac"));
+   }
+@@ -37,7 +41,11 @@ public class Environment {
+   public static String getJniLibraryName(final String name) {
+     if (isUnix()) {
+       final String arch = (is64Bit()) ? "64" : "32";
+-      return String.format("%sjni-linux%s", name, arch);
++      if(isPowerPC()) {
++        return String.format("%sjni-linux-%s", name, ARCH);
++      } else {
++        return String.format("%sjni-linux%s", name, arch);
++      }	
+     } else if (isMac()) {
+       return String.format("%sjni-osx", name);
+     } else if (isSolaris()) {
+diff --git a/utilities/persistent_cache/block_cache_tier_file.cc b/utilities/persistent_cache/block_cache_tier_file.cc
+index ef772525..69320218 100644
+--- a/utilities/persistent_cache/block_cache_tier_file.cc
++++ b/utilities/persistent_cache/block_cache_tier_file.cc
+@@ -5,7 +5,7 @@
+ #ifndef ROCKSDB_LITE
+ 
+ #include "utilities/persistent_cache/block_cache_tier_file.h"
+-
++#include <functional>
+ #include <unistd.h>
+ #include <memory>
+ #include <vector>
+diff --git a/utilities/persistent_cache/block_cache_tier_file.h b/utilities/persistent_cache/block_cache_tier_file.h
+index da8a4b5c..7433d94f 100644
+--- a/utilities/persistent_cache/block_cache_tier_file.h
++++ b/utilities/persistent_cache/block_cache_tier_file.h
+@@ -6,6 +6,7 @@
+ 
+ #ifndef ROCKSDB_LITE
+ 
++#include <functional>
+ #include <list>
+ #include <memory>
+ #include <string>
+diff --git a/utilities/persistent_cache/hash_table_evictable.h b/utilities/persistent_cache/hash_table_evictable.h
+index da13c0e9..72414da0 100644
+--- a/utilities/persistent_cache/hash_table_evictable.h
++++ b/utilities/persistent_cache/hash_table_evictable.h
+@@ -4,7 +4,7 @@
+ //  of patent rights can be found in the PATENTS file in the same directory.
+ //
+ #pragma once
+-
++#include <functional>
+ #ifndef ROCKSDB_LITE
+ 
+ #include "util/random.h"
+-- 
+2.13.6
+

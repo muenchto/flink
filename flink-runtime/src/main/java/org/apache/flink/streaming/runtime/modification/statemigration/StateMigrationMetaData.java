@@ -12,11 +12,13 @@ public class StateMigrationMetaData implements Serializable {
 	/** The ID of the state migration */
 	private final long stateMigrationId;
 
+	private final long checkpointID;
 	/** The timestamp of the state migration */
 	private final long timestamp;
 
-	public StateMigrationMetaData(long stateMigrationId, long timestamp) {
+	public StateMigrationMetaData(long stateMigrationId, long checkpointID, long timestamp) {
 		this.stateMigrationId = stateMigrationId;
+		this.checkpointID = checkpointID;
 		this.timestamp = timestamp;
 	}
 
@@ -55,5 +57,9 @@ public class StateMigrationMetaData implements Serializable {
 			"stateMigrationId=" + stateMigrationId +
 			", timestamp=" + timestamp +
 			'}';
+	}
+
+	public long getCheckpointID() {
+		return checkpointID;
 	}
 }

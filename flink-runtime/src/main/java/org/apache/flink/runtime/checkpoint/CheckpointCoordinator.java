@@ -766,11 +766,11 @@ public class CheckpointCoordinator {
 		}
 	}
 
-	static final Set<ExecutionAttemptID> MIGRATING_TASKS = new ConcurrentSkipListSet<>();
-
-	public void addExecutionIdToPendingTask(ExecutionAttemptID attemptID) {
-		MIGRATING_TASKS.add(attemptID);
+	public void addExecutionIdToPendingTask(ExecutionAttemptID oldID, ExecutionAttemptID newID) {
+		runningAttemptIDs.put(newID, oldID);
 	}
+
+	static final Map<ExecutionAttemptID, ExecutionAttemptID> runningAttemptIDs = new HashMap<>();
 
 	/**
 	 * Receives an AcknowledgeCheckpoint message and returns whether the
@@ -924,7 +924,7 @@ public class CheckpointCoordinator {
 				}
 
 				// drop those pending checkpoints that are at prior to the completed one
-				dropSubsumedCheckpoints(checkpointId);
+//				dropSubsumedCheckpoints(checkpointId);
 			}
 		} finally {
 			pendingCheckpoints.remove(checkpointId);

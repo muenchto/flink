@@ -15,6 +15,8 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.blob.BlobKey;
+import org.apache.flink.runtime.checkpoint.CheckpointCoordinator;
+import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.SubtaskState;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
@@ -28,6 +30,7 @@ import org.apache.flink.runtime.instance.SlotProvider;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.*;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
+import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.messages.modification.*;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
@@ -99,6 +102,8 @@ public class ModificationCoordinator {
 	private int stoppedSubTaskIndex;
 
 	private String newOperatorClassName;
+
+	private long checkpointIDToModify;
 
 	public ModificationCoordinator(ExecutionGraph executionGraph, Time rpcCallTimeout) {
 		this.executionGraph = Preconditions.checkNotNull(executionGraph);
@@ -362,6 +367,16 @@ public class ModificationCoordinator {
 		final long modificationID = message.getModificationID();
 
 		synchronized (lock) {
+			AcknowledgeCheckpoint m = new AcknowledgeCheckpoint(executionGraph.getJobID(),
+				message.getTaskExecutionId(), checkpointIDToModify, message.getCheckpointMetrics(), message.getSubtaskState());
+
+			try {
+				LOG.error("BENCHMARK:Manually acknowleding checkpoint for {} - {}", message.getTaskExecutionId(), checkpointIDToModify);
+
+				executionGraph.getCheckpointCoordinator().receiveAcknowledgeMessage(m);
+			} catch (CheckpointException e) {
+				executionGraph.failGlobal(e);
+			}
 
 			if (message.getTaskExecutionId() == null) {
 				LOG.error("TaskExecutionId is null while receiving state {}: {}", message.getJobID(), message);
@@ -523,9 +538,15 @@ public class ModificationCoordinator {
 	private void restartOperatorInstanceWithState(ExecutionVertex vertex, SubtaskState state) {
 		try {
 
+			ExecutionAttemptID old = vertex.getUpcomingExecutionAttemptID();
+
 			Execution currentExecutionAttempt = vertex.resetForNewExecutionMigration(
 				System.currentTimeMillis(),
 				executionGraph.getGlobalModVersion());
+
+			ExecutionAttemptID newId = currentExecutionAttempt.getAttemptId();
+
+			executionGraph.getCheckpointCoordinator().addExecutionIdToPendingTask(newId, old);
 
 			if (state == null) {
 //				throw new IllegalStateException("Could not find state to restore for ExecutionAttempt: "
@@ -638,11 +659,11 @@ public class ModificationCoordinator {
 
 					pendingModifications.put(modificationId, modification);
 
-					ScheduledFuture<?> cancellerHandle = timer.schedule(
-						canceller,
-						MODIFICATION_TIMEOUT, TimeUnit.SECONDS);
+//					ScheduledFuture<?> cancellerHandle = timer.schedule(
+//						canceller,
+//						MODIFICATION_TIMEOUT, TimeUnit.SECONDS);
 
-					modification.setCancellerHandle(cancellerHandle);
+//					modification.setCancellerHandle(cancellerHandle);
 				}
 
 				long checkpointIDToModify = -1;
@@ -650,7 +671,7 @@ public class ModificationCoordinator {
 
 				// Check if checkpointing is enabled
 				if (checkpointIdCounter.getCurrent() >= 2) {
-					checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
+					checkpointIDToModify = checkpointIdCounter.getCurrent() + 1;
 				}
 
 				ExecutionVertex[] triggerVertices = executionGraph.getCheckpointCoordinator().getTriggerVertices();
@@ -994,12 +1015,12 @@ public class ModificationCoordinator {
 					modification.setCancellerHandle(cancellerHandle);
 				}
 
-				long checkpointIDToModify = -1;
+				checkpointIDToModify = -1;
 				CheckpointIDCounter checkpointIdCounter = executionGraph.getCheckpointCoordinator().getCheckpointIdCounter();
 
 				// Check if checkpointing is enabled
 				if (checkpointIdCounter.getCurrent() >= 2) {
-					checkpointIDToModify = checkpointIdCounter.getCurrent() + 2;
+					checkpointIDToModify = checkpointIdCounter.getCurrent() + 1;
 				} else {
 					executionGraph.failGlobal(new IllegalStateException("Checkpointing seems to be disabled"));
 					throw new IllegalStateException("Checkpointing seems to be disabled");
