@@ -215,6 +215,22 @@ public class SharedStateRegistry implements AutoCloseable {
 		}
 	}
 
+	public StreamStateHandle getHandleForId(SharedStateRegistryKey key) {
+		Preconditions.checkNotNull(key);
+
+		SharedStateRegistry.SharedStateEntry entry;
+
+		synchronized (registeredStates) {
+
+			entry = registeredStates.get(key);
+
+			Preconditions.checkState(entry != null,
+				"Cannot get handle for state that is not registered.");
+
+			return entry.stateHandle;
+		}
+	}
+
 	/**
 	 * An entry in the registry, tracking the handle and the corresponding reference count.
 	 */

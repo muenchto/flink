@@ -1447,8 +1447,6 @@ public class RocksDBKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
 					synchronized (stateBackend.materializedSstFiles) {
 
 						Set<StateHandleID> stateHandleIDS = sstFiles.keySet();
-						stateHandleIDS.removeAll(idsToSkip);
-
 						stateBackend.materializedSstFiles.put(restoreStateHandle.getCheckpointId(), stateHandleIDS);
 					}
 
@@ -1462,8 +1460,6 @@ public class RocksDBKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
 			}
 		}
 
-		private Set<StateHandleID> idsToSkip = new HashSet<>();
-
 		private void readAllStateData(
 			Map<StateHandleID, StreamStateHandle> stateHandleMap,
 			Path restoreInstancePath) throws IOException {
@@ -1471,12 +1467,6 @@ public class RocksDBKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
 			for (Map.Entry<StateHandleID, StreamStateHandle> entry : stateHandleMap.entrySet()) {
 				StateHandleID stateHandleID = entry.getKey();
 				StreamStateHandle remoteFileHandle = entry.getValue();
-
-				if (remoteFileHandle instanceof PlaceholderStreamStateHandle) {
-					idsToSkip.add(stateHandleID);
-					continue;
-				}
-
 				readStateData(new Path(restoreInstancePath, stateHandleID.toString()), remoteFileHandle);
 			}
 		}
@@ -1486,11 +1476,6 @@ public class RocksDBKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
 			Path restoreInstancePath) throws IOException {
 
 			for (StateHandleID stateHandleID : stateHandleMap.keySet()) {
-
-				if (idsToSkip.contains(stateHandleID)) {
-					continue;
-				}
-
 				String newSstFileName = stateHandleID.toString();
 				File restoreFile = new File(restoreInstancePath.getPath(), newSstFileName);
 				File targetFile = new File(stateBackend.instanceRocksDBPath, newSstFileName);

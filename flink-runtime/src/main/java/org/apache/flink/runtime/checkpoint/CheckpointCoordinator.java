@@ -173,6 +173,10 @@ public class CheckpointCoordinator {
 	/** Registry that tracks state which is shared across (incremental) checkpoints */
 	private SharedStateRegistry sharedStateRegistry;
 
+	public SharedStateRegistry getSharedStateRegistry() {
+		return sharedStateRegistry;
+	}
+
 	// --------------------------------------------------------------------------------------------
 
 	public CheckpointCoordinator(

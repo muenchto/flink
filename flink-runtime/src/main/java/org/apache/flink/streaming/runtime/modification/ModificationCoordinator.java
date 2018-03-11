@@ -32,7 +32,7 @@ import org.apache.flink.runtime.jobgraph.*;
 import org.apache.flink.runtime.jobmanager.scheduler.ScheduledUnit;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.messages.modification.*;
-import org.apache.flink.runtime.state.TaskStateHandles;
+import org.apache.flink.runtime.state.*;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.taskmanager.TaskExecutionState;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
@@ -354,6 +354,48 @@ public class ModificationCoordinator {
 		}
 	}
 
+	private void replacePlacerholderStates(StateMigrationModification message) {
+
+		SubtaskState subtaskState = message.getSubtaskState();
+
+		if (subtaskState == null) {
+			LOG.error("BENCHMARK: No state for operator {}", message.getTaskExecutionId());
+			return;
+		}
+
+		KeyedStateHandle managedKeyedState = subtaskState.getManagedKeyedState();
+
+		if (managedKeyedState != null && managedKeyedState instanceof IncrementalKeyedStateHandle) {
+			LOG.error("BENCHMARK: Received keyedState from operator {}", message.getTaskExecutionId());
+			IncrementalKeyedStateHandle incrementalKeyedStateHandle = (IncrementalKeyedStateHandle) managedKeyedState;
+
+			Map<StateHandleID, StreamStateHandle> sharedState = incrementalKeyedStateHandle.getSharedState();
+
+			SharedStateRegistry sharedStateRegistry = executionGraph.getCheckpointCoordinator().getSharedStateRegistry();
+
+			Map<StateHandleID, StreamStateHandle> placeholderStates = new HashMap<>();
+			for (Map.Entry<StateHandleID, StreamStateHandle> entry : sharedState.entrySet()) {
+				if (entry.getValue() instanceof PlaceholderStreamStateHandle) {
+					StreamStateHandle streamStateHandle =
+						sharedStateRegistry.getHandleForId(incrementalKeyedStateHandle.createSharedStateRegistryKeyFromFileName(entry.getKey()));
+
+					placeholderStates.put(entry.getKey(), streamStateHandle);
+				}
+			}
+
+			for (Map.Entry<StateHandleID, StreamStateHandle> entry : placeholderStates.entrySet()) {
+				StreamStateHandle old = sharedState.put(entry.getKey(), entry.getValue());
+
+				if (old == null || !(old instanceof PlaceholderStreamStateHandle)) {
+					throw new IllegalStateException();
+				}
+			}
+
+			LOG.error("BENCHMARK: Replaced {} placeholder states from operator {}",
+				placeholderStates.size(), message.getTaskExecutionId());
+		}
+	}
+
 	public void receiveStateMigrationMessage(StateMigrationModification message) {
 
 		if (message == null) {
@@ -369,6 +411,8 @@ public class ModificationCoordinator {
 		synchronized (lock) {
 			AcknowledgeCheckpoint m = new AcknowledgeCheckpoint(executionGraph.getJobID(),
 				message.getTaskExecutionId(), checkpointIDToModify, message.getCheckpointMetrics(), message.getSubtaskState());
+
+			replacePlacerholderStates(message);
 
 			try {
 				LOG.error("BENCHMARK:Manually acknowleding checkpoint for {} - {}", message.getTaskExecutionId(), checkpointIDToModify);
