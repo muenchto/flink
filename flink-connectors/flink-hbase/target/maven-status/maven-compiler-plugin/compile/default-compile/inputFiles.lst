@@ -1,6 +1,0 @@
-/home/adrian/Masterarbeit/flink/flink-connectors/flink-hbase/src/main/java/org/apache/flink/addons/hbase/TableInputSplit.java
-/home/adrian/Masterarbeit/flink/flink-connectors/flink-hbase/src/main/java/org/apache/flink/addons/hbase/HBaseRowInputFormat.java
-/home/adrian/Masterarbeit/flink/flink-connectors/flink-hbase/src/main/java/org/apache/flink/addons/hbase/AbstractTableInputFormat.java
-/home/adrian/Masterarbeit/flink/flink-connectors/flink-hbase/src/main/java/org/apache/flink/addons/hbase/HBaseTableSchema.java
-/home/adrian/Masterarbeit/flink/flink-connectors/flink-hbase/src/main/java/org/apache/flink/addons/hbase/HBaseTableSource.java
-/home/adrian/Masterarbeit/flink/flink-connectors/flink-hbase/src/main/java/org/apache/flink/addons/hbase/TableInputFormat.java

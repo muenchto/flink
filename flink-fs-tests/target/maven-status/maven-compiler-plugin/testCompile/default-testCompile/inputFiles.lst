@@ -1,7 +1,0 @@
-/home/adrian/Masterarbeit/flink/flink-fs-tests/src/test/java/org/apache/flink/hdfstests/ContinuousFileProcessingFrom12MigrationTest.java
-/home/adrian/Masterarbeit/flink/flink-fs-tests/src/test/java/org/apache/flink/hdfstests/FsNegativeRunningJobsRegistryTest.java
-/home/adrian/Masterarbeit/flink/flink-fs-tests/src/test/java/org/apache/flink/hdfstests/ContinuousFileProcessingITCase.java
-/home/adrian/Masterarbeit/flink/flink-fs-tests/src/test/java/org/apache/flink/hdfstests/HDFSTest.java
-/home/adrian/Masterarbeit/flink/flink-fs-tests/src/test/java/org/apache/flink/hdfstests/ContinuousFileProcessingFrom11MigrationTest.java
-/home/adrian/Masterarbeit/flink/flink-fs-tests/src/test/java/org/apache/flink/hdfstests/FileStateBackendTest.java
-/home/adrian/Masterarbeit/flink/flink-fs-tests/src/test/java/org/apache/flink/hdfstests/ContinuousFileProcessingTest.java

@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-echo "Starting custom cluster with $1 task managers"
-
-# Custom pasted start command
-java -Dlog.file=/home/adrian/Masterarbeit/Code/flink/flink-dist/target/flink-1.3.0-bin/flink-1.3.0/log/flink-adrian-taskmanager-1-adrian-thinkpad.log -Dlog4j.configuration=file:/home/adrian/Masterarbeit/Code/flink/flink-dist/target/flink-1.3.0-bin/flink-1.3.0/conf/log4j.properties -Dlogback.configurationFile=file:/home/adrian/Masterarbeit/Code/flink/flink-dist/target/flink-1.3.0-bin/flink-1.3.0/conf/logback.xml -classpath :/home/adrian/Masterarbeit/Code/flink/flink-dist/target/flink-1.3.0-bin/flink-1.3.0/lib/flink-dist_2.10-1.3.0.jar:/home/adrian/Masterarbeit/Code/flink/flink-dist/target/flink-1.3.0-bin/flink-1.3.0/lib/flink-python_2.10-1.3.0.jar:/home/adrian/Masterarbeit/Code/flink/flink-dist/target/flink-1.3.0-bin/flink-1.3.0/lib/flink-shaded-hadoop2-uber-1.3.0.jar:/home/adrian/Masterarbeit/Code/flink/flink-dist/target/flink-1.3.0-bin/flink-1.3.0/lib/log4j-1.2.17.jar:/home/adrian/Masterarbeit/Code/flink/flink-dist/target/flink-1.3.0-bin/flink-1.3.0/lib/slf4j-log4j12-1.7.7.jar::: org.apache.flink.streaming.runtime.modification.testing.CustomTestCluster --executionMode local --configDir ../conf --numberOfTaskManagersInTestCluster $1

@@ -1,8 +1,0 @@
-/home/adrian/Masterarbeit/flink/flink-yarn/src/test/java/org/apache/flink/yarn/highavailability/YarnPreConfiguredMasterHaServicesTest.java
-/home/adrian/Masterarbeit/flink/flink-yarn/src/test/java/org/apache/flink/yarn/messages/NotifyWhenResourcesRegistered.java
-/home/adrian/Masterarbeit/flink/flink-yarn/src/test/java/org/apache/flink/yarn/YarnApplicationMasterRunnerTest.java
-/home/adrian/Masterarbeit/flink/flink-yarn/src/test/java/org/apache/flink/yarn/UtilsTest.java
-/home/adrian/Masterarbeit/flink/flink-yarn/src/test/java/org/apache/flink/yarn/TestingYarnFlinkResourceManager.java
-/home/adrian/Masterarbeit/flink/flink-yarn/src/test/java/org/apache/flink/yarn/messages/RequestNumberOfRegisteredResources.java
-/home/adrian/Masterarbeit/flink/flink-yarn/src/test/java/org/apache/flink/yarn/YarnClusterDescriptorTest.java
-/home/adrian/Masterarbeit/flink/flink-yarn/src/test/java/org/apache/flink/yarn/highavailability/YarnIntraNonHaMasterServicesTest.java
