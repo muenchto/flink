@@ -30,9 +30,9 @@ under the License.
 	<!-- Syntax:    //CHECKSTYLE.OFF: CheckstyleModuleToDisable - Reason for deactivation. -->
 	<!--            //CHECKSTYLE.ON: CheckstyleModuleToReEnable                            -->
 	<module name="SuppressionCommentFilter">
-    		<property name="offCommentFormat" value="CHECKSTYLE.OFF\: ([\w\|]+) - (.+)"/>
-    		<property name="onCommentFormat" value="CHECKSTYLE.ON\: ([\w\|]+)"/>
-    		<property name="checkFormat" value="$1"/>
+		<property name="offCommentFormat" value="CHECKSTYLE.OFF\: ([\w\|]+) - (.+)"/>
+		<property name="onCommentFormat" value="CHECKSTYLE.ON\: ([\w\|]+)"/>
+		<property name="checkFormat" value="$1"/>
 	</module>
 
     <module name="FileLength">
@@ -40,6 +40,8 @@ under the License.
     </module>
 
 	<module name="TreeWalker">
+
+
 		<module name="RegexpSinglelineJava">
 			<property name="format" value="^\t* +\t*\S" />
 			<property name="message"
@@ -122,11 +124,13 @@ under the License.
 		</module>
 		<module name="ArrayTypeStyle" />
 
-		<module name="FileContentsHolder"/>
+
 
 		<module name="MissingDeprecated"/>
 
-	<!--	<module name="ConstantName" />
+	<!--
+		<module name="FileContentsHolder"/>
+		<module name="ConstantName" />
 		<module name="LocalFinalVariableName" />
 		<module name="LocalVariableName" />
 		<module name="MemberName" />
