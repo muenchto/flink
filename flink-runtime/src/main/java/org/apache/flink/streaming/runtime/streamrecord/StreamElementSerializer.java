@@ -18,23 +18,21 @@
 
 package org.apache.flink.streaming.runtime.streamrecord;
 
-import static java.util.Objects.requireNonNull;
-
-import java.io.IOException;
 import org.apache.flink.annotation.Internal;
-import org.apache.flink.api.common.typeutils.CompatibilityResult;
-import org.apache.flink.api.common.typeutils.CompatibilityUtil;
-import org.apache.flink.api.common.typeutils.CompositeTypeSerializerConfigSnapshot;
-import org.apache.flink.api.common.typeutils.TypeDeserializerAdapter;
-import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.api.common.typeutils.TypeSerializerConfigSnapshot;
-import org.apache.flink.api.common.typeutils.UnloadableDummyTypeSerializer;
+import org.apache.flink.api.common.typeutils.*;
+import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.migration.streaming.runtime.streamrecord.MultiplexingStreamRecordSerializer;
 import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.optimization.CompressedStreamRecord;
+import org.apache.flink.streaming.runtime.optimization.DictCompressionEntry;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
+
+import java.io.IOException;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Serializer for {@link StreamRecord}, {@link Watermark}, {@link LatencyMarker}, and
@@ -55,9 +53,16 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 	private static final int TAG_WATERMARK = 2;
 	private static final int TAG_LATENCY_MARKER = 3;
 	private static final int TAG_STREAM_STATUS = 4;
+	private static final int TAG_DICT_COMPRESSION_ENTRY = 5;
+	private static final int TAG_DICT_COMPRESSION_ENTRY_W_TS = 6;
+	private static final int TAG_COMPRESSED_REC = 7;
+	private static final int TAG_COMPRESSED_REC_W_TS = 8;
+
+
 
 
 	private final TypeSerializer<T> typeSerializer;
+	private TypeSerializer<Integer> intSerializer;
 
 
 	public StreamElementSerializer(TypeSerializer<T> serializer) {
@@ -65,6 +70,7 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			throw new RuntimeException("StreamRecordSerializer given to StreamRecordSerializer as value TypeSerializer: " + serializer);
 		}
 		this.typeSerializer = requireNonNull(serializer);
+		this.intSerializer = new IntSerializer();
 	}
 
 	public TypeSerializer<T> getContainedTypeSerializer() {
@@ -176,6 +182,30 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			}
 			typeSerializer.serialize(record.getValue(), target);
 		}
+		else if (value.isDictCompressionEntry()) {
+			DictCompressionEntry<T> entry = value.asDictCompressionEntry();
+			if (entry.hasTimestamp) {
+				target.write(TAG_DICT_COMPRESSION_ENTRY_W_TS);
+				target.writeLong(entry.timestamp);
+			}
+			else {
+				target.write(TAG_DICT_COMPRESSION_ENTRY);
+			}
+			target.writeInt(entry.key);
+			typeSerializer.serialize(entry.value, target);
+		}
+		else if (value.isCompressedStreamRecord()) {
+			CompressedStreamRecord comprRec = value.asCompressedStreamRecord();
+
+			if (comprRec.hasTimestamp) {
+				target.write(TAG_COMPRESSED_REC_W_TS);
+				target.writeLong(comprRec.timestamp);
+			}
+			else {
+				target.write(TAG_COMPRESSED_REC);
+			}
+			intSerializer.serialize(comprRec.compressedValue, target);
+		}
 		else if (value.isWatermark()) {
 			target.write(TAG_WATERMARK);
 			target.writeLong(value.asWatermark().getTimestamp());
@@ -204,6 +234,22 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 		}
 		else if (tag == TAG_REC_WITHOUT_TIMESTAMP) {
 			return new StreamRecord<T>(typeSerializer.deserialize(source));
+		}
+		else if (tag == TAG_DICT_COMPRESSION_ENTRY) {
+			int key = source.readInt();
+			return new DictCompressionEntry<T>(key, typeSerializer.deserialize(source));
+		}
+		else if (tag == TAG_DICT_COMPRESSION_ENTRY_W_TS) {
+			long timestamp = source.readLong();
+			int key = source.readInt();
+			return new DictCompressionEntry<T>(timestamp, key, typeSerializer.deserialize(source));
+		}
+		else if (tag == TAG_COMPRESSED_REC) {
+			return new CompressedStreamRecord(intSerializer.deserialize(source));
+		}
+		else if (tag == TAG_COMPRESSED_REC_W_TS) {
+			long timestamp = source.readLong();
+			return new CompressedStreamRecord(timestamp, intSerializer.deserialize(source));
 		}
 		else if (tag == TAG_WATERMARK) {
 			return new Watermark(source.readLong());

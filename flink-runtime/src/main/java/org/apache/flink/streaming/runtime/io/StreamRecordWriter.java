@@ -17,9 +17,6 @@
 
 package org.apache.flink.streaming.runtime.io;
 
-import static org.apache.flink.util.Preconditions.checkArgument;
-
-import java.io.IOException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.runtime.event.AbstractEvent;
@@ -29,6 +26,10 @@ import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+import static org.apache.flink.util.Preconditions.checkArgument;
 
 /**
  * This record writer keeps data in buffers at most for a certain timeout. It spawns a separate thread
@@ -49,8 +50,10 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 
 	/** Flag indicating whether the output should be flushed after every element. */
 	private final boolean flushAlways;
-	private final String name;
-	private final StreamTask streamTask;
+	public final String name;
+	public final StreamTask streamTask;
+
+	public final long timeout;
 
 	/** The exception encountered in the flushing thread. */
 	private Throwable flusherException;
@@ -93,6 +96,7 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 			outputFlusher = new OutputFlusher(threadName, timeout);
 			outputFlusher.start();
 		}
+		this.timeout = timeout;
 	}
 
 	@Override

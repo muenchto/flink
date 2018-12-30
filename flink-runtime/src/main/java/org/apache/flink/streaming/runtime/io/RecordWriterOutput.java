@@ -17,10 +17,6 @@
 
 package org.apache.flink.streaming.runtime.io;
 
-import static org.apache.flink.util.Preconditions.checkNotNull;
-
-import java.io.IOException;
-
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.runtime.event.AbstractEvent;
@@ -28,6 +24,7 @@ import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.optimization.CompressedRecordWriter;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
@@ -37,6 +34,10 @@ import org.apache.flink.streaming.runtime.streamstatus.StreamStatusProvider;
 import org.apache.flink.util.OutputTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Implementation of {@link Output} that sends data using a {@link RecordWriter}.
@@ -90,7 +91,17 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 		this.streamStatusProvider = checkNotNull(streamStatusProvider);
 
+		enableCompressionMode();
+
 		LOG.info("Creating RecordWriterOutput for " + name);
+	}
+
+	public void enableCompressionMode() {
+
+		//TODO notify all that compression starts
+
+		this.recordWriter = new CompressedRecordWriter<SerializationDelegate<StreamElement>>(recordWriter.streamTask,
+				recordWriter.getResultPartitionWriter(), recordWriter.getChannelSelector(), recordWriter.timeout, recordWriter.name);
 	}
 
 	public StreamRecordWriter<SerializationDelegate<StreamElement>> getRecordWriter() {

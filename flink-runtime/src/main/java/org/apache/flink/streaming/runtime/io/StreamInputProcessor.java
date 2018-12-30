@@ -18,11 +18,6 @@
 
 package org.apache.flink.streaming.runtime.io;
 
-import static org.apache.flink.util.Preconditions.checkNotNull;
-
-import java.io.IOException;
-import java.util.Arrays;
-
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.configuration.Configuration;
@@ -31,7 +26,6 @@ import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.runtime.event.AbstractEvent;
-import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.PausingOperatorMarker;
@@ -42,8 +36,6 @@ import org.apache.flink.runtime.io.network.api.serialization.SpillingAdaptiveSpa
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
-import org.apache.flink.runtime.iterative.event.PausingTaskEvent;
-import org.apache.flink.runtime.jobgraph.tasks.StatefulTask;
 import org.apache.flink.runtime.metrics.groups.OperatorMetricGroup;
 import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
 import org.apache.flink.runtime.plugable.DeserializationDelegate;
@@ -54,6 +46,7 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
+import org.apache.flink.streaming.runtime.optimization.SpillingAdaptSpanRecDeserializerAndDecompressor;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -63,6 +56,10 @@ import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Input reader for {@link org.apache.flink.streaming.runtime.tasks.OneInputStreamTask}.
@@ -83,7 +80,7 @@ public class StreamInputProcessor<IN> {
 
 	static final Logger LOG = LoggerFactory.getLogger(StreamInputProcessor.class);
 
-	private final RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDeserializers;
+	private RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDeserializers;
 
 	private RecordDeserializer<DeserializationDelegate<StreamElement>> currentRecordDeserializer;
 
@@ -119,6 +116,10 @@ public class StreamInputProcessor<IN> {
 	private boolean isFinished;
 
 	private final StreamTask task;
+
+	// ---------------- memorize for possible compression mode ------------------
+
+	private final String[] spillingDirectoriesPaths;
 
 	@SuppressWarnings("unchecked")
 	public StreamInputProcessor(
@@ -171,6 +172,7 @@ public class StreamInputProcessor<IN> {
 					ioManager.getSpillingDirectoriesPaths());
 		}
 
+		this.spillingDirectoriesPaths = ioManager.getSpillingDirectoriesPaths();
 		this.numInputChannels = inputGate.getNumberOfInputChannels();
 
 		this.lastEmittedWatermark = Long.MIN_VALUE;
@@ -182,7 +184,24 @@ public class StreamInputProcessor<IN> {
 				numInputChannels,
 				new ForwardingValveOutputHandler(streamOperator, lock));
 
+		enableCompressionMode();
+
 		LOG.info("StreamInputProcessor: " + streamOperator.getClass().getSimpleName() + " with gate " + inputGate);
+	}
+
+	public boolean enableCompressionMode() {
+		// Initialize for compression awareness
+		RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDecompressors =
+				new SpillingAdaptSpanRecDeserializerAndDecompressor[numInputChannels];
+
+		for (int i = 0; i < recordDecompressors.length; i++) {
+			recordDecompressors[i] =
+					new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN>(
+							spillingDirectoriesPaths);
+		}
+		this.recordDeserializers = recordDecompressors;
+
+		return true;
 	}
 
 	public boolean processInput() throws Exception {

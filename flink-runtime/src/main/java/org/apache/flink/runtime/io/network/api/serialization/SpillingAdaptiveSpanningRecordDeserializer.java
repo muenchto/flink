@@ -26,13 +26,7 @@ import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.util.DataInputDeserializer;
 import org.apache.flink.util.StringUtils;
 
-import java.io.BufferedInputStream;
-import java.io.EOFException;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.io.UTFDataFormatException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -43,7 +37,7 @@ import java.util.Random;
  */
 public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> implements RecordDeserializer<T> {
 	
-	private static final String BROKEN_SERIALIZATION_ERROR_MESSAGE =
+	protected static final String BROKEN_SERIALIZATION_ERROR_MESSAGE =
 					"Serializer consumed more bytes than the record had. " +
 					"This indicates broken serialization. If you are using custom serialization types " +
 					"(Value or Writable), check their serialization methods. If you are using a " +
@@ -52,9 +46,9 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 	private static final int THRESHOLD_FOR_SPILLING = 5 * 1024 * 1024; // 5 MiBytes
 	
 	
-	private final NonSpanningWrapper nonSpanningWrapper;
+	protected final NonSpanningWrapper nonSpanningWrapper;
 	
-	private final SpanningWrapper spanningWrapper;
+	protected final SpanningWrapper spanningWrapper;
 
 	private Buffer currentBuffer;
 
@@ -170,7 +164,7 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 
 	// -----------------------------------------------------------------------------------------------------------------
 	
-	private static final class NonSpanningWrapper implements DataInputView {
+	public static final class NonSpanningWrapper implements DataInputView {
 		
 		private MemorySegment segment;
 		
@@ -181,11 +175,11 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 		private byte[] utfByteBuffer; // reusable byte buffer for utf-8 decoding
 		private char[] utfCharBuffer; // reusable char buffer for utf-8 decoding
 		
-		int remaining() {
+		public int remaining() {
 			return this.limit - this.position;
 		}
 		
-		void clear() {
+		public void clear() {
 			this.segment = null;
 			this.limit = 0;
 			this.position = 0;
@@ -432,7 +426,7 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 
 	// -----------------------------------------------------------------------------------------------------------------
 	
-	private static final class SpanningWrapper {
+	public static final class SpanningWrapper {
 		
 		private final byte[] initialBuffer = new byte[1024];
 		
@@ -474,7 +468,7 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 			this.buffer = initialBuffer;
 		}
 		
-		private void initializeWithPartialRecord(NonSpanningWrapper partial, int nextRecordLength) throws IOException {
+		public void initializeWithPartialRecord(NonSpanningWrapper partial, int nextRecordLength) throws IOException {
 			// set the length and copy what is available to the buffer
 			this.recordLength = nextRecordLength;
 			
@@ -496,7 +490,7 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 			this.accumulatedRecordBytes = numBytesChunk;
 		}
 		
-		private void initializeWithPartialLength(NonSpanningWrapper partial) throws IOException {
+		public void initializeWithPartialLength(NonSpanningWrapper partial) throws IOException {
 			// copy what we have to the length buffer
 			partial.segment.get(partial.position, this.lengthBuffer, partial.remaining());
 		}
@@ -562,7 +556,7 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 			}
 		}
 		
-		private void moveRemainderToNonSpanningDeserializer(NonSpanningWrapper deserializer) {
+		public void moveRemainderToNonSpanningDeserializer(NonSpanningWrapper deserializer) {
 			deserializer.clear();
 			
 			if (leftOverData != null) {
@@ -570,7 +564,7 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 			}
 		}
 		
-		private boolean hasFullRecord() {
+		public boolean hasFullRecord() {
 			return this.recordLength >= 0 && this.accumulatedRecordBytes >= this.recordLength;
 		}
 		
