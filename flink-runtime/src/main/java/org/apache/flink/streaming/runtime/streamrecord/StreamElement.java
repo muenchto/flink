@@ -21,8 +21,11 @@ package org.apache.flink.streaming.runtime.streamrecord;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.optimization.CompressedStreamRecord;
+import org.apache.flink.streaming.runtime.optimization.CompressionMarker;
 import org.apache.flink.streaming.runtime.optimization.DictCompressionEntry;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
+
+import javax.print.attribute.standard.Compression;
 
 /**
  * An element in a data stream. Can be a record or a Watermark.
@@ -74,6 +77,9 @@ public abstract class StreamElement {
 		return getClass() == CompressedStreamRecord.class;
 	}
 
+	public final boolean isCompressionMarker() {
+		return getClass() == CompressionMarker.class;
+	}
 	/**
 	 * Casts this element into a StreamRecord.
 	 * @return This element as a stream record.
@@ -96,6 +102,10 @@ public abstract class StreamElement {
 
 	public final CompressedStreamRecord asCompressedStreamRecord() {
 		return (CompressedStreamRecord) this;
+	}
+
+	public final CompressionMarker asCompressionMarker() {
+		return (CompressionMarker) this;
 	}
 
 	/**

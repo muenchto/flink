@@ -25,6 +25,7 @@ import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.optimization.CompressedRecordWriter;
+import org.apache.flink.streaming.runtime.optimization.CompressionMarker;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
@@ -91,17 +92,16 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 		this.streamStatusProvider = checkNotNull(streamStatusProvider);
 
-		enableCompressionMode();
-
 		LOG.info("Creating RecordWriterOutput for " + name);
 	}
 
 	public void enableCompressionMode() {
-
-		//TODO notify all that compression starts
+		broadcastCompressionMarker(new CompressionMarker().asEnabler());
 
 		this.recordWriter = new CompressedRecordWriter<SerializationDelegate<StreamElement>>(recordWriter.streamTask,
 				recordWriter.getResultPartitionWriter(), recordWriter.getChannelSelector(), recordWriter.timeout, recordWriter.name);
+
+		LOG.debug("RecordWriterOutput of {} switched in Compression Mode", name);
 	}
 
 	public StreamRecordWriter<SerializationDelegate<StreamElement>> getRecordWriter() {
@@ -172,6 +172,18 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 		try {
 			recordWriter.randomEmit(serializationDelegate);
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e.getMessage(), e);
+		}
+	}
+
+	private void broadcastCompressionMarker(CompressionMarker compressionMarker) {
+		serializationDelegate.setInstance(compressionMarker);
+
+		try {
+			recordWriter.broadcastEmit(serializationDelegate);
+			recordWriter.flush();
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e.getMessage(), e);

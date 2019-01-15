@@ -27,6 +27,7 @@ import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.migration.streaming.runtime.streamrecord.MultiplexingStreamRecordSerializer;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.optimization.CompressedStreamRecord;
+import org.apache.flink.streaming.runtime.optimization.CompressionMarker;
 import org.apache.flink.streaming.runtime.optimization.DictCompressionEntry;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 
@@ -57,8 +58,8 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 	private static final int TAG_DICT_COMPRESSION_ENTRY_W_TS = 6;
 	private static final int TAG_COMPRESSED_REC = 7;
 	private static final int TAG_COMPRESSED_REC_W_TS = 8;
-
-
+	private static final int TAG_ENABLE_COMPRESSION = 9;
+	private static final int TAG_DISABLE_COMPRESSION = 10;
 
 
 	private final TypeSerializer<T> typeSerializer;
@@ -220,6 +221,12 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			target.writeInt(value.asLatencyMarker().getVertexID());
 			target.writeInt(value.asLatencyMarker().getSubtaskIndex());
 		}
+		else if (value.isCompressionMarker()) {
+			if (value.asCompressionMarker().isEnabler()) {
+				target.write(TAG_ENABLE_COMPRESSION);
+			}
+			else target.write(TAG_DISABLE_COMPRESSION);
+		}
 		else {
 			throw new RuntimeException();
 		}
@@ -259,6 +266,12 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 		}
 		else if (tag == TAG_LATENCY_MARKER) {
 			return new LatencyMarker(source.readLong(), source.readInt(), source.readInt());
+		}
+		else if (tag == TAG_ENABLE_COMPRESSION) {
+			return new CompressionMarker().asEnabler();
+		}
+		else if (tag == TAG_DISABLE_COMPRESSION) {
+			return new CompressionMarker().asDisabler();
 		}
 		else {
 			throw new IOException("Corrupt stream, found tag: " + tag);

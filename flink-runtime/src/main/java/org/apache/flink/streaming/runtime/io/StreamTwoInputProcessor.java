@@ -73,6 +73,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public class StreamTwoInputProcessor<IN1, IN2> {
 
+	private final StreamTask task;
 	private  RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDeserializers;
 
 	private RecordDeserializer<DeserializationDelegate<StreamElement>> currentRecordDeserializer;
@@ -125,6 +126,8 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 	// ---------------- memorize for possible compression mode ------------------
 
 	private final String[] spillingDirectoriesPaths;
+	private RecordDeserializer<DeserializationDelegate<StreamElement>>[] savedSerializers;
+	private boolean inCompressionMode;
 
 	@SuppressWarnings("unchecked")
 	public StreamTwoInputProcessor(
@@ -161,6 +164,8 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 		if (checkpointedTask != null) {
 			this.barrierHandler.registerCheckpointEventHandler(checkpointedTask);
 		}
+
+		this.task = checkpointedTask;
 
 		this.lock = checkNotNull(lock);
 
@@ -201,27 +206,7 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 		this.statusWatermarkValve1 = new StatusWatermarkValve(numInputChannels1, new ForwardingValveOutputHandler1(streamOperator, lock));
 		this.statusWatermarkValve2 = new StatusWatermarkValve(numInputChannels2, new ForwardingValveOutputHandler2(streamOperator, lock));
 
-		enableCompressionMode();
-	}
-
-	public boolean enableCompressionMode() {
-		// Initialize for compression awareness
-		RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDecompressors =
-				new SpillingAdaptSpanRecDeserializerAndDecompressor[numInputChannels1 + numInputChannels2];
-
-		for (int i = 0; i < numInputChannels1; i++) {
-			recordDecompressors[i] =
-					new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN1>(
-							spillingDirectoriesPaths);
-		}
-		for (int i = numInputChannels1; i < numInputChannels1 + numInputChannels2; i++) {
-			recordDecompressors[i] =
-					new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN2>(
-							spillingDirectoriesPaths);
-		}
-		this.recordDeserializers = recordDecompressors;
-
-		return true;
+		this.inCompressionMode = false;
 	}
 
 	public boolean processInput() throws Exception {
@@ -262,6 +247,12 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 								streamOperator.processLatencyMarker1(recordOrWatermark.asLatencyMarker());
 							}
 							continue;
+						} else if (recordOrWatermark.isCompressionMarker()) {
+							synchronized (lock) {
+								if (recordOrWatermark.asCompressionMarker().isEnabler()) enableCompressionMode();
+								else disableCompressionMode();
+							}
+							continue;
 						}
 						else {
 							StreamRecord<IN1> record = recordOrWatermark.asRecord();
@@ -289,6 +280,9 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 								streamOperator.processLatencyMarker2(recordOrWatermark.asLatencyMarker());
 							}
 							continue;
+						} else if (recordOrWatermark.isCompressionMarker()) {
+							if (recordOrWatermark.asCompressionMarker().isEnabler()) enableCompressionMode();
+							else disableCompressionMode();
 						}
 						else {
 							StreamRecord<IN2> record = recordOrWatermark.asRecord();
@@ -327,6 +321,45 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 				return false;
 			}
 		}
+	}
+
+	private void enableCompressionMode() {
+
+		//make method idempotent because the InputProcessor can get several Enable Marker
+		if (this.inCompressionMode) {
+			return;
+		}
+		// Initialize for compression awareness
+		RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDecompressors =
+				new SpillingAdaptSpanRecDeserializerAndDecompressor[numInputChannels1 + numInputChannels2];
+
+		for (int i = 0; i < numInputChannels1; i++) {
+			recordDecompressors[i] =
+					new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN1>(
+							spillingDirectoriesPaths);
+		}
+		for (int i = numInputChannels1; i < numInputChannels1 + numInputChannels2; i++) {
+			recordDecompressors[i] =
+					new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN2>(
+							spillingDirectoriesPaths);
+		}
+		this.recordDeserializers = recordDecompressors;
+
+		//this will forward the compression mode activation to the RecordWriter who fill send markers down to
+		// following tasks
+		task.enableCompressionForTask();
+
+		this.inCompressionMode = true;
+	}
+
+	private void disableCompressionMode() {
+
+		//make method idempotent because the InputProcessor can get several Disable Marker
+		if (!this.inCompressionMode) {
+			return;
+		}
+		this.recordDeserializers = savedSerializers;
+		this.inCompressionMode = false;
 	}
 
 	/**

@@ -1728,6 +1728,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	}
 
 	// ------------------------------------------------------------------------
+	//  Compression Optimization
+	// ------------------------------------------------------------------------
+	public void enableCompressionForTask() {
+		if (getStreamOutputs().length > 0) {
+			for (RecordWriterOutput output : getStreamOutputs()) {
+				output.enableCompressionMode();
+			}
+		}
+		LOG.debug("{} switched in Compression Mode ",
+				this.getName());
+	}
+
+	// ------------------------------------------------------------------------
 	//  Utilities
 	// ------------------------------------------------------------------------
 
