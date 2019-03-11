@@ -58,4 +58,9 @@ public class SerializationDelegate<T> implements IOReadableWritable {
 	public void read(DataInputView in) throws IOException {
 		throw new IllegalStateException("Deserialization method called on SerializationDelegate.");
 	}
+
+	@Override
+	public String toString(){
+		return String.format("SerializationDelegate [%s]", instance);
+	}
 }

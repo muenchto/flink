@@ -25,6 +25,8 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.serialization.RecordSerializer;
 import org.apache.flink.runtime.io.network.api.serialization.SpanningRecordSerializer;
+import org.apache.flink.runtime.io.network.buffer.Buffer;
+import org.apache.flink.streaming.runtime.io.StreamRecordWriter;
 import org.apache.flink.runtime.io.network.buffer.BufferBuilder;
 import org.apache.flink.runtime.io.network.buffer.BufferConsumer;
 import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
@@ -69,7 +71,7 @@ public class RecordWriter<T extends IOReadableWritable> {
 
 	private final boolean flushAlways;
 
-	private Counter numBytesOut = new SimpleCounter();
+	protected Counter numBytesOut;
 
 	private Counter numBuffersOut = new SimpleCounter();
 
