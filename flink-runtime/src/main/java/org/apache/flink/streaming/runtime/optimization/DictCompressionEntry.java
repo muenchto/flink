@@ -14,40 +14,22 @@ public class DictCompressionEntry<T> extends StreamElement {
 
     public final boolean hasTimestamp;
     public long timestamp;
-    public final int key;
+    public final long key;
     public final T value;
 
-    public DictCompressionEntry(long timestamp, int key, T value) {
+    public DictCompressionEntry(long timestamp, long key, T value) {
         this.timestamp = timestamp;
         this.key = key;
         this.value = value;
         this.hasTimestamp = true;
     }
 
-    public DictCompressionEntry(int key, T value) {
+    public DictCompressionEntry(long key, T value) {
         this.key = key;
         this.value = value;
         this.hasTimestamp = false;
     }
 
-    //private Tuple2<Integer, T> entry;
-//
-    //public DictCompressionEntry(Integer key, T value) {
-    //    this.entry = new Tuple2<>(key, value);
-    //}
-    //public DictCompressionEntry(Tuple2<Integer, T> tuple) {
-    //    this.entry = tuple;
-    //}
-//
-    //public Integer getKey() {
-    //    return entry.f0;
-    //}
-//
-    //public Tuple2<Integer, T> getEntry() {
-    //    return entry;
-    //}
-//
-    //public T getInternalValue() {return entry.f1;}
 
 
     // ------------------------------------------------------------------------
@@ -67,7 +49,7 @@ public class DictCompressionEntry<T> extends StreamElement {
 
     @Override
     public String toString() {
-        return String.format("DictCompressionEntry with key: %i -> value: %s",
-                key, value.toString());
+        return "DictCompressionRecord@" + (hasTimestamp ? timestamp : "(noTS)") + " : " + key + " -> "
+                + value.toString().substring(0, Math.min(value.toString().length(), 30));
     }
 }

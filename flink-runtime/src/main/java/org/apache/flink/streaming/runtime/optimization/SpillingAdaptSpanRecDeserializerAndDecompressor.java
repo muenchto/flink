@@ -1,23 +1,32 @@
 package org.apache.flink.streaming.runtime.optimization;
 
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.io.network.api.serialization.SpillingAdaptiveSpanningRecordDeserializer;
 import org.apache.flink.runtime.plugable.DeserializationDelegate;
+import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
+import org.apache.flink.streaming.runtime.optimization.util.LRUdictionary;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Created by tobiasmuench on 11.12.18.
  */
 public class SpillingAdaptSpanRecDeserializerAndDecompressor<T extends DeserializationDelegate<StreamElement>, IN> extends SpillingAdaptiveSpanningRecordDeserializer<T> {
 
-    private HashMap<Integer, IN> dictionary;
+    private LRUdictionary<Long, IN> dictionary;
+
+    protected static final Logger LOG = LoggerFactory.getLogger(SpillingAdaptSpanRecDeserializerAndDecompressor.class);
 
     public SpillingAdaptSpanRecDeserializerAndDecompressor(String[] tmpDirectories) {
         super(tmpDirectories);
-        this.dictionary = new HashMap<>();
+        this.dictionary = new LRUdictionary<>(1000);
     }
 
     @Override
@@ -92,10 +101,11 @@ public class SpillingAdaptSpanRecDeserializerAndDecompressor<T extends Deseriali
     private void decompress(T target) {
         StreamElement record = target.getInstance();
         if (record.isCompressedStreamRecord()) {
-            CompressedStreamRecord compressedRecord = record.asCompressedStreamRecord();
-            Integer comprKey = compressedRecord.compressedValue;
+            LOG.debug("SpillingAdaptSpanRecDeserializerAndDecompressor decompresses {}", record);
 
-            IN uncompressedValue = dictionary.get(comprKey);
+            CompressedStreamRecord compressedRecord = record.asCompressedStreamRecord();
+
+            IN uncompressedValue = dictionary.get(compressedRecord.compressedValue);
             if (compressedRecord.hasTimestamp) {
                 target.setInstance(new StreamRecord<IN>(uncompressedValue, compressedRecord.timestamp));
             }
@@ -104,8 +114,11 @@ public class SpillingAdaptSpanRecDeserializerAndDecompressor<T extends Deseriali
             }
         }
         else if (record.isDictCompressionEntry()) {
+            LOG.debug("SpillingAdaptSpanRecDeserializerAndDecompressor decompresses {}", record);
+
             DictCompressionEntry<IN> newDictEntry = record.asDictCompressionEntry();
 
+            dictionary.put(newDictEntry.key, newDictEntry.value);
 
             if (newDictEntry.hasTimestamp) {
                 target.setInstance(new StreamRecord<IN>(newDictEntry.value, newDictEntry.timestamp));
@@ -113,8 +126,9 @@ public class SpillingAdaptSpanRecDeserializerAndDecompressor<T extends Deseriali
             else {
                 target.setInstance(new StreamRecord<IN>(newDictEntry.value));
             }
-
-            dictionary.put(newDictEntry.key, newDictEntry.value);
+        }
+        else if (record.isRecord()){
+            LOG.warn("Task in compression mode but received uncompressed stream element {}!", record);
         }
     }
 

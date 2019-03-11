@@ -477,7 +477,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			}
 		}
 
-		StreamRecordWriter<SerializationDelegate<StreamRecord<T>>> output =
+		StreamRecordWriter<SerializationDelegate<StreamRecord<T>>, T> output =
 				new StreamRecordWriter<>(streamTask, bufferWriter, outputPartitioner, upStreamConfig.getBufferTimeout(), name);
 		output.setMetricGroup(taskEnvironment.getMetricGroup().getIOMetricGroup());
 

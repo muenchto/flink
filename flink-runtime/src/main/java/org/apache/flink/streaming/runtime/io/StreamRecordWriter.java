@@ -17,17 +17,31 @@
 
 package org.apache.flink.streaming.runtime.io;
 
+import com.google.common.primitives.Ints;
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.io.IOReadableWritable;
+import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.writer.ChannelSelector;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
+import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
+import org.apache.flink.runtime.plugable.SerializationDelegate;
+import org.apache.flink.streaming.runtime.optimization.CompressedStreamRecord;
+import org.apache.flink.streaming.runtime.optimization.DictCompressionEntry;
+import org.apache.flink.streaming.runtime.optimization.util.LRUdictionary;
+import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 
@@ -38,12 +52,13 @@ import static org.apache.flink.util.Preconditions.checkArgument;
  * @param <T> The type of elements written.
  */
 @Internal
-public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWriter<T> {
+public class StreamRecordWriter<T extends IOReadableWritable, OUT> extends RecordWriter<T> {
 
 	/** Default name for teh output flush thread, if no name with a task reference is given. */
 	private static final String DEFAULT_OUTPUT_FLUSH_THREAD_NAME = "OutputFlusher";
 
 	protected static final Logger LOG = LoggerFactory.getLogger(StreamRecordWriter.class);
+	protected static final Logger BENCH = LoggerFactory.getLogger("numBytesOutLog");
 
 	/** The thread that periodically flushes the output, to give an upper latency bound. */
 	private final OutputFlusher outputFlusher;
@@ -57,6 +72,12 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 
 	/** The exception encountered in the flushing thread. */
 	private Throwable flusherException;
+
+
+	private boolean compressionEnabled;
+	private LRUdictionary<OUT, Tuple2<Long, boolean[]>> dictionary;
+	long key;
+
 
 	@Override
 	public String toString() {
@@ -97,6 +118,10 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 			outputFlusher.start();
 		}
 		this.timeout = timeout;
+
+		this.compressionEnabled = false;
+		this.dictionary = new LRUdictionary<>(1000);
+		this.key = -1; //start negative so that we have 0 for first record
 	}
 
 	@Override
@@ -107,8 +132,28 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 			return;
 		}
 
-		LOG.info(name + " emmits: " + record);
-		super.emit(record);
+
+		if (compressionEnabled){
+
+			SerializationDelegate delegate = (SerializationDelegate) record;
+			int[] selectChannels = super.getChannelSelector().selectChannels(record, super.getNumChannels());
+
+			LOG.debug("Task {} writes {} to channels [{}].",
+					name, delegate.getInstance(), Ints.join(",", selectChannels));
+
+			for (int targetChannel : selectChannels) {
+				if (delegate.getInstance() instanceof StreamRecord) {
+					compressRecord(delegate, targetChannel);
+					LOG.debug("Task {} compressed record to {}", name, delegate.getInstance());
+				}
+				sendToTarget((T) delegate, targetChannel);
+			}
+		}
+		else {
+			//LOG.info(name + " emits: " + record);
+			super.emit(record);
+		}
+
 		if (flushAlways) {
 			flush();
 		}
@@ -169,7 +214,7 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 			return;
 		}
 
-		LOG.info(name + " send to target emmits: " + record + " - " + targetChannel);
+		//LOG.info(name + " send to target emmits: " + record + " - " + targetChannel);
 
 		super.sendToTarget(record, targetChannel);
 		if (flushAlways) {
@@ -218,6 +263,68 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 			return false;
 		}
 	}
+
+	public void enableCompressionMode() {
+
+		this.compressionEnabled = true;
+	}
+	public void disableCompressionMode() {
+		this.compressionEnabled = false;
+	}
+
+	private void compressRecord(SerializationDelegate<StreamElement> record, int targetChannel) throws IOException, InterruptedException {
+
+		StreamRecord<OUT> innerRecord = record.getInstance().asRecord();
+		OUT recordData = innerRecord.getValue();
+
+		if (!dictionary.containsKey(recordData)) {
+			// this is the first time ever that we see this record, therefore create an entry in the HashMap first!
+			boolean[] channelIndicator = new boolean[super.getNumChannels()];
+			key++;
+			dictionary.put(recordData, new Tuple2<>(key, channelIndicator));
+		}
+
+		Tuple2<Long, boolean[]> entry = dictionary.get(recordData);
+
+		if (entry.f1[targetChannel]){
+			// the corresponding dictionary on the reciever side should know this key - send compressed
+			CompressedStreamRecord comprRecord;
+			if (innerRecord.hasTimestamp()) {
+				comprRecord = new CompressedStreamRecord(innerRecord.getTimestamp(), entry.f0);
+			}
+			else {
+				comprRecord = new CompressedStreamRecord(entry.f0);
+			}
+
+			record.setInstance(comprRecord);
+		}
+		else {
+			// this is the first time this record was send down this channel - send a new DictEntry
+			DictCompressionEntry dictEntry;
+			if (innerRecord.hasTimestamp()) {
+				dictEntry = new DictCompressionEntry(innerRecord.getTimestamp(), entry.f0, recordData);
+			}
+			else {
+				dictEntry = new DictCompressionEntry(entry.f0, recordData);
+			}
+			record.setInstance(dictEntry);
+			entry.f1[targetChannel] = true;
+
+		}
+
+	}
+
+	/**
+	 * Sets the metric group for this StreamRecordWriter.
+	 * Overrides the method from RecordWriter and wraps the Counter in order to enable special logging
+	 * @param metrics
+	 */
+	@Override
+	public void setMetricGroup(TaskIOMetricGroup metrics) {
+		super.numBytesOut = new LoggingSimpleCounter(metrics.getNumBytesOutCounter());
+	}
+
+
 
 	// ------------------------------------------------------------------------
 
@@ -269,4 +376,65 @@ public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWrit
 			}
 		}
 	}
+
+	public static class LoggingSimpleCounter implements Counter {
+		private Counter innerCounter;
+
+		LoggingSimpleCounter(Counter innerCnt) {
+			this.innerCounter = innerCnt;
+		}
+
+		/** the current count */
+		private long count;
+
+		/**
+		 * Increment the current count by 1.
+		 */
+		@Override
+		public void inc() {
+			innerCounter.inc();
+		}
+
+		/**
+		 * Increment the current count by the given value.
+		 *
+		 * @param n value to increment the current count by
+		 */
+		@Override
+		public void inc(long n) {
+			innerCounter.inc(n);
+			BENCH.debug("{}; {}", System.currentTimeMillis(), innerCounter.getCount());
+
+
+		}
+
+		/**
+		 * Decrement the current count by 1.
+		 */
+		@Override
+		public void dec() {
+			innerCounter.dec();
+		}
+
+		/**
+		 * Decrement the current count by the given value.
+		 *
+		 * @param n value to decrement the current count by
+		 */
+		@Override
+		public void dec(long n) {
+			innerCounter.dec(n);
+		}
+
+		/**
+		 * Returns the current count.
+		 *
+		 * @return current count
+		 */
+		@Override
+		public long getCount() {
+			return innerCounter.getCount();
+		}
+	}
+
 }

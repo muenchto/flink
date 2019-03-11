@@ -32,6 +32,7 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.serialization.RecordSerializer;
 import org.apache.flink.runtime.io.network.api.serialization.SpanningRecordSerializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
+import org.apache.flink.streaming.runtime.io.StreamRecordWriter;
 import org.apache.flink.util.XORShiftRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +70,7 @@ public class RecordWriter<T extends IOReadableWritable> {
 
 	private final Random RNG = new XORShiftRandom();
 
-	private Counter numBytesOut = new SimpleCounter();
+	protected Counter numBytesOut;
 
 	public RecordWriter(ResultPartitionWriter writer) {
 		this(writer, new RoundRobinChannelSelector<T>());
@@ -99,7 +100,7 @@ public class RecordWriter<T extends IOReadableWritable> {
 
 		int[] selectChannels = channelSelector.selectChannels(record, numChannels);
 
-		LOG.debug("Task {} writes buffer {} to channels {}.",
+		LOG.debug("Task {} writes buffer {} to channels [{}].",
 			targetPartition.getResultPartition().owningTaskName, record, Ints.join(",", selectChannels));
 
 		for (int targetChannel : selectChannels) {

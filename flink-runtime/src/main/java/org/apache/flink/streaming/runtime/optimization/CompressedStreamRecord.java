@@ -7,17 +7,22 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
  */
 public class CompressedStreamRecord extends StreamElement{
 
-    public final Integer compressedValue;
+    public final long compressedValue;
     public long timestamp;
     public final boolean hasTimestamp;
 
-    public CompressedStreamRecord(long timestamp, Integer hashComprRec) {
+    public CompressedStreamRecord(long timestamp, long hashComprRec) {
         this.compressedValue = hashComprRec;
         this.timestamp = timestamp;
         this.hasTimestamp = true;
     }
-    public CompressedStreamRecord(Integer hashComprRec) {
+    public CompressedStreamRecord(long hashComprRec) {
         this.compressedValue = hashComprRec;
         this.hasTimestamp = false;
+    }
+
+    @Override
+    public String toString(){
+        return "CompressedStreamRecord@" + (hasTimestamp ? timestamp : "(noTS)") + " : CompressionKey = " + compressedValue;
     }
 }

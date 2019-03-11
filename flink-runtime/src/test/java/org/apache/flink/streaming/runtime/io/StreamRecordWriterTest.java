@@ -105,7 +105,7 @@ public class StreamRecordWriterTest {
 
 	// ------------------------------------------------------------------------
 
-	private static class FailingWriter<T extends IOReadableWritable> extends StreamRecordWriter<T> {
+	private static class FailingWriter<T extends IOReadableWritable> extends StreamRecordWriter<T, T> {
 
 		private int flushesBeforeException;
 

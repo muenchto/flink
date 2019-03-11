@@ -35,3 +35,4 @@ out/
 tools/flink
 tools/flink-*
 
+log4j-test.properties

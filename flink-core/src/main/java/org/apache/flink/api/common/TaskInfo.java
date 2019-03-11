@@ -29,8 +29,8 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 @Internal
 public class TaskInfo {
 
-	private final String taskName;
-	private final String taskNameWithSubtasks;
+	private String taskName;
+	private String taskNameWithSubtasks;
 	private final int maxNumberOfParallelSubtasks;
 	private final int indexOfSubtask;
 	private final int numberOfParallelSubtasks;
@@ -58,6 +58,10 @@ public class TaskInfo {
 	 */
 	public String getTaskName() {
 		return this.taskName;
+	}
+
+	public void setTaskName(String newName) {
+		this.taskName = newName;
 	}
 
 	/**

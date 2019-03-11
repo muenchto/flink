@@ -121,7 +121,7 @@ public class StreamInputProcessor<IN> {
 
 	private final String[] spillingDirectoriesPaths;
 	private RecordDeserializer<DeserializationDelegate<StreamElement>>[] savedSerializers;
-	private boolean inCompressionMode;
+	private RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDecompressors;
 
 	@SuppressWarnings("unchecked")
 	public StreamInputProcessor(
@@ -186,8 +186,6 @@ public class StreamInputProcessor<IN> {
 				numInputChannels,
 				new ForwardingValveOutputHandler(streamOperator, lock));
 
-		inCompressionMode = false;
-
 		LOG.info("StreamInputProcessor: " + streamOperator.getClass().getSimpleName() + " with gate " + inputGate);
 	}
 
@@ -227,10 +225,10 @@ public class StreamInputProcessor<IN> {
 						continue;
 					} else if (recordOrMark.isCompressionMarker()) {
 						synchronized (lock) {
-							LOG.debug("{} received {} from channel {}",
+							LOG.debug("Task {} received {} from channel {}",
 									task.getName(), recordOrMark.asCompressionMarker(), currentChannel);
-							if (recordOrMark.asCompressionMarker().isEnabler()) enableCompressionMode();
-							else disableCompressionMode();
+							if (recordOrMark.asCompressionMarker().isEnabler()) enableCompressionMode(currentChannel);
+							else disableCompressionMode(currentChannel);
 						}
 						continue;
 					}
@@ -239,7 +237,8 @@ public class StreamInputProcessor<IN> {
 						StreamRecord<IN> record = recordOrMark.asRecord();
 						synchronized (lock) {
 							LOG.debug("Task {} received {} from channel {}",
-								task.getName(), record.getValue(), currentChannel);
+								task.getName(), record.getValue().toString()
+											.substring(0, Math.min(record.getValue().toString().length(), 30)), currentChannel);
 							numRecordsIn.inc();
 							streamOperator.setKeyContextElement1(record);
 							streamOperator.processElement(record);
@@ -301,41 +300,35 @@ public class StreamInputProcessor<IN> {
 		}
 	}
 
-	private void enableCompressionMode() {
+	private void enableCompressionMode(int channel) {
 
-		//make method idempotent because the InputProcessor can get several Enable Marker
-		if (this.inCompressionMode) {
-			return;
+		// because after a compressionMarker the buffer on the sender side has been flushed, we can be sure to switch the
+		// object here
+		if (savedSerializers == null) {
+			// compression is enabled the first time, therefore create array to save Deserializers
+			savedSerializers = new RecordDeserializer[numInputChannels];
+
+			// and create the Decompressors
+			recordDecompressors = new RecordDeserializer[numInputChannels];
+
+
+			for (int i = 0; i < recordDecompressors.length; i++) {
+				recordDecompressors[i] =
+						new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN>(
+								spillingDirectoriesPaths);
+			}
 		}
-		// Initialize for compression awareness
-		RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDecompressors =
-				new SpillingAdaptSpanRecDeserializerAndDecompressor[numInputChannels];
 
-		for (int i = 0; i < recordDecompressors.length; i++) {
-			recordDecompressors[i] =
-					new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN>(
-							spillingDirectoriesPaths);
-		}
+		// compression is turned on for this channel, so save Deserilizer
+		savedSerializers[channel] = recordDeserializers[channel];
+		recordDeserializers[channel] = recordDecompressors[channel];
 
-		this.savedSerializers = recordDeserializers;
-		this.recordDeserializers = recordDecompressors;
-
-
-		//this will forward the compression mode activation to the RecordWriter who fill send markers down to
-		// following tasks
-		task.enableCompressionForTask();
-
-		this.inCompressionMode = true;
 	}
 
-	private void disableCompressionMode() {
+	private void disableCompressionMode(int channel) {
 
-		//make method idempotent because the InputProcessor can get several Disable Marker
-		if (!this.inCompressionMode) {
-			return;
-		}
-		this.recordDeserializers = savedSerializers;
-		this.inCompressionMode = false;
+		recordDeserializers[channel] = savedSerializers[channel];
+
 	}
 
 	/**

@@ -97,8 +97,6 @@ public class SourceStreamTask<OUT, SRC extends SourceFunction<OUT>, OP extends S
 
 	@Override
 	protected void run() throws Exception {
-		enableCompressionForTask();
-
 		headOperator.run(getCheckpointLock(), getStreamStatusMaintainer());
 	}
 
