@@ -348,17 +348,7 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 			recordDeserializers[channel] = recordDecompressors[channel];
 
 		}
-		//make method idempotent from here on because the InputProcessor can get several Enable Marker
-		if (this.inCompressionMode) {
-			return;
-		}
 
-
-		//this will forward the compression mode activation to the RecordWriter who fill send markers down to
-		// following tasks
-		task.enableCompressionForTask();
-
-		this.inCompressionMode = true;
 	}
 
 	private void disableCompressionMode(int channel) {
@@ -367,14 +357,6 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 		recordDeserializers[channel] = savedSerializers[channel];
 		savedSerializers[channel] = tmp;
 
-		//make method idempotent from here because the InputProcessor can get several Disable Marker
-		if (!this.inCompressionMode) {
-			return;
-		}
-		//this will forward the compression mode activation to the RecordWriter who will send markers down to
-		// following tasks
-		task.disableCompressionMode();
-		this.inCompressionMode = false;
 	}
 
 	/**

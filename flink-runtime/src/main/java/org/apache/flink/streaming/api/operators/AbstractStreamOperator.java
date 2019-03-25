@@ -177,19 +177,15 @@ public abstract class AbstractStreamOperator<OUT>
 	public void setup(StreamTask<?, ?> containingTask, StreamConfig config, Output<StreamRecord<OUT>> output) {
 		this.container = containingTask;
 		this.config = config;
-
 		this.metrics = container.getEnvironment().getMetricGroup().addOperator(config.getOperatorName());
-		CountingOutput countingOutput = new CountingOutput(output, ((OperatorMetricGroup) this.metrics).getIOMetricGroup().getNumRecordsOutCounter());
+		this.output = new CountingOutput(output, ((OperatorMetricGroup) this.metrics).getIOMetricGroup().getNumRecordsOutCounter());
 		if (config.isChainStart()) {
 			((OperatorMetricGroup) this.metrics).getIOMetricGroup().reuseInputMetricsForTask();
 		}
 		if (config.isChainEnd()) {
-			this.output = new OptimizationAnalyzingOutput<>(countingOutput, container);
 			((OperatorMetricGroup) this.metrics).getIOMetricGroup().reuseOutputMetricsForTask();
 		}
-		else {
-			this.output = countingOutput;
-		}
+
 		Configuration taskManagerConfig = container.getEnvironment().getTaskManagerInfo().getConfiguration();
 		int historySize = taskManagerConfig.getInteger(MetricOptions.LATENCY_HISTORY_SIZE);
 		if (historySize <= 0) {

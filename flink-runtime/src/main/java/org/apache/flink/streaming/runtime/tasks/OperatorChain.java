@@ -54,6 +54,8 @@ import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
+import org.apache.flink.streaming.runtime.optimization.StreamRecordCompressorAndWriter;
+import org.apache.flink.streaming.runtime.partitioner.BroadcastPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.ConfigurableStreamPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.ForwardPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
@@ -464,6 +466,18 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 		@SuppressWarnings("unchecked")
 		StreamPartitioner<T> outputPartitioner = (StreamPartitioner<T>) edge.getPartitioner();
 
+/* //possibility for join algorithm selection
+		if (edge.getTargetVertex().getOperatorName().contains("CoGrouped")) {
+			if (taskName.contains("smallStream")) {
+				outputPartitioner = new BroadcastPartitioner<T>();
+			}
+			else if (taskName.contains("bigStream")) {
+				outputPartitioner = new ForwardPartitioner<T>();
+			}
+
+		}
+*/
+
 		LOG.info("Using partitioner {} for output j{} of task with partitioner {} and class {}",
 			outputPartitioner, outputIndex, taskName, outputPartitioner, outputPartitioner.getClass().getName());
 
@@ -477,8 +491,8 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			}
 		}
 
-		StreamRecordWriter<SerializationDelegate<StreamRecord<T>>, T> output =
-				new StreamRecordWriter<>(streamTask, bufferWriter, outputPartitioner, upStreamConfig.getBufferTimeout(), name);
+		StreamRecordCompressorAndWriter<SerializationDelegate<StreamRecord<T>>, T> output =
+				new StreamRecordCompressorAndWriter<>(streamTask, bufferWriter, outputPartitioner, upStreamConfig.getBufferTimeout(), name);
 		output.setMetricGroup(taskEnvironment.getMetricGroup().getIOMetricGroup());
 
 		return new RecordWriterOutput<>(output, outSerializer, sideOutputTag, this, name);

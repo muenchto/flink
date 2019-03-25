@@ -100,35 +100,45 @@ public class SpillingAdaptSpanRecDeserializerAndDecompressor<T extends Deseriali
 
     private void decompress(T target) {
         StreamElement record = target.getInstance();
-        if (record.isCompressedStreamRecord()) {
-            LOG.debug("SpillingAdaptSpanRecDeserializerAndDecompressor decompresses {}", record);
 
-            CompressedStreamRecord compressedRecord = record.asCompressedStreamRecord();
+        try {
 
-            IN uncompressedValue = dictionary.get(compressedRecord.compressedValue);
-            if (compressedRecord.hasTimestamp) {
-                target.setInstance(new StreamRecord<IN>(uncompressedValue, compressedRecord.timestamp));
+            if (record.isCompressedStreamRecord()) {
+                LOG.debug("SpillingAdaptSpanRecDeserializerAndDecompressor decompresses {}", record);
+
+                CompressedStreamRecord compressedRecord = record.asCompressedStreamRecord();
+                IN uncompressedValue = dictionary.get(compressedRecord.compressedValue);
+                if (uncompressedValue == null) {
+                    throw new Exception("could not find key in dict of receiver ");
+                }
+                if (compressedRecord.hasTimestamp) {
+                    target.setInstance(new StreamRecord<IN>(uncompressedValue, compressedRecord.timestamp));
+                }
+                else {
+                    target.setInstance(new StreamRecord<IN>(uncompressedValue));
+                }
             }
-            else {
-                target.setInstance(new StreamRecord<IN>(uncompressedValue));
-            }
-        }
-        else if (record.isDictCompressionEntry()) {
-            LOG.debug("SpillingAdaptSpanRecDeserializerAndDecompressor decompresses {}", record);
+            else if (record.isDictCompressionEntry()) {
+                LOG.debug("SpillingAdaptSpanRecDeserializerAndDecompressor decompresses {}", record);
 
-            DictCompressionEntry<IN> newDictEntry = record.asDictCompressionEntry();
+                DictCompressionEntry<IN> newDictEntry = record.asDictCompressionEntry();
 
-            dictionary.put(newDictEntry.key, newDictEntry.value);
+                dictionary.put(newDictEntry.key, newDictEntry.value);
 
-            if (newDictEntry.hasTimestamp) {
-                target.setInstance(new StreamRecord<IN>(newDictEntry.value, newDictEntry.timestamp));
+                if (newDictEntry.hasTimestamp) {
+                    target.setInstance(new StreamRecord<IN>(newDictEntry.value, newDictEntry.timestamp));
+                }
+                else {
+                    target.setInstance(new StreamRecord<IN>(newDictEntry.value));
+                }
             }
-            else {
-                target.setInstance(new StreamRecord<IN>(newDictEntry.value));
+            else if (record.isRecord()){
+                LOG.warn("Task in compression mode but received uncompressed stream element {}!", record);
+                throw new Exception("Test Mode Exception: Task in compression mode but received uncompressed stream element "+record+"!");
+
             }
-        }
-        else if (record.isRecord()){
-            LOG.warn("Task in compression mode but received uncompressed stream element {}!", record);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

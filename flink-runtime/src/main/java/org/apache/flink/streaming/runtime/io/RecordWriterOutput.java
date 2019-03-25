@@ -25,6 +25,7 @@ import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.optimization.CompressionMarker;
+import org.apache.flink.streaming.runtime.optimization.StreamRecordCompressorAndWriter;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
@@ -47,7 +48,10 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 	protected static final Logger LOG = LoggerFactory.getLogger(RecordWriterOutput.class);
 
-	private StreamRecordWriter<SerializationDelegate<StreamElement>, OUT> recordWriter;
+	// changed to enable compression possibility
+	/*private StreamRecordWriter<SerializationDelegate<StreamElement>, OUT> recordWriter;*/
+
+	private StreamRecordCompressorAndWriter<SerializationDelegate<StreamElement>, OUT> recordWriter;
 
 	private SerializationDelegate<StreamElement> serializationDelegate;
 
@@ -68,7 +72,7 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 	@SuppressWarnings("unchecked")
 	public RecordWriterOutput(
-		StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> recordWriter,
+			StreamRecordCompressorAndWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> recordWriter,
 		TypeSerializer<OUT> outSerializer,
 		OutputTag outputTag,
 		StreamStatusProvider streamStatusProvider, String name) {
@@ -77,10 +81,14 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 		checkNotNull(recordWriter);
 		this.outputTag = outputTag;
+
+		//!changed for compression!
 		// generic hack: cast the writer to generic Object type so we can use it
 		// with multiplexed records and watermarks
-		this.recordWriter = (StreamRecordWriter<SerializationDelegate<StreamElement>, OUT>)
-				(StreamRecordWriter<?, OUT>) recordWriter;
+		/*this.recordWriter = (StreamRecordWriter<SerializationDelegate<StreamElement>, OUT>)
+				(StreamRecordWriter<?, OUT>) recordWriter;*/
+		this.recordWriter = (StreamRecordCompressorAndWriter<SerializationDelegate<StreamElement>, OUT>)
+				(StreamRecordCompressorAndWriter<?, OUT>) recordWriter;
 
 		TypeSerializer<StreamElement> outRecordSerializer =
 				new StreamElementSerializer<>(outSerializer);
@@ -94,21 +102,6 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 		LOG.info("Creating RecordWriterOutput for " + name);
 	}
 
-	public void enableCompressionMode() {
-		broadcastCompressionMarker(new CompressionMarker().asEnabler());
-
-		this.recordWriter.enableCompressionMode();
-
-		LOG.debug("RecordWriterOutput of {} switched in Compression Mode", name);
-	}
-
-	public void disableCompressionMode() {
-		broadcastCompressionMarker(new CompressionMarker().asDisabler());
-
-		this.recordWriter.disableCompressionMode();
-
-		LOG.debug("RecordWriterOutput of {} switched in NO-Compression Mode", name);
-	}
 
 	public StreamRecordWriter<SerializationDelegate<StreamElement>, OUT> getRecordWriter() {
 		return recordWriter;
@@ -184,17 +177,6 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 		}
 	}
 
-	private void broadcastCompressionMarker(CompressionMarker compressionMarker) {
-		serializationDelegate.setInstance(compressionMarker);
-
-		try {
-			recordWriter.broadcastEmit(serializationDelegate);
-			recordWriter.flush();
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e.getMessage(), e);
-		}
-	}
 
 	public void broadcastEvent(AbstractEvent event) throws IOException, InterruptedException {
 		recordWriter.broadcastEvent(event);
