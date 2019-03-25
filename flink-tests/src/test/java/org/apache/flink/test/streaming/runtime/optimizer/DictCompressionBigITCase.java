@@ -33,14 +33,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DictCompressionBigITCase {
 
     final int DATA_SIZE = 1024;
-    final int DISTINCT_VALUES = 50;
-    final int COMPRESSION_INTERVAL = 100;
+    final int DISTINCT_VALUES = 2;
+    final int COMPRESSION_INTERVAL = 5;
     @Test
     public void bigCompressionTest() throws Exception {
 
         Configuration config = new Configuration();
-        config.setInteger(ConfigConstants.LOCAL_NUMBER_TASK_MANAGER, 4);
-        config.setInteger(ConfigConstants.TASK_MANAGER_NUM_TASK_SLOTS, 2);
+        config.setInteger(ConfigConstants.LOCAL_NUMBER_TASK_MANAGER, 2);
+        config.setInteger(ConfigConstants.TASK_MANAGER_NUM_TASK_SLOTS, 1);
 
         LocalFlinkMiniCluster cluster = new LocalFlinkMiniCluster(config, false);
         cluster.start();
@@ -52,7 +52,7 @@ public class DictCompressionBigITCase {
         env.setParallelism(parallelism);
         env.setBufferTimeout(100);
         //env.enableCheckpointing(1000);
-        env.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime);
+        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
 
 
@@ -161,13 +161,13 @@ public class DictCompressionBigITCase {
             }
 
             if (!compress) {
-                ret = new String(emittedRecords +","+ payload +","+ now);
+                ret = emittedRecords + "," + payload + "," + now;
                 emittedRecords++;
                 return ret;
             }
             else {
                 //int val = (emittedRecords % DISTINCT_VALUES) + ((emittedRecords/COMPRESSION_INTERVAL) * DISTINCT_VALUES);
-                ret = new String(emittedRecords % DISTINCT_VALUES +","+ payload +","+ now);
+                ret = emittedRecords % DISTINCT_VALUES + "," + payload + "," + now;
                 emittedRecords++;
                 return ret;
             }

@@ -2,9 +2,7 @@ package org.apache.flink.streaming.runtime.optimization;
 
 import com.google.common.collect.EvictingQueue;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
-import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.watermark.Watermark;
-import org.apache.flink.streaming.runtime.io.StreamRecordWriter;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
@@ -15,7 +13,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Created by tobiasmuench on 15.01.19.
  */
-public class OptimizationAnalyzingOutput<OUT> implements Output<StreamRecord<OUT>> {
+public class OptimizationAnalyzingOutput<OUT> {
 
     protected static final Logger LOG = LoggerFactory.getLogger(OptimizationAnalyzingOutput.class);
 
@@ -26,46 +24,22 @@ public class OptimizationAnalyzingOutput<OUT> implements Output<StreamRecord<OUT
 
     private boolean inCompressinMode;
     private float recordCnt;
-    private final int WINDOW_SIZE = 10;
+    private final int WINDOW_SIZE = 5;
     private int repetitionCnt;
 
     public OptimizationAnalyzingOutput(AbstractStreamOperator.CountingOutput countingOutput, StreamTask<?, ?> containingTask) {
         this.countingOutput = countingOutput;
         this.containingTask = containingTask;
 
-        knownRecords = EvictingQueue.create(1000);
+        knownRecords = EvictingQueue.create(10);
+       /* knownRecords = containingTask.ou.*/
         inCompressinMode = false;
         repetitionCnt = 0;
         recordCnt = 0;
     }
 
-    @Override
-    public void collect(StreamRecord<OUT> record) {
-        analyzeForCompression(record);
-        this.countingOutput.collect(record);
-    }
 
-    @Override
-    public void close() {
-        this.countingOutput.close();
-    }
-
-    @Override
-    public void emitWatermark(Watermark mark) {
-        this.countingOutput.emitWatermark(mark);
-    }
-
-    @Override
-    public <X> void collect(OutputTag<X> outputTag, StreamRecord<X> record) {
-        countingOutput.collect(outputTag, record);
-    }
-
-    @Override
-    public void emitLatencyMarker(LatencyMarker latencyMarker) {
-        this.countingOutput.emitLatencyMarker(latencyMarker);
-    }
-
-    private void analyzeForCompression(StreamRecord<OUT> record) {
+    /*private void analyzeForCompression(StreamRecord<OUT> record) {
 
         recordCnt++;
 
@@ -91,12 +65,12 @@ public class OptimizationAnalyzingOutput<OUT> implements Output<StreamRecord<OUT
             else {
                 if (inCompressinMode) {
                     LOG.info("Compression analyzer disabled compression!");
-                    containingTask.disableCompressionMode();
+                    containingTask.disableCompressionForTask();
                     inCompressinMode = false;
                 }
             }
             recordCnt = 0;
             repetitionCnt = 0;
         }
-    }
+    }*/
 }
