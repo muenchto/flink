@@ -51,7 +51,7 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 	// changed to enable compression possibility
 	/*private StreamRecordWriter<SerializationDelegate<StreamElement>, OUT> recordWriter;*/
 
-	private StreamRecordCompressorAndWriter<SerializationDelegate<StreamElement>, OUT> recordWriter;
+	private StreamRecordWriter<SerializationDelegate<StreamElement>, OUT> recordWriter;
 
 	private SerializationDelegate<StreamElement> serializationDelegate;
 
@@ -72,7 +72,7 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 
 	@SuppressWarnings("unchecked")
 	public RecordWriterOutput(
-			StreamRecordCompressorAndWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> recordWriter,
+			StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> recordWriter,
 		TypeSerializer<OUT> outSerializer,
 		OutputTag outputTag,
 		StreamStatusProvider streamStatusProvider, String name) {
@@ -87,8 +87,8 @@ public class RecordWriterOutput<OUT> implements Output<StreamRecord<OUT>> {
 		// with multiplexed records and watermarks
 		/*this.recordWriter = (StreamRecordWriter<SerializationDelegate<StreamElement>, OUT>)
 				(StreamRecordWriter<?, OUT>) recordWriter;*/
-		this.recordWriter = (StreamRecordCompressorAndWriter<SerializationDelegate<StreamElement>, OUT>)
-				(StreamRecordCompressorAndWriter<?, OUT>) recordWriter;
+		this.recordWriter = (StreamRecordWriter<SerializationDelegate<StreamElement>, OUT>)
+				(StreamRecordWriter<?, OUT>) recordWriter;
 
 		TypeSerializer<StreamElement> outRecordSerializer =
 				new StreamElementSerializer<>(outSerializer);

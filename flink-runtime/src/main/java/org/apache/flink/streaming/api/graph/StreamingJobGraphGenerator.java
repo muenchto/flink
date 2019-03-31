@@ -472,6 +472,8 @@ public class StreamingJobGraphGenerator {
 		List<StreamEdge> allOutputs = new ArrayList<StreamEdge>(chainableOutputs);
 		allOutputs.addAll(nonChainableOutputs);
 
+		config.setOptiConfig(streamGraph.getEnvironment().getOptiCfg());
+
 		vertexConfigs.put(vertexID, config);
 	}
 

@@ -33,8 +33,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DictCompressionBigITCase {
 
     final int DATA_SIZE = 1024;
-    final int DISTINCT_VALUES = 2;
-    final int COMPRESSION_INTERVAL = 5;
+    final int DISTINCT_VALUES = 5;
+    final int COMPRESSION_INTERVAL = 20;
     @Test
     public void bigCompressionTest() throws Exception {
 
@@ -50,11 +50,16 @@ public class DictCompressionBigITCase {
 
         //env.getConfig().disableSysoutLogging();
         env.setParallelism(parallelism);
-        env.setBufferTimeout(100);
         //env.enableCheckpointing(1000);
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
 
+        env.configureCompression().setAnalyzeEveryNRecords(1);
+        env.configureCompression().setDictionarySize(1000);
+        env.configureCompression().setCompressionThresholdPercentage(70);
+        env.configureCompression().setTimeoutDuringCompression(1);
+        env.configureCompression().setRepetitionWindow(10);
+        env.configureCompression().enableCompression();
 
         // create the data sources
         DataStream<String> bigData = env.addSource(new DictCompressionBigITCase.SimpleSource(DATA_SIZE));

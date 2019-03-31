@@ -25,7 +25,6 @@ import java.io.IOException;
  * Created by tobiasmuench on 15.03.19.
  */
 public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> extends StreamRecordWriter<T, OUT>{
-    private static final long TIMEOUT_DURING_COMPRESSION = 1;
 
     protected static final Logger LOG = LoggerFactory.getLogger(StreamRecordCompressorAndWriter.class);
 
@@ -33,22 +32,30 @@ public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> 
     private LRUdictionary<OUT, Tuple2<Long, boolean[]>> dictionary;
     private long dictKey;
 
-    private long originalTimeout;
+    private final long originalTimeout;
 
-    private float recordCnt;
-    private final int WINDOW_SIZE = 10;
+    private final OptimizationConfig optiConfig;
+    private float recordCntForAnalyzer;
+    private int recordsUntilComprAnalysis;
+
+
     private int repetitionCnt;
 
-    public StreamRecordCompressorAndWriter(StreamTask streamTask, ResultPartitionWriter writer, ChannelSelector<T> channelSelector, long timeout, String taskName) {
+    public StreamRecordCompressorAndWriter(StreamTask streamTask, ResultPartitionWriter writer, ChannelSelector<T> channelSelector, long timeout, String taskName, OptimizationConfig optimizationConfig) {
         super(streamTask, writer, channelSelector, timeout, taskName);
 
-        this.compressionEnabled = false;
-        this.dictionary = new LRUdictionary<>(1000);
-        this.dictKey = 0;
+        this.optiConfig = optimizationConfig;
+        this.originalTimeout = super.timeout;
 
+        this.dictionary = new LRUdictionary<>(optiConfig.getDictionarySize());
+
+        this.recordsUntilComprAnalysis = optiConfig.getAnalyzeEveryNRecords();
 
         repetitionCnt = 0;
-        recordCnt = 0;
+        recordCntForAnalyzer = 0;
+        this.dictKey = 0;
+        this.compressionEnabled = false;
+
     }
 
     @Override
@@ -58,12 +65,26 @@ public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> 
         if (record instanceof SerializationDelegate
                 && ((SerializationDelegate) record).getInstance() instanceof StreamRecord) {
 
+            // we optimistically declare an ComprEntry here and do the casting
+            // the logic ensures that the ComprEntry will be properly assigned if we use it later
+            Tuple2<Long, boolean[]> possibleComprEntry = null;
             SerializationDelegate delegate = (SerializationDelegate) record;
             StreamRecord<OUT> innerRecord = ((StreamElement) delegate.getInstance()).asRecord();
-            Tuple2<Long, boolean[]> possibleComprEntry = analyzeForCompression(innerRecord);
 
+            // this is expensive, so when compression is not enabled yet, only do it at a difined persentage of records
+            recordsUntilComprAnalysis--;
+            if (!compressionEnabled && recordsUntilComprAnalysis == 0) {
+                possibleComprEntry = analyzeForCompression(innerRecord);
+                recordsUntilComprAnalysis = optiConfig.getAnalyzeEveryNRecords();
+            }
+            else if (compressionEnabled){
+                possibleComprEntry = analyzeForCompression(innerRecord);
+            }
+
+
+            // check again separately because compression might be enabled through analyzer in if-case above
             if (compressionEnabled){
-                // compression is per channel, therefore we need to call the ChannelSelector here and bypass the emit()
+                // compression happens per channel, therefore we need to call the ChannelSelector here and bypass the emit()
                 // of both parent and grandparent
 
 
@@ -95,13 +116,11 @@ public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> 
         else {
             super.emit(record);
         }
-
     }
 
     private void enableCompressionMode() {
 
-        this.originalTimeout = super.timeout;
-        super.timeout = TIMEOUT_DURING_COMPRESSION;
+        super.timeout = optiConfig.getTimeoutDuringCompression();
         broadcastCompressionMarker(new CompressionMarker().asEnabler());
         this.compressionEnabled = true;
     }
@@ -151,13 +170,14 @@ public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> 
         }
 
 
-        recordCnt++;
-        if (recordCnt == WINDOW_SIZE) {
+        recordCntForAnalyzer++;
+        if (recordCntForAnalyzer == optiConfig.getRepetitionWindow()) {
             // window completed
-            LOG.debug("CompressionAnalyzer of {}: {} repeated records in window with size {}", streamTask.getName(), repetitionCnt, WINDOW_SIZE);
+            LOG.debug("CompressionAnalyzer of {}: {} repeated records in window with size {}",
+                    streamTask.getName(), repetitionCnt, optiConfig.getRepetitionWindow());
 
-            if (repetitionCnt/recordCnt > 0.7) {
-                //i.e. 70% of the last 10 records have been repetitions
+            if (repetitionCnt/ recordCntForAnalyzer > optiConfig.getCompressionThresholdPercentage()) {
+                //e.g. 70% of the last 10 records have been repetitions
                 if (!compressionEnabled) {
                     LOG.info("CompressionAnalyzer of {} turned on compression!", streamTask.getName());
                     enableCompressionMode();
@@ -169,7 +189,7 @@ public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> 
                     disableCompressionMode();
                 }
             }
-            recordCnt = 0;
+            recordCntForAnalyzer = 0;
             repetitionCnt = 0;
         }
 

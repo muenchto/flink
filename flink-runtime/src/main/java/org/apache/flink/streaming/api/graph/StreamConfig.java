@@ -35,6 +35,7 @@ import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 import org.apache.flink.streaming.api.operators.StreamOperator;
+import org.apache.flink.streaming.runtime.optimization.OptimizationConfig;
 import org.apache.flink.streaming.runtime.tasks.StreamTaskException;
 import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.OutputTag;
@@ -86,6 +87,8 @@ public class StreamConfig implements Serializable {
 	private static final String STATE_KEY_SERIALIZER = "statekeyser";
 
 	private static final String TIME_CHARACTERISTIC = "timechar";
+
+	private static final String OPTI_CONFIG = "optiConfigObject";
 
 	// ------------------------------------------------------------------------
 	//  Default Values
@@ -485,6 +488,27 @@ public class StreamConfig implements Serializable {
 	}
 
 
+	// ------------------------------------------------------------------------
+	//  On-Demand Optimization
+	// ------------------------------------------------------------------------
+
+	public void setOptiConfig(OptimizationConfig optiConfig) {
+		if (optiConfig != null) {
+			try {
+				InstantiationUtil.writeObjectToConfig(optiConfig, this.config, OPTI_CONFIG);
+			} catch (Exception e) {
+				throw new StreamTaskException("Could not serialize optiConfig provider.", e);
+			}
+		}
+	}
+
+	public OptimizationConfig getOptiConfig(ClassLoader cl) {
+		try {
+			return InstantiationUtil.readObjectFromConfig(this.config, OPTI_CONFIG, cl);
+		} catch (Exception e) {
+			throw new StreamTaskException("Could not instantiate optiConfig provider.", e);
+		}
+	}
 
 	// ------------------------------------------------------------------------
 	//  Miscellansous

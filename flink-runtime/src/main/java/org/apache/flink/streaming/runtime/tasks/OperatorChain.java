@@ -54,6 +54,7 @@ import org.apache.flink.streaming.runtime.modification.ModificationMetaData;
 import org.apache.flink.streaming.runtime.modification.events.CancelModificationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartMigrationMarker;
 import org.apache.flink.streaming.runtime.modification.events.StartModificationMarker;
+import org.apache.flink.streaming.runtime.optimization.OptimizationConfig;
 import org.apache.flink.streaming.runtime.optimization.StreamRecordCompressorAndWriter;
 import org.apache.flink.streaming.runtime.partitioner.BroadcastPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.ConfigurableStreamPartitioner;
@@ -148,7 +149,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 
 				RecordWriterOutput<?> streamOutput = createStreamOutput(
 					outEdge, tmpStreamConfig, i,
-					containingTask.getEnvironment(), containingTask.getName());
+					containingTask.getEnvironment(), configuration.getOptiConfig(userCodeClassloader), containingTask.getName());
 
 				this.streamOutputs[i] = streamOutput;
 				streamOutputMap.put(outEdge, streamOutput);
@@ -447,6 +448,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 	private <T> RecordWriterOutput<T> createStreamOutput(
 			StreamEdge edge, StreamConfig upStreamConfig, int outputIndex,
 			Environment taskEnvironment,
+			OptimizationConfig optmizationConfig,
 			String taskName) {
 		OutputTag sideOutputTag = edge.getOutputTag(); // OutputTag, return null if not sideOutput
 
@@ -490,12 +492,18 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 				((ConfigurableStreamPartitioner) outputPartitioner).configure(numKeyGroups);
 			}
 		}
-
-		StreamRecordCompressorAndWriter<SerializationDelegate<StreamRecord<T>>, T> output =
-				new StreamRecordCompressorAndWriter<>(streamTask, bufferWriter, outputPartitioner, upStreamConfig.getBufferTimeout(), name);
+		StreamRecordWriter<SerializationDelegate<StreamRecord<T>>, T> output;
+		if (optmizationConfig.isCompressionEnabled()) {
+			 output = new StreamRecordCompressorAndWriter<>(streamTask, bufferWriter, outputPartitioner,
+							upStreamConfig.getBufferTimeout(), name, optmizationConfig);
+		}
+		else {
+			output = new StreamRecordWriter<>(streamTask, bufferWriter,
+					outputPartitioner, upStreamConfig.getBufferTimeout(), name);
+		}
 		output.setMetricGroup(taskEnvironment.getMetricGroup().getIOMetricGroup());
 
-		return new RecordWriterOutput<>(output, outSerializer, sideOutputTag, this, name);
+		return new RecordWriterOutput<T>(output, outSerializer, sideOutputTag, this, name);
 	}
 
 	public void broadcastStartMigrationEvent(ModificationMetaData metaData,

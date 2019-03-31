@@ -62,6 +62,8 @@ public class DictCompressionITCase {
         env.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime);
         env.disableOperatorChaining();
 
+        env.enableDefaultCompression();
+
         DataStream<Tuple2<Integer, Integer>> sourceStream = env.addSource(new DictCompressionITCase.SimpleSource());
 
         MemorySinkFunction sinkFunction = new MemorySinkFunction(0);
