@@ -40,6 +40,7 @@ import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
+import org.apache.flink.streaming.runtime.optimization.SpillingAdaptSpanRecDeserializerAndDecompressor;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -125,6 +126,13 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 
 	private boolean isFinished;
 
+	// ---------------- memorize for possible compression mode ------------------
+
+	private final String[] spillingDirectoriesPaths;
+	private RecordDeserializer<DeserializationDelegate<StreamElement>>[] savedSerializers;
+	private boolean inCompressionMode;
+	private RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDecompressors;
+
 	@SuppressWarnings("unchecked")
 	public StreamTwoInputProcessor(
 			Collection<InputGate> inputGates1,
@@ -162,6 +170,7 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 			recordDeserializers[i] = new SpillingAdaptiveSpanningRecordDeserializer<>(
 				ioManager.getSpillingDirectoriesPaths());
 		}
+		this.spillingDirectoriesPaths = ioManager.getSpillingDirectoriesPaths();
 
 		// determine which unioned channels belong to input 1 and which belong to input 2
 		int numInputChannels1 = 0;
@@ -229,6 +238,16 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 								streamOperator.processLatencyMarker1(recordOrWatermark.asLatencyMarker());
 							}
 							continue;
+						} else if (recordOrWatermark.isCompressionMarker()) {
+							synchronized (lock) {
+								if (recordOrWatermark.asCompressionMarker().isEnabler()) {
+									enableCompressionMode(currentChannel);
+								}
+								else {
+									disableCompressionMode(currentChannel);
+								}
+							}
+							continue;
 						}
 						else {
 							StreamRecord<IN1> record = recordOrWatermark.asRecord();
@@ -256,6 +275,14 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 								streamOperator.processLatencyMarker2(recordOrWatermark.asLatencyMarker());
 							}
 							continue;
+						} else if (recordOrWatermark.isCompressionMarker()) {
+							synchronized (lock) {
+								if (recordOrWatermark.asCompressionMarker().isEnabler()) {
+									enableCompressionMode(currentChannel - numInputChannels1);
+								} else {
+									disableCompressionMode(currentChannel - numInputChannels1);
+								}
+							}
 						}
 						else {
 							StreamRecord<IN2> record = recordOrWatermark.asRecord();
@@ -294,6 +321,40 @@ public class StreamTwoInputProcessor<IN1, IN2> {
 				return false;
 			}
 		}
+	}
+
+	private void enableCompressionMode(int channel) {
+
+		// because after a compressionMarker the buffer on the sender side has been flushed, we can be sure to swith the
+		// object here
+		if (savedSerializers == null) {
+			// compression is enabled the first time, therefore save old Deserializer and create Decompressor
+			recordDecompressors =
+					new SpillingAdaptSpanRecDeserializerAndDecompressor[recordDeserializers.length];
+
+			for (int i = 0; i < recordDecompressors.length; i++) {
+				recordDecompressors[i] =
+						new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN1>(
+								spillingDirectoriesPaths);
+			}
+			savedSerializers = recordDeserializers;
+			recordDeserializers[channel] = recordDecompressors[channel];
+		}
+		else {
+			// reuse and swap with Decompressor
+			savedSerializers[channel] = recordDeserializers[channel];
+			recordDeserializers[channel] = recordDecompressors[channel];
+
+		}
+
+	}
+
+	private void disableCompressionMode(int channel) {
+
+		RecordDeserializer tmp = recordDeserializers[channel];
+		recordDeserializers[channel] = savedSerializers[channel];
+		savedSerializers[channel] = tmp;
+
 	}
 
 	public void cleanup() throws IOException {

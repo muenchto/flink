@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +92,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 
 	public OperatorChain(
 			StreamTask<OUT, OP> containingTask,
-			List<StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>>> streamRecordWriters) {
+			List<StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT>> streamRecordWriters) {
 
 		final ClassLoader userCodeClassloader = containingTask.getUserCodeClassLoader();
 		final StreamConfig configuration = containingTask.getConfiguration();
@@ -369,7 +370,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 	}
 
 	private RecordWriterOutput<OUT> createStreamOutput(
-			StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>> streamRecordWriter,
+			StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> streamRecordWriter,
 			StreamEdge edge,
 			StreamConfig upStreamConfig,
 			Environment taskEnvironment) {
@@ -685,5 +686,13 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 				outputs[outputs.length - 1].collect(outputTag, record);
 			}
 		}
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getName() + " - StreamOperators: " + Arrays.toString(allOperators)
+				+ " - RecordWriterOutput: " + Arrays.toString(streamOutputs)
+				+ " - Output<StreamRecord<OUT>>: " + chainEntryPoint
+				+ " - OP: " + headOperator;
 	}
 }

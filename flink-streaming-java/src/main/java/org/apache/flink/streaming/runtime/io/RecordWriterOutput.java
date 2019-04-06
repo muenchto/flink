@@ -45,7 +45,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExposingOutput<StreamRecord<OUT>> {
 
-	private StreamRecordWriter<SerializationDelegate<StreamElement>> recordWriter;
+	private StreamRecordWriter<SerializationDelegate<StreamElement>, OUT> recordWriter;
 
 	private SerializationDelegate<StreamElement> serializationDelegate;
 
@@ -57,17 +57,21 @@ public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExpo
 
 	@SuppressWarnings("unchecked")
 	public RecordWriterOutput(
-			StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>> recordWriter,
+			StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> recordWriter,
 			TypeSerializer<OUT> outSerializer,
 			OutputTag outputTag,
 			StreamStatusProvider streamStatusProvider) {
 
 		checkNotNull(recordWriter);
 		this.outputTag = outputTag;
+
+		//!changed for compression awareness!
 		// generic hack: cast the writer to generic Object type so we can use it
 		// with multiplexed records and watermarks
-		this.recordWriter = (StreamRecordWriter<SerializationDelegate<StreamElement>>)
-				(StreamRecordWriter<?>) recordWriter;
+		/*this.recordWriter = (StreamRecordWriter<SerializationDelegate<StreamElement>, OUT>)
+				(StreamRecordWriter<?, OUT>) recordWriter;*/
+		this.recordWriter = (StreamRecordWriter<SerializationDelegate<StreamElement>, OUT>)
+				(StreamRecordWriter<?, OUT>) recordWriter;
 
 		TypeSerializer<StreamElement> outRecordSerializer =
 				new StreamElementSerializer<>(outSerializer);

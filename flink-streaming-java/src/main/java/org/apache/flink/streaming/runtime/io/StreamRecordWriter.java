@@ -34,11 +34,13 @@ import static org.apache.flink.util.Preconditions.checkArgument;
  * @param <T> The type of elements written.
  */
 @Internal
-public class StreamRecordWriter<T extends IOReadableWritable> extends RecordWriter<T> {
+public class StreamRecordWriter<T extends IOReadableWritable, OUT> extends RecordWriter<T> {
 
 	/** Default name for teh output flush thread, if no name with a task reference is given. */
 	private static final String DEFAULT_OUTPUT_FLUSH_THREAD_NAME = "OutputFlusher";
 
+	protected static final Logger LOG = LoggerFactory.getLogger(StreamRecordWriter.class);
+	protected static final Logger BENCH = LoggerFactory.getLogger("numBytesOutLog");
 
 	/** The thread that periodically flushes the output, to give an upper latency bound. */
 	private final OutputFlusher outputFlusher;

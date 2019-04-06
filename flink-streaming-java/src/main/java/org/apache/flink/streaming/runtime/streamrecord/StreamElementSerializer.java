@@ -31,6 +31,9 @@ import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.optimization.CompressedStreamRecord;
+import org.apache.flink.streaming.runtime.optimization.CompressionMarker;
+import org.apache.flink.streaming.runtime.optimization.DictCompressionEntry;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 
 import java.io.IOException;
@@ -56,6 +59,12 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 	private static final int TAG_WATERMARK = 2;
 	private static final int TAG_LATENCY_MARKER = 3;
 	private static final int TAG_STREAM_STATUS = 4;
+	private static final int TAG_DICT_COMPRESSION_ENTRY = 5;
+	private static final int TAG_DICT_COMPRESSION_ENTRY_W_TS = 6;
+	private static final int TAG_COMPRESSED_REC = 7;
+	private static final int TAG_COMPRESSED_REC_W_TS = 8;
+	private static final int TAG_ENABLE_COMPRESSION = 9;
+	private static final int TAG_DISABLE_COMPRESSION = 10;
 
 
 	private final TypeSerializer<T> typeSerializer;
@@ -177,6 +186,30 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			}
 			typeSerializer.serialize(record.getValue(), target);
 		}
+		else if (value.isDictCompressionEntry()) {
+			DictCompressionEntry<T> entry = value.asDictCompressionEntry();
+			if (entry.hasTimestamp) {
+				target.write(TAG_DICT_COMPRESSION_ENTRY_W_TS);
+				target.writeLong(entry.timestamp);
+			}
+			else {
+				target.write(TAG_DICT_COMPRESSION_ENTRY);
+			}
+			target.writeLong(entry.key);
+			typeSerializer.serialize(entry.value, target);
+		}
+		else if (value.isCompressedStreamRecord()) {
+			CompressedStreamRecord comprRec = value.asCompressedStreamRecord();
+
+			if (comprRec.hasTimestamp) {
+				target.write(TAG_COMPRESSED_REC_W_TS);
+				target.writeLong(comprRec.timestamp);
+			}
+			else {
+				target.write(TAG_COMPRESSED_REC);
+			}
+			target.writeLong(comprRec.compressedValue);
+		}
 		else if (value.isWatermark()) {
 			target.write(TAG_WATERMARK);
 			target.writeLong(value.asWatermark().getTimestamp());
@@ -191,6 +224,12 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			target.writeLong(value.asLatencyMarker().getOperatorId().getLowerPart());
 			target.writeLong(value.asLatencyMarker().getOperatorId().getUpperPart());
 			target.writeInt(value.asLatencyMarker().getSubtaskIndex());
+		}
+		else if (value.isCompressionMarker()) {
+			if (value.asCompressionMarker().isEnabler()) {
+				target.write(TAG_ENABLE_COMPRESSION);
+			}
+			else target.write(TAG_DISABLE_COMPRESSION);
 		}
 		else {
 			throw new RuntimeException();
@@ -207,6 +246,22 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 		else if (tag == TAG_REC_WITHOUT_TIMESTAMP) {
 			return new StreamRecord<T>(typeSerializer.deserialize(source));
 		}
+		else if (tag == TAG_DICT_COMPRESSION_ENTRY) {
+			long key = source.readLong();
+			return new DictCompressionEntry<T>(key, typeSerializer.deserialize(source));
+		}
+		else if (tag == TAG_DICT_COMPRESSION_ENTRY_W_TS) {
+			long timestamp = source.readLong();
+			long key = source.readLong();
+			return new DictCompressionEntry<T>(timestamp, key, typeSerializer.deserialize(source));
+		}
+		else if (tag == TAG_COMPRESSED_REC) {
+			return new CompressedStreamRecord(source.readLong());
+		}
+		else if (tag == TAG_COMPRESSED_REC_W_TS) {
+			long timestamp = source.readLong();
+			return new CompressedStreamRecord(timestamp, source.readLong());
+		}
 		else if (tag == TAG_WATERMARK) {
 			return new Watermark(source.readLong());
 		}
@@ -214,7 +269,13 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			return new StreamStatus(source.readInt());
 		}
 		else if (tag == TAG_LATENCY_MARKER) {
-			return new LatencyMarker(source.readLong(), new OperatorID(source.readLong(), source.readLong()), source.readInt());
+			return new LatencyMarker(source.readLong(), source.readInt(), source.readInt());
+		}
+		else if (tag == TAG_ENABLE_COMPRESSION) {
+			return new CompressionMarker().asEnabler();
+		}
+		else if (tag == TAG_DISABLE_COMPRESSION) {
+			return new CompressionMarker().asDisabler();
 		}
 		else {
 			throw new IOException("Corrupt stream, found tag: " + tag);

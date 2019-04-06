@@ -180,7 +180,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	/** Wrapper for synchronousCheckpointExceptionHandler to deal with rethrown exceptions. Used in the async part. */
 	private AsyncCheckpointExceptionHandler asynchronousCheckpointExceptionHandler;
 
-	private final List<StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>>> streamRecordWriters;
+	private final List<StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT>> streamRecordWriters;
 
 	// ------------------------------------------------------------------------
 
@@ -642,7 +642,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 				final CancelCheckpointMarker message = new CancelCheckpointMarker(checkpointMetaData.getCheckpointId());
 				Exception exception = null;
 
-				for (StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>> streamRecordWriter : streamRecordWriters) {
+				for (StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> streamRecordWriter : streamRecordWriters) {
 					try {
 						streamRecordWriter.broadcastEvent(message);
 					} catch (Exception e) {
@@ -1158,10 +1158,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	}
 
 	@VisibleForTesting
-	public static <OUT> List<StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>>> createStreamRecordWriters(
+	public static <OUT> List<StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT>> createStreamRecordWriters(
 			StreamConfig configuration,
 			Environment environment) {
-		List<StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>>> streamRecordWriters = new ArrayList<>();
+		List<StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT>> streamRecordWriters = new ArrayList<>();
 		List<StreamEdge> outEdgesInOrder = configuration.getOutEdgesInOrder(environment.getUserClassLoader());
 		Map<Integer, StreamConfig> chainedConfigs = configuration.getTransitiveChainedTaskConfigsWithSelf(environment.getUserClassLoader());
 
@@ -1178,7 +1178,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		return streamRecordWriters;
 	}
 
-	private static <OUT> StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>> createStreamRecordWriter(
+	private static <OUT> StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> createStreamRecordWriter(
 			StreamEdge edge,
 			int outputIndex,
 			Environment environment,
@@ -1199,7 +1199,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			}
 		}
 
-		StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>> output =
+		StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> output =
 			new StreamRecordWriter<>(bufferWriter, outputPartitioner, bufferTimeout, taskName);
 		output.setMetricGroup(environment.getMetricGroup().getIOMetricGroup());
 		return output;

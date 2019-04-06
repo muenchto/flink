@@ -76,6 +76,7 @@ import org.apache.flink.streaming.api.graph.StreamGraphGenerator;
 import org.apache.flink.streaming.api.operators.StoppableStreamSource;
 import org.apache.flink.streaming.api.operators.StreamSource;
 import org.apache.flink.streaming.api.transformations.StreamTransformation;
+import org.apache.flink.streaming.runtime.optimization.OptimizationConfig;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SplittableIterator;
 
@@ -143,6 +144,11 @@ public abstract class StreamExecutionEnvironment {
 	private TimeCharacteristic timeCharacteristic = DEFAULT_TIME_CHARACTERISTIC;
 
 	protected final List<Tuple2<String, DistributedCache.DistributedCacheEntry>> cacheFile = new ArrayList<>();
+
+
+	/** Settings that control the on-demand optiization behavior. */
+	private final OptimizationConfig optiCfg = new OptimizationConfig();
+
 
 
 	// --------------------------------------------------------------------------------------------
@@ -1836,5 +1842,28 @@ public abstract class StreamExecutionEnvironment {
 	 */
 	public void registerCachedFile(String filePath, String name, boolean executable) {
 		this.cacheFile.add(new Tuple2<>(name, new DistributedCache.DistributedCacheEntry(filePath, executable)));
+	}
+
+	public OptimizationConfig configureCompression(){
+		return this.getOptiCfg();
+	}
+
+	public StreamExecutionEnvironment enableDefaultCompression(){
+		return this.enableCompression(1, 70, 1000, 10, 1);
+	}
+
+	private StreamExecutionEnvironment enableCompression(int analyzeEveryNRecords, int compressionThresholdPercentage, int dictionarySize, int repetitionWindow, int timoutDuringCompression) {
+		optiCfg.setAnalyzeEveryNRecords(analyzeEveryNRecords);
+		optiCfg.setCompressionThresholdPercentage(compressionThresholdPercentage);
+		optiCfg.setDictionarySize(dictionarySize);
+		optiCfg.setRepetitionWindow(repetitionWindow);
+		optiCfg.setTimeoutDuringCompression(timoutDuringCompression);
+		optiCfg.enableCompression();
+		return this;
+	}
+
+
+	public OptimizationConfig getOptiCfg(){
+		return this.optiCfg;
 	}
 }
