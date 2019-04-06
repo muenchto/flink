@@ -229,7 +229,9 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			if (value.asCompressionMarker().isEnabler()) {
 				target.write(TAG_ENABLE_COMPRESSION);
 			}
-			else target.write(TAG_DISABLE_COMPRESSION);
+			else {
+				target.write(TAG_DISABLE_COMPRESSION);
+			}
 		}
 		else {
 			throw new RuntimeException();

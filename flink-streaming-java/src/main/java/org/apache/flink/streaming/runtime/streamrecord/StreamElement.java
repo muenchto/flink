@@ -20,6 +20,9 @@ package org.apache.flink.streaming.runtime.streamrecord;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.optimization.CompressedStreamRecord;
+import org.apache.flink.streaming.runtime.optimization.CompressionMarker;
+import org.apache.flink.streaming.runtime.optimization.DictCompressionEntry;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 
 /**
@@ -61,6 +64,21 @@ public abstract class StreamElement {
 	}
 
 	/**
+	 * Checks whether this element is a DictCompressionEntry.
+	 * @return True, if this element is a DictCompressionEntry, false otherwise.
+	 */
+	public final boolean isDictCompressionEntry() {
+		return getClass() == DictCompressionEntry.class;
+	}
+
+	public final boolean isCompressedStreamRecord() {
+		return getClass() == CompressedStreamRecord.class;
+	}
+
+	public final boolean isCompressionMarker() {
+		return getClass() == CompressionMarker.class;
+	}
+	/**
 	 * Casts this element into a StreamRecord.
 	 * @return This element as a stream record.
 	 * @throws java.lang.ClassCastException Thrown, if this element is actually not a stream record.
@@ -68,6 +86,24 @@ public abstract class StreamElement {
 	@SuppressWarnings("unchecked")
 	public final <E> StreamRecord<E> asRecord() {
 		return (StreamRecord<E>) this;
+	}
+
+	/**
+	 * Casts this element into a StreamRecord.
+	 * @return This element as a stream record.
+	 * @throws java.lang.ClassCastException Thrown, if this element is actually not a stream record.
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T> DictCompressionEntry<T> asDictCompressionEntry() {
+		return (DictCompressionEntry<T>) this;
+	}
+
+	public final CompressedStreamRecord asCompressedStreamRecord() {
+		return (CompressedStreamRecord) this;
+	}
+
+	public final CompressionMarker asCompressionMarker() {
+		return (CompressionMarker) this;
 	}
 
 	/**
