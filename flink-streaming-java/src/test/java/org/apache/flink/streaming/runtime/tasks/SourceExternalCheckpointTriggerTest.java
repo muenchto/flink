@@ -28,6 +28,7 @@ import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.functions.source.ParallelSourceFunction;
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.StreamSource;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -54,7 +55,7 @@ public class SourceExternalCheckpointTriggerTest {
 	public void testCheckpointsTriggeredBySource() throws Exception {
 		// set up the basic test harness
 		final StreamTaskTestHarness<Long> testHarness = new StreamTaskTestHarness<>(
-				SourceStreamTask::new,
+				SourceStreamTask<Long, SourceFunction<Long>, StreamSource<Long, SourceFunction<Long>>>::new,
 				BasicTypeInfo.LONG_TYPE_INFO);
 
 		testHarness.setupOutputForSingletonOperatorChain();

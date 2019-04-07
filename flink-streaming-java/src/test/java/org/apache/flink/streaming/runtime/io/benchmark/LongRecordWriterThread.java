@@ -34,7 +34,7 @@ import static org.apache.flink.util.Preconditions.checkState;
  * records.
  */
 public class LongRecordWriterThread extends CheckedThread {
-	private final StreamRecordWriter<LongValue> recordWriter;
+	private final StreamRecordWriter<LongValue, LongValue> recordWriter;
 
 	/**
 	 * Future to wait on a definition of the number of records to send.
@@ -43,7 +43,7 @@ public class LongRecordWriterThread extends CheckedThread {
 
 	private volatile boolean running = true;
 
-	public LongRecordWriterThread(StreamRecordWriter<LongValue> recordWriter) {
+	public LongRecordWriterThread(StreamRecordWriter<LongValue, LongValue> recordWriter) {
 		this.recordWriter = checkNotNull(recordWriter);
 	}
 

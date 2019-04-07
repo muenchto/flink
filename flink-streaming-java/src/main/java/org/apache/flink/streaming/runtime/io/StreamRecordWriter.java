@@ -23,6 +23,9 @@ import org.apache.flink.runtime.io.network.api.writer.ChannelSelector;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
@@ -43,7 +46,7 @@ public class StreamRecordWriter<T extends IOReadableWritable, OUT> extends Recor
 	protected static final Logger BENCH = LoggerFactory.getLogger("numBytesOutLog");
 
 	/** The thread that periodically flushes the output, to give an upper latency bound. */
-	private final OutputFlusher outputFlusher;
+	protected final OutputFlusher outputFlusher;
 
 	/** The exception encountered in the flushing thread. */
 	private Throwable flusherException;
@@ -123,7 +126,7 @@ public class StreamRecordWriter<T extends IOReadableWritable, OUT> extends Recor
 		}
 	}
 
-	private void checkErroneous() throws IOException {
+	protected void checkErroneous() throws IOException {
 		if (flusherException != null) {
 			throw new IOException("An exception happened while flushing the outputs", flusherException);
 		}
@@ -136,9 +139,9 @@ public class StreamRecordWriter<T extends IOReadableWritable, OUT> extends Recor
 	 *
 	 * <p>The thread is daemonic, because it is only a utility thread.
 	 */
-	private class OutputFlusher extends Thread {
+	protected class OutputFlusher extends Thread {
 
-		private final long timeout;
+		private long timeout;
 
 		private volatile boolean running = true;
 
@@ -177,5 +180,14 @@ public class StreamRecordWriter<T extends IOReadableWritable, OUT> extends Recor
 				notifyFlusherException(t);
 			}
 		}
+
+		public long getTimeout() {
+			return timeout;
+		}
+
+		public void setTimeout(long timeout) {
+			this.timeout = timeout;
+		}
+
 	}
 }

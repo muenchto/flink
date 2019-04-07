@@ -271,7 +271,7 @@ public final class StreamElementSerializer<T> extends TypeSerializer<StreamEleme
 			return new StreamStatus(source.readInt());
 		}
 		else if (tag == TAG_LATENCY_MARKER) {
-			return new LatencyMarker(source.readLong(), source.readInt(), source.readInt());
+			return new LatencyMarker(source.readLong(), new OperatorID(source.readLong(), source.readLong()), source.readInt());
 		}
 		else if (tag == TAG_ENABLE_COMPRESSION) {
 			return new CompressionMarker().asEnabler();

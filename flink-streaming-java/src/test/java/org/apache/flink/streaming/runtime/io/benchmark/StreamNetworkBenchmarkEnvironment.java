@@ -176,7 +176,7 @@ public class StreamNetworkBenchmarkEnvironment<T extends IOReadableWritable> {
 		return receiver;
 	}
 
-	public StreamRecordWriter<T> createRecordWriter(int partitionIndex, long flushTimeout) throws Exception {
+	public StreamRecordWriter<T, T> createRecordWriter(int partitionIndex, long flushTimeout) throws Exception {
 		ResultPartitionWriter sender = createResultPartition(jobId, partitionIds[partitionIndex], senderEnv, channels);
 		return new StreamRecordWriter<>(sender,  new RoundRobinChannelSelector<T>(), flushTimeout);
 	}

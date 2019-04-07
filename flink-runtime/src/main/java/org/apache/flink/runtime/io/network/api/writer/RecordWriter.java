@@ -56,9 +56,9 @@ public class RecordWriter<T extends IOReadableWritable> {
 
 	protected final ResultPartitionWriter targetPartition;
 
-	private final ChannelSelector<T> channelSelector;
+	protected final ChannelSelector<T> channelSelector;
 
-	private final int numChannels;
+	protected final int numChannels;
 
 	/**
 	 * {@link RecordSerializer} per outgoing channel.
@@ -127,7 +127,7 @@ public class RecordWriter<T extends IOReadableWritable> {
 		sendToTarget(record, rng.nextInt(numChannels));
 	}
 
-	private void sendToTarget(T record, int targetChannel) throws IOException, InterruptedException {
+	protected void sendToTarget(T record, int targetChannel) throws IOException, InterruptedException {
 		RecordSerializer<T> serializer = serializers[targetChannel];
 
 		SerializationResult result = serializer.addRecord(record);
