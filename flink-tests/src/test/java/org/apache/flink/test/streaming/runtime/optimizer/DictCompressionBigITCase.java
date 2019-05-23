@@ -75,7 +75,7 @@ public class DictCompressionBigITCase {
                                 Long.parseLong(splittedData[2])
                         );
                     }
-                })
+                }).setParallelism(1)
                 .assignTimestampsAndWatermarks(new AssignerWithPeriodicWatermarks<Tuple3<Long, String, Long>>() {
                     private final long maxOutOfOrderness = 500;
 
@@ -93,7 +93,7 @@ public class DictCompressionBigITCase {
                         // return the watermark as current highest timestamp minus the out-of-orderness bound
                         return new Watermark(currentMaxTimestamp - maxOutOfOrderness);
                     }
-                })
+                }).setParallelism(1)
                 .map(new MapFunction<Tuple3<Long, String, Long>, Tuple2<Long, String>>() {
                     @Override
                     public Tuple2<Long, String> map(Tuple3<Long, String, Long> data) throws Exception {
@@ -101,7 +101,7 @@ public class DictCompressionBigITCase {
                         //System.out.println(data.f0 +","+ret.hashCode());
                         return ret;
                     }
-                })
+                }).setParallelism(1)
                 .rebalance();
 
         // stream should be compressable here
@@ -117,7 +117,7 @@ public class DictCompressionBigITCase {
                 .addSink(new SinkFunction<Tuple2<Long, Long>>() {
                     @Override
                     public void invoke(Tuple2<Long, Long> dataWithLatency) throws Exception {
-                        System.out.println(System.currentTimeMillis() +", "+ dataWithLatency.f0 +", "+ dataWithLatency.f1);
+                        //System.out.println(System.currentTimeMillis() +", "+ dataWithLatency.f0 +", "+ dataWithLatency.f1);
                     }
                 });
 

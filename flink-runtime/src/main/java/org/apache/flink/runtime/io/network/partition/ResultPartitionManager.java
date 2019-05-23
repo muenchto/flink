@@ -147,4 +147,16 @@ public class ResultPartitionManager implements ResultPartitionProvider {
 			LOG.debug("Released {}.", partition);
 		}
 	}
+
+	public void notifyLocalSubpartition(ResultPartitionID partitionId, int subpartitionIndex) throws PartitionNotFoundException {
+		synchronized (registeredPartitions) {
+			final ResultPartition partition = registeredPartitions.get(partitionId.getProducerId(),
+					partitionId.getPartitionId());
+
+			if (partition == null) {
+				throw new PartitionNotFoundException(partitionId);
+			}
+			partition.markSubpartitionAsLocal(subpartitionIndex);
+		}
+	}
 }

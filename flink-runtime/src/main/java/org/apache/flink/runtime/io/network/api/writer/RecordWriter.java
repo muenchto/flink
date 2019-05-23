@@ -25,14 +25,14 @@ import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.api.serialization.RecordSerializer;
 import org.apache.flink.runtime.io.network.api.serialization.SpanningRecordSerializer;
-import org.apache.flink.runtime.io.network.buffer.Buffer;
-import org.apache.flink.streaming.runtime.io.StreamRecordWriter;
 import org.apache.flink.runtime.io.network.buffer.BufferBuilder;
 import org.apache.flink.runtime.io.network.buffer.BufferConsumer;
+import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
 import org.apache.flink.util.XORShiftRandom;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Random;
 
@@ -102,6 +102,10 @@ public class RecordWriter<T extends IOReadableWritable> {
 			serializers[i] = new SpanningRecordSerializer<T>();
 			bufferBuilders[i] = Optional.empty();
 		}
+	}
+
+	public ArrayList<Integer> getLocalSubpartitions() {
+		return ((ResultPartition) targetPartition).getLocalSubpartitions();
 	}
 
 	public void emit(T record) throws IOException, InterruptedException {

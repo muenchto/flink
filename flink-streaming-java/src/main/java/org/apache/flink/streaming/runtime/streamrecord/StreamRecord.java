@@ -187,7 +187,6 @@ public final class StreamRecord<T> extends StreamElement {
 
 	@Override
 	public String toString() {
-		return "Record@" + (hasTimestamp ? timestamp : "(noTS)") + " : " +
-				value.toString().substring(0, Math.min(value.toString().length(), 30));
+		return "Record@" + (hasTimestamp ? timestamp : "(noTS)") + " : " + value.toString();
 	}
 }

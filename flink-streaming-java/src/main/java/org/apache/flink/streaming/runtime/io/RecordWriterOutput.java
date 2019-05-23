@@ -22,6 +22,7 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
+import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.watermark.Watermark;
@@ -36,6 +37,7 @@ import org.apache.flink.streaming.runtime.tasks.OperatorChain;
 import org.apache.flink.util.OutputTag;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -81,6 +83,10 @@ public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExpo
 		}
 
 		this.streamStatusProvider = checkNotNull(streamStatusProvider);
+	}
+
+	public ArrayList<Integer> getLocalSubpartitions() {
+		return recordWriter.getLocalSubpartitions();
 	}
 
 	@Override

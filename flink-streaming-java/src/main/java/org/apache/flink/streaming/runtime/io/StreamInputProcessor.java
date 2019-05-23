@@ -41,7 +41,7 @@ import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.optimization.SpillingAdaptSpanRecDeserializerAndDecompressor;
-import org.apache.flink.streaming.runtime.optimization.CompressionMarker;
+import org.apache.flink.streaming.runtime.optimization.StreamInputDecompressor;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -111,11 +111,9 @@ public class StreamInputProcessor<IN> {
 
 	private boolean isFinished;
 
-	// ---------------- memorize for possible compression mode ------------------
-
-	private final String[] spillingDirectoriesPaths;
-	private RecordDeserializer<DeserializationDelegate<StreamElement>>[] savedSerializers;
-	private RecordDeserializer<DeserializationDelegate<StreamElement>>[] recordDecompressors;
+	// ---------------- for possible compression mode ------------------
+	private StreamInputDecompressor<IN>[] decompressors;
+	boolean[] inCompressionMode;
 
 	@SuppressWarnings("unchecked")
 	public StreamInputProcessor(
@@ -149,7 +147,6 @@ public class StreamInputProcessor<IN> {
 				ioManager.getSpillingDirectoriesPaths());
 		}
 
-		this.spillingDirectoriesPaths = ioManager.getSpillingDirectoriesPaths();
 		this.numInputChannels = inputGate.getNumberOfInputChannels();
 
 		this.streamStatusMaintainer = checkNotNull(streamStatusMaintainer);
@@ -161,6 +158,8 @@ public class StreamInputProcessor<IN> {
 
 		this.watermarkGauge = watermarkGauge;
 		metrics.gauge("checkpointAlignmentTime", barrierHandler::getAlignmentDurationNanos);
+
+		this.inCompressionMode = new boolean[numInputChannels];
 	}
 
 	public boolean processInput() throws Exception {
@@ -204,7 +203,7 @@ public class StreamInputProcessor<IN> {
 						continue;
 					} else if (recordOrMark.isCompressionMarker()) {
 						synchronized (lock) {
-							LOG.debug("StreamInputProcessor received {} from channel {}",
+							LOG.debug("received {} from channel {}",
 									recordOrMark.asCompressionMarker(), currentChannel);
 							if (recordOrMark.asCompressionMarker().isEnabler()) {
 								enableCompressionMode(currentChannel);
@@ -217,11 +216,19 @@ public class StreamInputProcessor<IN> {
 					}
 					else {
 						// now we can do the actual processing
-						StreamRecord<IN> record = recordOrMark.asRecord();
+
+						StreamRecord<IN> record;
+						if (inCompressionMode[currentChannel]) {
+							record = decompressors[currentChannel].decompress(recordOrMark);
+						}
+						else {
+							record = recordOrMark.asRecord();
+						}
 						synchronized (lock) {
-							LOG.debug("StreamInputProcessor received {} from channel {}",
-								record.getValue().toString()
-											.substring(0, Math.min(record.getValue().toString().length(), 30)), currentChannel);
+							if (LOG.isDebugEnabled()) {
+								LOG.debug("received {} from channel {}", record.getValue().toString()
+										.substring(0, Math.min(record.getValue().toString().length(), 30)), currentChannel);
+							}
 							numRecordsIn.inc();
 							streamOperator.setKeyContextElement1(record);
 							streamOperator.processElement(record);
@@ -236,6 +243,7 @@ public class StreamInputProcessor<IN> {
 				if (bufferOrEvent.isBuffer()) {
 					currentChannel = bufferOrEvent.getChannelIndex();
 					currentRecordDeserializer = recordDeserializers[currentChannel];
+					LOG.debug("new buffer set in {}", currentRecordDeserializer.getClass());
 					currentRecordDeserializer.setNextBuffer(bufferOrEvent.getBuffer());
 				}
 				else {
@@ -258,28 +266,20 @@ public class StreamInputProcessor<IN> {
 
 	private void enableCompressionMode(int channel) {
 
-		// because after a compressionMarker the buffer on the sender side has been flushed, we can be sure to switch the
-		// object here
-		if (savedSerializers == null) {
-			// compression is enabled the first time, therefore create array to save Deserializers
-			savedSerializers = new RecordDeserializer[numInputChannels];
-
-			// and create the Decompressors
-			recordDecompressors = new RecordDeserializer[numInputChannels];
-			for (int i = 0; i < recordDecompressors.length; i++) {
-				recordDecompressors[i] =
-						new SpillingAdaptSpanRecDeserializerAndDecompressor<DeserializationDelegate<StreamElement>, IN>(
-								spillingDirectoriesPaths);
+		if (decompressors == null) {
+			// compression is enabled the first time, therefore create the decompressors
+			decompressors = new StreamInputDecompressor[numInputChannels];
+			for (int i = 0; i < decompressors.length; i++) {
+				decompressors[i] = new StreamInputDecompressor<>();
 			}
 		}
 
-		// compression is turned on for this channel, so save Deserilizer
-		savedSerializers[channel] = recordDeserializers[channel];
-		recordDeserializers[channel] = recordDecompressors[channel];
+		inCompressionMode[channel] = true;
 	}
 
 	private void disableCompressionMode(int channel) {
-		recordDeserializers[channel] = savedSerializers[channel];
+		inCompressionMode[channel] = false;
+
 	}
 
 	public void cleanup() throws IOException {

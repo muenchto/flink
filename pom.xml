@@ -66,7 +66,7 @@ under the License.
 		<module>flink-streaming-java</module>
 		<module>flink-streaming-scala</module>
 		<module>flink-connectors</module>
-		<module>flink-formats</module>
+		<!--<module>flink-formats</module>-->
 		<module>flink-examples</module>
 		<module>flink-clients</module>
 		<module>flink-queryable-state</module>
@@ -215,6 +215,11 @@ under the License.
 			<artifactId>log4j</artifactId>
 			<type>jar</type>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-avro</artifactId>
+			<version>1.5-SNAPSHOT</version>
 		</dependency>
 
 	</dependencies>
@@ -649,9 +654,6 @@ under the License.
 						<plugin>
 							<groupId>org.apache.rat</groupId>
 							<artifactId>apache-rat-plugin</artifactId>
-							<configuration>
-								<skip>true</skip>
-							</configuration>
 						</plugin>
 						<plugin>
 							<groupId>org.apache.maven.plugins</groupId>
@@ -757,7 +759,7 @@ under the License.
 							<threshold>Low</threshold>
 							<effort>default</effort>
 							<findbugsXmlOutputDirectory>${project.build.directory}/spotbugs</findbugsXmlOutputDirectory>
-							<excludeFilterFile>${rootDir}/tools/maven/spotbugs-exclude.xml</excludeFilterFile>
+							<excludeFilterFile>/tools/maven/spotbugs-exclude.xml</excludeFilterFile>
 							<failOnError>true</failOnError>
 						</configuration>
 					</plugin>

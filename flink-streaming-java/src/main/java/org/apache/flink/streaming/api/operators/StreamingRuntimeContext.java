@@ -40,9 +40,11 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.graph.StreamConfig;
+import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.util.Preconditions;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -63,6 +65,8 @@ public class StreamingRuntimeContext extends AbstractRuntimeUDFContext {
 
 	private final String operatorUniqueID;
 
+	private final ArrayList<Integer> localSubpartitions;
+
 	public StreamingRuntimeContext(AbstractStreamOperator<?> operator,
 									Environment env, Map<String, Accumulator<?, ?>> accumulators) {
 		super(env.getTaskInfo(),
@@ -76,9 +80,20 @@ public class StreamingRuntimeContext extends AbstractRuntimeUDFContext {
 		this.taskEnvironment = env;
 		this.streamConfig = new StreamConfig(env.getTaskConfiguration());
 		this.operatorUniqueID = operator.getOperatorID().toString();
+
+		Output opOutput = operator.getOutput();
+		if (opOutput instanceof RecordWriterOutput) {
+			RecordWriterOutput recOutput = (RecordWriterOutput) opOutput;
+			this.localSubpartitions = recOutput.getLocalSubpartitions();
+		}
+		else this.localSubpartitions = null;
 	}
 
 	// ------------------------------------------------------------------------
+
+	public ArrayList<Integer> getLocalSubpartitions() {
+		return localSubpartitions;
+	}
 
 	/**
 	 * Returns the input split provider associated with the operator.

@@ -229,6 +229,15 @@ public abstract class AbstractStreamOperator<OUT>
 		stateKeySelector2 = config.getStatePartitioner(1, getUserCodeClassloader());
 	}
 
+	public Output getOutput(){
+		if (this.output instanceof AbstractStreamOperator.CountingOutput){
+			return ((CountingOutput) this.output).output;
+		}
+		else {
+			return this.output;
+		}
+	}
+
 	@Override
 	public MetricGroup getMetricGroup() {
 		return metrics;

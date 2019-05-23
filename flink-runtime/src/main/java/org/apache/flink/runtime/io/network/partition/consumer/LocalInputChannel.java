@@ -110,7 +110,7 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 				try {
 					ResultSubpartitionView subpartitionView = partitionManager.createSubpartitionView(
 						partitionId, subpartitionIndex, this);
-
+					partitionManager.notifyLocalSubpartition(partitionId, subpartitionIndex);
 					if (subpartitionView == null) {
 						throw new IOException("Error requesting subpartition.");
 					}
@@ -192,7 +192,7 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 				return Optional.empty();
 			}
 		}
-
+		LOG.debug("Received LOCAL buffer from subpartition {}, isBuffer? {}", subpartitionView, next.buffer().isBuffer());
 		numBytesIn.inc(next.buffer().getSizeUnsafe());
 		numBuffersIn.inc();
 		return Optional.of(new BufferAndAvailability(next.buffer(), next.isMoreAvailable(), next.buffersInBacklog()));

@@ -33,6 +33,8 @@ import org.apache.flink.runtime.io.network.partition.PartitionNotFoundException;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
 import org.apache.flink.util.ExceptionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
@@ -54,6 +56,9 @@ import static org.apache.flink.util.Preconditions.checkState;
  * An input channel, which requests a remote partition queue.
  */
 public class RemoteInputChannel extends InputChannel implements BufferRecycler, BufferListener {
+
+	private static final Logger LOG = LoggerFactory.getLogger(RemoteInputChannel.class);
+
 
 	/** ID to distinguish this channel from other channels sharing the same TCP connection. */
 	private final InputChannelID id = new InputChannelID();
@@ -197,6 +202,7 @@ public class RemoteInputChannel extends InputChannel implements BufferRecycler, 
 			next = receivedBuffers.poll();
 			moreAvailable = !receivedBuffers.isEmpty();
 		}
+		LOG.debug("Received REMOTE buffer from inputchannelID {}; isBuffer? {}", getInputChannelId(), next.isBuffer());
 
 		numBytesIn.inc(next.getSizeUnsafe());
 		numBuffersIn.inc();

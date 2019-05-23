@@ -90,12 +90,17 @@ public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> 
 				checkErroneous();
 				int[] selectedChannels = super.channelSelector.selectChannels(record, super.numChannels);
 
-				LOG.debug("Compressor writes {} to channels [{}].",
-						delegate.getInstance(), Arrays.toString(selectedChannels));
-
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Compressor writes {} to channels [{}].",
+							delegate.getInstance().toString()
+									.substring(0, Math.min(delegate.getInstance().toString().length(), 30)),
+							Arrays.toString(selectedChannels));
+				}
 				for (int targetChannel : selectedChannels) {
 					compressRecord(delegate, possibleComprEntry, targetChannel);
-					LOG.debug("Compressor compressed record to {}", delegate.getInstance());
+					if (LOG.isDebugEnabled()) {
+						LOG.debug("Compressor compressed record to {}", delegate.getInstance());
+					}
 					sendToTarget((T) delegate, targetChannel);
 				}
 			}
@@ -119,6 +124,7 @@ public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> 
 
 		super.outputFlusher.setTimeout(originalTimeout);
 		broadcastCompressionMarker(new CompressionMarker().asDisabler());
+		recordsUntilComprAnalysis = optiConfig.getAnalyzeEveryNRecords();
 		this.compressionEnabled = false;
 	}
 
@@ -126,12 +132,12 @@ public class StreamRecordCompressorAndWriter<T extends IOReadableWritable, OUT> 
 		//dummy serializer, every serializer can serialize the marker
 		TypeSerializer<StreamElement> dummySerializer =
 				new StreamElementSerializer<>(new IntSerializer());
-		SerializationDelegate<StreamElement> markerDelegate = new SerializationDelegate<StreamElement>(dummySerializer);
+		SerializationDelegate<StreamElement> markerDelegate = new SerializationDelegate<>(dummySerializer);
 		markerDelegate.setInstance(compressionMarker);
 
 		try {
 			broadcastEmit((T) markerDelegate);
-			flushAll();
+			//flushAll();
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e.getMessage(), e);

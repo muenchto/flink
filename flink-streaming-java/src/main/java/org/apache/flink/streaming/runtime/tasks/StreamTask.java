@@ -53,6 +53,8 @@ import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializerImpl;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.io.StreamRecordWriter;
+import org.apache.flink.streaming.runtime.optimization.OptimizationConfig;
+import org.apache.flink.streaming.runtime.optimization.StreamRecordCompressorAndWriter;
 import org.apache.flink.streaming.runtime.partitioner.ConfigurableStreamPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -1165,6 +1167,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		List<StreamEdge> outEdgesInOrder = configuration.getOutEdgesInOrder(environment.getUserClassLoader());
 		Map<Integer, StreamConfig> chainedConfigs = configuration.getTransitiveChainedTaskConfigsWithSelf(environment.getUserClassLoader());
 
+		OptimizationConfig compressionConfig = configuration.getOptiConfig(environment.getUserClassLoader());
+
 		for (int i = 0; i < outEdgesInOrder.size(); i++) {
 			StreamEdge edge = outEdgesInOrder.get(i);
 			streamRecordWriters.add(
@@ -1173,7 +1177,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 					i,
 					environment,
 					environment.getTaskInfo().getTaskName(),
-					chainedConfigs.get(edge.getSourceId()).getBufferTimeout()));
+					chainedConfigs.get(edge.getSourceId()).getBufferTimeout(),
+					compressionConfig));
 		}
 		return streamRecordWriters;
 	}
@@ -1183,7 +1188,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			int outputIndex,
 			Environment environment,
 			String taskName,
-			long bufferTimeout) {
+			long bufferTimeout,
+			OptimizationConfig optiConfig) {
 		@SuppressWarnings("unchecked")
 		StreamPartitioner<OUT> outputPartitioner = (StreamPartitioner<OUT>) edge.getPartitioner();
 
@@ -1199,8 +1205,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			}
 		}
 
-		StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> output =
-			new StreamRecordWriter<>(bufferWriter, outputPartitioner, bufferTimeout, taskName);
+		StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>, OUT> output;
+		if (optiConfig.isCompressionEnabled()) {
+			output = new StreamRecordCompressorAndWriter<>(bufferWriter, outputPartitioner, bufferTimeout, taskName, optiConfig);
+		}
+		else {
+			output = new StreamRecordWriter<>(bufferWriter, outputPartitioner, bufferTimeout, taskName);
+		}
+
 		output.setMetricGroup(environment.getMetricGroup().getIOMetricGroup());
 		return output;
 	}
